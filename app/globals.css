@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* Sparkle design tokens (design/Sparkle_Beauty_Cosmetics_Design_System.md).
+   Pink = primary actions, blush = soft sections, charcoal = text, gray = borders.
+   Status colours are soft and semantic; purple is reserved for AI. */
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #fdf0f6;
+  --color-brand-100: #fbe1ee;
+  --color-brand-200: #f6c3dd;
+  --color-brand-500: #e23d8f;
+  --color-brand-600: #d0237a;
+  --color-brand-700: #b01b66;
+
+  --color-ink: #1f1a1d;
+  --color-ink-muted: #645c61;
+  --color-line: #e9e4e7;
+  --color-surface: #f7f5f6;
+
+  --color-logo-blue: #2b6fd6;
+
+  --color-mint-bg: #e5f6ee;
+  --color-mint-fg: #1d7550;
+  --color-amber-bg: #fdf2dd;
+  --color-amber-fg: #94590a;
+  --color-rose-bg: #fce9e9;
+  --color-rose-fg: #b42318;
+  --color-info-bg: #e9f1fc;
+  --color-info-fg: #245aaa;
+  --color-teal-bg: #e1f3f1;
+  --color-teal-fg: #0f6e66;
+  --color-ai-bg: #f1ecfd;
+  --color-ai-fg: #6b3fcf;
+  --color-ai-line: #ddd0fb;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-ink);
+  font-size: 15px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
