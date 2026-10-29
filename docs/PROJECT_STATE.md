@@ -50,7 +50,7 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 | Frontend | Next.js 15 (App Router, TypeScript), Tailwind CSS 4, lucide-react icons, Plus Jakarta Sans | Built |
 | Auth & data access | `@supabase/ssr` with the signed-in user's session. Business changes go through database functions | Built |
 | Database, auth | Supabase project `sparkle-beauty` (ref `msrgdmzczxgbilxeayck`, eu-west-1) | Live, seeded |
-| Hosting | Vercel (deploy from this repo's root; no extra config) | Env vars must be set in Vercel |
+| Hosting | Vercel project `lazima-iwork/sparklebeauty`, deployed from this repo's root. `vercel.json` sets the framework to Next.js (the project was created as "Other"); `package.json` `engines` pins Node 24.x | Env vars must be set in Vercel |
 | Payments | Simulated M-Pesa (STK-push style prompt), card and cash | Demo only |
 | Node | 24 LTS locally | |
 
