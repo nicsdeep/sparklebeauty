@@ -31,12 +31,13 @@ export function stockInsights(sales: Sale[], stock: StockRow[], windowDays = 14)
       return { variantId: r.variant_id, name: fullName(r), slug: r.product_slug, available: r.available, perDay, daysLeft, restock, state: stockState(r) };
     })
     .filter((i) => i.state !== "ok" || (i.daysLeft !== null && i.daysLeft <= 14))
-    .sort((a, b) => (a.daysLeft ?? (a.state === "out" ? -1 : 999)) - (b.daysLeft ?? (b.state === "out" ? -1 : 999)));
+    // Predicted run-outs first (soonest first), then out-of-stock items, then other low stock.
+    .sort((a, b) => rank(a) - rank(b));
 }
 
 export function stockSentence(i: StockInsight) {
   if (i.available <= 0) return `${i.name} is out of stock${i.perDay > 0 ? ` and was selling about ${round1(i.perDay * 7)} a week` : ""}.`;
-  if (i.daysLeft !== null) return `${i.name} may run out in ${i.daysLeft} day${i.daysLeft === 1 ? "" : "s"} (${i.available} left, selling about ${round1(i.perDay * 7)} a week).`;
+  if (i.daysLeft !== null && i.daysLeft <= 30) return `${i.name} may run out in ${i.daysLeft} day${i.daysLeft === 1 ? "" : "s"} (${i.available} left, selling about ${round1(i.perDay * 7)} a week).`;
   return `${i.name} is low on stock (${i.available} left).`;
 }
 
@@ -137,5 +138,7 @@ export function promotionSuggestions(sales: Sale[], stock: StockRow[]) {
     .slice(0, 3)
     .map(([, p]) => `${p.name} has ${p.available} in stock and no sales in 30 days. Consider featuring it in a promotion.`);
 }
+
+const rank = (i: StockInsight) => (i.available > 0 && i.daysLeft !== null && i.daysLeft <= 30 ? i.daysLeft : i.state === "out" ? 1000 : 2000 + i.available);
 
 const round1 = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10);

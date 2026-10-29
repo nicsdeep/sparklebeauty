@@ -15,8 +15,29 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Connected O2C demo (storefront, checkout, admin, POS, CRM, insights)
+- PR: (this PR, branch `claude/o2c-demo`)
+- Changed:
+  - Next.js 15 app at the repo root: `app/`, `components/`, `lib/`, `middleware.ts`.
+  - Migrations `20261029210000` (order statuses), `20261029210100` (O2C schema and business functions) and `20261029210200` (demo seed and reset).
+  - `.env.example` now lists `DEMO_PASSWORD` instead of the service-role key.
+- Why: CEO demo of one connected Order-to-Cash system: ecommerce, cart, checkout, simulated payment, admin order processing, inventory, CRM, POS (retail and wholesale), loyalty, reports and AI insights, all on one database.
+- Tested: in the browser against the live database.
+  - Customer: home → wig with 18" selected → serum → cart with SPARKLE10 → checkout, signed out then demo sign-in → details pre-filled → delivery → Back/Next keeps the delivery note → M-Pesa prompt → simulated payment → confirmation and tracking page.
+  - Admin: the same order through all 8 lifecycle steps. Bright Glow Serum went 6 → reserved → 5 on hand at dispatch, and Grace earned +225 points, shown in the CRM.
+  - POS: wholesale cash sale to Mama Pendo Salon, with SKU entry, the 6-item minimum, change and receipt.
+  - Every admin page renders. Demo reset works from Settings.
+  - Anonymous API calls to the protected functions and tables are refused.
+  - `tsc` and `next build` pass.
+- Follow-ups:
+  - The migrations were applied to the live database **before** merge, with Nicholas's approval (the database had no real data).
+  - Set the Vercel environment variables.
+  - Add the official logo and product photos.
+  - Loyalty redemption isn't built.
+  - Reset the demo just before presenting.
+
 ## 2026-10-29: Claude: RLS hardening and storefront stock lookup
-- PR: (this PR)
+- PR: https://github.com/nicsdeep/sparklebeauty/pull/5
 - Changed:
   - Migration `20261029200000_rls_hardening_and_stock.sql`.
   - New `get_variant_stock(uuid[])`.

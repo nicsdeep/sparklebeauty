@@ -91,7 +91,7 @@ export function PosTerminal({ items, customers, wholesaleMin }: { items: PosItem
       });
       setMpesaPrompt(false);
       if (!res.ok) { setError(res.error); return; }
-      setReceipt({ ...res.data, lines, tier, customer, method, subtotal, discount: disc, tendered: Number(tendered) || undefined, at: new Date().toLocaleString("en-KE") });
+      setReceipt({ ...res.data, lines, tier, customer, method, subtotal, discount: disc, tendered: Number(tendered) || undefined, at: new Date().toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "medium", timeStyle: "short" }) });
     });
   }
 

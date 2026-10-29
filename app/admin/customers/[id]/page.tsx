@@ -75,7 +75,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         </dl>
         <p className="mt-3 text-sm text-ink-muted">
           Prefers updates by {[c.notify_whatsapp && "WhatsApp", c.notify_sms && "SMS", c.notify_email && "email"].filter(Boolean).join(", ") || "-"}
-          {c.date_of_birth ? ` · Birthday ${new Date(c.date_of_birth).toLocaleDateString("en-KE", { day: "numeric", month: "long" })}` : ""}
+          {c.date_of_birth ? ` · Birthday ${new Date(`${c.date_of_birth}T12:00:00Z`).toLocaleDateString("en-KE", { day: "numeric", month: "long", timeZone: "UTC" })}` : ""}
         </p>
       </Card>
 

@@ -2,7 +2,7 @@
 
 This is the current truth about the project. Every agent reads it before working (see `AGENTS.md` §1), and updates it in the same PR when its change makes something here out of date.
 
-_Last updated: 2026-10-29 by Claude_
+_Last updated: 2026-10-30 by Claude_
 
 ## Product
 
@@ -19,6 +19,10 @@ A digital commerce and business management platform for Sparkle Beauty & Cosmeti
 
 Currency is KES. The design standard is `design/Sparkle_Beauty_Cosmetics_Design_System.md`.
 
+The current build is a **CEO demo of the full Order-to-Cash flow**:
+- Payments are simulated; there's no real M-Pesa or card integration.
+- Demo data can be reset from Admin → Settings.
+
 ## Repository layout
 
 | Path | Contents |
@@ -29,73 +33,123 @@ Currency is KES. The design standard is `design/Sparkle_Beauty_Cosmetics_Design_
 | `docs/WORKLOG.md` | What each agent did and why, newest first |
 | `design/` | Written design system |
 | `td/`, `td2/` | Reference mockups (visual only) |
-| `supabase/config.toml` | Supabase CLI config |
-| `supabase/migrations/` | Database schema history, the only way to change the schema |
+| `app/(shop)/` | Customer website:<br>• home, shop, product and cart pages<br>• `checkout/` (5-step wizard)<br>• `order/[number]` (tracking)<br>• `account/`<br>• `contact/`<br>• `actions.ts` (server actions) |
+| `app/admin/` | Admin:<br>• dashboard<br>• orders, POS (`pos/terminal.tsx`)<br>• products, categories, inventory<br>• customers (CRM)<br>• retail, wholesale, promotions, loyalty<br>• reports, insights, settings (demo reset)<br>• `actions.ts` |
+| `app/login/` | Sign-in page with one-click demo accounts; `actions.ts` (sign in/out) |
+| `components/` | Shared UI:<br>• `ui.tsx`: buttons, badges, cards, `AiCard`<br>• `shop/`, `admin/`<br>• `order-timeline.tsx` |
+| `lib/` | `supabase/server.ts` (server client), plus:<br>• `catalog.ts`: products, prices, stock<br>• `sales-data.ts`: orders and stock for reports<br>• `insights.ts`: rule-based AI<br>• `format.ts`: KES, dates, status labels, delivery fee<br>• `cart.tsx`, `checkout-state.ts`: client state<br>• `auth.ts`, `customers.ts` |
+| `middleware.ts` | Refreshes the Supabase session cookie |
+| `supabase/migrations/` | Database schema history: the only way to change the schema |
 | `.env.example` | Names of the environment variables (no values) |
 | `.mcp.json` | Supabase MCP server for Claude Code, scoped to this project |
-
-**There is no application code yet.** No framework has been chosen and nothing has been scaffolded. The first agent to scaffold the app records the choice under "Stack" and "Decisions".
 
 ## Stack
 
 | Layer | Choice | Status |
 | --- | --- | --- |
-| Database, auth, storage | Supabase project `sparkle-beauty` (ref `msrgdmzczxgbilxeayck`, eu-west-1) | Live |
-| Hosting | Vercel | Nicholas reports it's hosted there. Nothing is deployable from this repo yet |
-| Frontend framework | _not chosen_ | |
-| Payments | M-Pesa, cash, card, bank transfer (enum `payment_method`) | Schema only |
+| Frontend | Next.js 15 (App Router, TypeScript), Tailwind CSS 4, lucide-react icons, Plus Jakarta Sans | Built |
+| Auth & data access | `@supabase/ssr` with the signed-in user's session. Business changes go through database functions | Built |
+| Database, auth | Supabase project `sparkle-beauty` (ref `msrgdmzczxgbilxeayck`, eu-west-1) | Live, seeded |
+| Hosting | Vercel (deploy from this repo's root; no extra config) | Env vars must be set in Vercel |
+| Payments | Simulated M-Pesa (STK-push style prompt), card and cash | Demo only |
+| Node | 24 LTS locally | |
+
+No chart library: charts are simple components in `components/admin/charts.tsx`.
 
 ## Environment variables
 
-The names depend on the framework, once chosen. `.env.example` lists them for Next.js:
+Set these in `.env.local` locally and in Vercel → Settings → Environment Variables:
 
 | Variable | Where | Secret? |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | client + server | No |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server | No (public; RLS protects data) |
-| `SUPABASE_SERVICE_ROLE_KEY` | server only | **Yes**: never in client code |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server (the project's publishable key) | No: RLS and the database functions protect data |
+| `DEMO_PASSWORD` | server only | **Yes**: shared password of the demo accounts, used by the one-click demo sign-in. Never prefix with `NEXT_PUBLIC_` |
 
-If the app is Vite (Lovable's default), the public ones become `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY`).
+The app does **not** use the Supabase service-role key.
 
-## Database (as of migration `20261029200000`)
+## Demo accounts
+
+| Account | Email | Use |
+| --- | --- | --- |
+| Grace Achieng (customer) | `grace.achieng@example.com` | Storefront, checkout, account |
+| Sparkle Admin (admin) | `admin@sparkle.example` | Everything, including demo reset |
+| Esther Wanjiku (staff) | `staff@sparkle.example` | Admin and POS; can't reset the demo |
+
+Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
+
+## Database (as of migration `20261029210200`)
 
 Migrations, in order:
-1. `20261029000000_baseline_schema.sql`: captures the schema that existed before migrations were tracked.
+1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
 2. `20261029120000_protect_profile_role.sql`: stops users granting themselves a role or loyalty points.
-3. `20261029200000_rls_hardening_and_stock.sql`: adds the storefront stock lookup, locks down function privileges and rebuilds the RLS policies. Apply after its PR is merged.
+3. `20261029200000_rls_hardening_and_stock.sql`: storefront stock lookup, function privileges and rebuilt RLS policies.
+4. `20261029210000_order_lifecycle_statuses.sql`: adds `paid`, `packed`, `dispatched` and `delivered` to `order_status`.
+5. `20261029210100_o2c_schema_and_functions.sql`: O2C tables, columns and business functions (below).
+6. `20261029210200_demo_seed.sql`: `demo_seed()`, `reset_demo()` and the initial seed.
 
 Tables in `public`, all with RLS on:
-- **People:** `profiles` (1:1 with `auth.users`; `role` is `app_role`: customer, staff or admin), `customer_addresses`, `customer_notes`, `loyalty_transactions`
-- **Catalogue:** `categories` (nested via `parent_id`), `brands`, `products`, `product_variants` (SKU, barcode, shade, hair length/texture/type/style), `pricing_tiers`, `product_prices` (one price per variant per tier, KES)
-- **Inventory:** `inventory_locations`, `inventory_levels` (one row per variant per location), `stock_movements`
-- **Sales:** `orders` (channel `online` or `pos`), `order_items`, `payments`, `promotions`
-- **Wishlist:** `wishlists`, `wishlist_items`
+- **People:**
+  - `profiles`: 1:1 with `auth.users`; `role` is `app_role` (customer, staff or admin); also stores email, date of birth and notification preferences.
+  - `customer_addresses`, `customer_notes`, `loyalty_transactions`
+  - `wholesale_accounts`: business name and price tier per wholesale customer.
+  - `notifications`: per customer, written by the order functions.
+- **Catalogue:**
+  - `categories`: nested via `parent_id`. The "Hair" parent holds Wigs, Hair Pieces, Braids, Extensions and Hair Care.
+  - `brands`, `products`
+  - `product_variants`: SKU, barcode, length, colour, shade, size, texture.
+  - `pricing_tiers`: retail, and wholesale with a minimum of 6 items.
+  - `product_prices`: one price per variant per tier, in KES.
+- **Inventory:**
+  - `inventory_locations`: one store, "Main Store".
+  - `inventory_levels`: `quantity` on hand, `reserved` for open online orders; available = quantity − reserved; `reorder_level` drives "Low Stock".
+  - `stock_movements`
+- **Sales:**
+  - `orders`: channel `online` or `pos`; holds a customer contact snapshot, `delivery_method`, `promotion_id` and `created_by`.
+  - `order_items`, `payments`, `promotions`
+  - `order_events`: the status timeline.
+- **Other:** `wishlists`, `wishlist_items`, and `activity_log` (staff actions, demo resets).
 
-Enums: `app_role`, `order_status`, `payment_method`, `payment_status`, `price_type`, `sales_channel`, `stock_movement_type`.
+**Order lifecycle:** `pending` (shown as "New") → `confirmed` → `paid` → `processing` → `packed` → `dispatched` → `delivered` → `completed`, or `cancelled`.
+- Placing an online order **reserves** stock.
+- **Dispatch** deducts it.
+- **Cancel** releases it.
+- **Completed** retail orders earn 1 loyalty point per KES 100.
+- **POS sales** are created as `completed` and deduct stock immediately.
 
-Functions and triggers:
+Business functions. All are `SECURITY DEFINER` and validate the caller and their input; the app calls them with the user's session:
 
-| Function | What it does |
-| --- | --- |
-| `handle_new_user()` | Trigger `on_auth_user_created` on `auth.users`; creates a `profiles` row on sign-up |
-| `is_admin()` | True for staff or admin |
-| `is_role_admin()` | True for admin only |
-| `guard_profile_privileges()` | Trigger on `profiles` that protects `role` and `loyalty_points` |
-| `rls_auto_enable()` | Event trigger `ensure_rls`; turns RLS on for every new table |
-| `get_variant_stock(uuid[])` | Storefront stock lookup. Returns `variant_id`, `quantity_available`, `in_stock` for active variants of active products, summed over active locations. Callable by anyone. Use this instead of reading `inventory_levels`, which is staff-only |
+| Function | Who | What it does |
+| --- | --- | --- |
+| `place_order(items, contact, delivery, payment_method, promo_code)` | signed-in customer | Re-prices from `product_prices`, checks and reserves stock, applies the promo, works out delivery, and creates the order, items, pending payment, event and notification |
+| `pay_order(order_id, phone)` | order's customer | Simulated M-Pesa/card success: marks the payment paid with a reference |
+| `advance_order(order_id, note)` | staff | Moves the order one lifecycle step. Handles payment confirmation, stock deduction on dispatch and loyalty on completion |
+| `cancel_order(order_id, reason)` | staff | Cancels before dispatch and releases stock |
+| `pos_complete_sale(customer, tier, items, discount, method, tendered, phone)` | staff | In-store sale: retail or wholesale (needs a wholesale customer and at least 6 items). Deducts stock and records payment and loyalty |
+| `adjust_stock(variant_id, delta, reason)` | staff | Receive stock or correct counts |
+| `reset_demo()` | admin | Runs `demo_seed()` (not callable from the API) to restore the seeded state |
+| `get_variant_stock(uuid[])` | anyone | Storefront availability (`quantity_available`, `in_stock`, `low_stock`) |
+| `is_admin()` / `is_role_admin()` | signed-in | Staff-or-admin / admin-only checks used by policies |
 
-Access rules, after `20261029200000`:
-- Signed-out visitors (`anon`) can read active brands, categories, products and variants, all prices, current promotions, and stock via `get_variant_stock`. Nothing else.
-- Customers can also read their own profile, addresses, orders, order items, payments and loyalty history. They can edit their own profile (not `role` or `loyalty_points`), addresses and wishlist.
-- Staff and admins can read and write everything. Only admins can change roles.
-- Policy conventions:
-  - one permissive policy per role per action
-  - `auth.uid()` and `is_admin()` are wrapped as `(select ...)`
-  - staff policies apply `to authenticated` only.
+Other triggers: `handle_new_user` (creates the profile, with email), `guard_profile_privileges` (protects `role` and `loyalty_points`), and the event trigger `ensure_rls`.
 
-  Follow this pattern for new tables.
+Policy conventions:
+- one permissive policy per role per action
+- `auth.uid()` and `is_admin()` are wrapped as `(select ...)`
+- staff policies apply `to authenticated`.
 
-Data: 2 rows in `pricing_tiers`, 1 in `inventory_locations`; everything else is empty.
+Follow this pattern for new tables.
+
+Gotcha: Supabase blocks `DELETE`/`UPDATE` without a `WHERE` clause in API requests. Bulk statements inside functions need `where true`.
+
+**Seed:**
+- **Catalogue:** 66 products (124 variants).
+- **Customers:** 20 retail customers including Grace Achieng, and 3 wholesale salons.
+- **Orders:** 30 orders over 30 days: mixed channels, statuses and payment methods, plus Grace's history.
+- **Promotions:** `SPARKLE10` (10% over KES 3,000), `WIGWEEK` (KES 1,500 off over KES 15,000), and one expired.
+- **Stock:** demo situations include Bright Glow Serum at 6 units (about 1 sold a day, reorder level 5), plus several low-stock and two out-of-stock items.
+
+The seed uses fixed IDs and a fixed random seed. The newest seeded orders are timed relative to when the seed runs, so **reset just before a demo** to make "today" look right.
 
 ## Decisions
 
@@ -104,8 +158,16 @@ Data: 2 rows in `pricing_tiers`, 1 in `inventory_locations`; everything else is 
 | 2026-10-29 | `nicsdeep/sparklebeauty` is the single GitHub repo. All work goes through branches and PRs | Nicholas |
 | 2026-10-29 | `sparkle-beauty` is the single Supabase project. Schema changes only through migrations | Nicholas |
 | 2026-10-29 | The written design system overrides the mockups | Nicholas |
+| 2026-10-29 | Stack: Next.js 15 + Supabase on Vercel. Money and stock changes only through database functions; no service-role key in the app | Claude, for the CEO demo |
+| 2026-10-29 | The O2C demo migrations were applied to the live database before their PR merged, to build and test the demo in time. The database held no real data | Nicholas approved |
 
 ## Known issues
 
-- `product_prices` is readable by everyone, including wholesale and special-tier prices. Decide whether wholesale prices should be hidden from the public storefront.
-- Supabase advisors will still flag `get_variant_stock`, `is_admin` and `is_role_admin` as `SECURITY DEFINER` functions callable by signed-in users (and `get_variant_stock` by `anon`). This is intentional: they only return stock figures or the caller's own role.
+- **Brand assets missing:**
+  - No official logo file in the repo. `components/logo.tsx` shows a text wordmark until the real logo is added to `public/brand/`.
+  - No product photos. `ProductImage` shows branded placeholders; `products.image_urls` is still empty.
+- **Loyalty points can't be redeemed yet.** They are only earned and displayed.
+- **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
+- **Shop contact details are from the mockups.** The phone number 0702 388 724 and email hello@sparklebeauty.co.ke need confirming.
+- **Advisor warnings are expected:** Supabase advisors flag the `SECURITY DEFINER` functions callable by signed-in users (and `get_variant_stock` by `anon`). This is intentional; each one checks the caller.
+- **Single location:** inventory assumes one location (`main_location_id()`).

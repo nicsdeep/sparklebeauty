@@ -35,7 +35,7 @@ export type Product = {
 export type Category = { id: string; name: string; slug: string; description: string | null; parent_id: string | null; sort_order: number };
 
 const PRODUCT_SELECT = `id, name, slug, description, rating, review_count, is_featured, created_at,
-  category:categories!inner(id, slug, name, parent:categories(slug)),
+  category:categories!inner(id, slug, name, parent:parent_id(slug)),
   brand:brands(name),
   product_variants(id, sku, name, color, shade, size, hair_length, hair_texture, hair_type, hair_style, is_active,
     product_prices(amount, compare_at_amount, tier:pricing_tiers(code)))`;

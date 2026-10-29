@@ -22,7 +22,7 @@ export default async function RetailPage() {
       <PageHeader title="Retail" subtitle="Individual customers at shelf prices, online and in the shop. Last 30 days."
         action={<Link href="/admin/pos" className={buttonClass()}>Open POS</Link>} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Retail sales today" value={kes(sum(today))} note={`${today.length} orders`} />
+        <Stat label="Retail sales today" value={kes(sum(today))} note={`${today.length} order${today.length === 1 ? "" : "s"}`} />
         <Stat label="Retail sales (30 days)" value={kes(sum(sales))} note={`${sales.length} orders`} />
         <Stat label="Average basket" value={kes(sales.length ? sum(sales) / sales.length : 0)} />
         <Stat label="Walk-in sales" value={String(walkIn.length)} note="POS sales without a customer profile" />

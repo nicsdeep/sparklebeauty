@@ -52,26 +52,26 @@ begin
   perform setseed(0.4242);
 
   -- Wipe ---------------------------------------------------------------------------
-  delete from public.notifications;
-  delete from public.order_events;
-  delete from public.loyalty_transactions;
-  delete from public.payments;
-  delete from public.order_items;
-  delete from public.stock_movements;
-  delete from public.orders;
-  delete from public.wishlist_items;
-  delete from public.wishlists;
-  delete from public.customer_addresses;
-  delete from public.customer_notes;
-  delete from public.activity_log;
-  delete from public.wholesale_accounts;
-  delete from public.inventory_levels;
-  delete from public.product_prices;
-  delete from public.product_variants;
-  delete from public.products;
-  delete from public.brands;
-  delete from public.categories;
-  delete from public.promotions;
+  delete from public.notifications where true;
+  delete from public.order_events where true;
+  delete from public.loyalty_transactions where true;
+  delete from public.payments where true;
+  delete from public.order_items where true;
+  delete from public.stock_movements where true;
+  delete from public.orders where true;
+  delete from public.wishlist_items where true;
+  delete from public.wishlists where true;
+  delete from public.customer_addresses where true;
+  delete from public.customer_notes where true;
+  delete from public.activity_log where true;
+  delete from public.wholesale_accounts where true;
+  delete from public.inventory_levels where true;
+  delete from public.product_prices where true;
+  delete from public.product_variants where true;
+  delete from public.products where true;
+  delete from public.brands where true;
+  delete from public.categories where true;
+  delete from public.promotions where true;
   alter sequence public.order_number_seq restart with 1001;
 
   select id into v_retail from public.pricing_tiers where code = 'retail';
@@ -294,7 +294,7 @@ begin
       values (v_vid, v_retail, v_price, case when v_prod.on_offer then round(v_price * 1.25 / 50) * 50 end),
              (v_vid, v_wholesale, round(v_price * 0.75 / 50) * 50, null);
       insert into public.inventory_levels (variant_id, location_id, quantity, reorder_level)
-      values (v_vid, v_loc, 10 + floor(random() * 30)::int, case when v_prod.cat in ('braids') then 20 else 5 end);
+      values (v_vid, v_loc, 10 + floor(random() * 30)::int, case when v_prod.cat in ('braids') then 10 else 5 end);
     end loop;
   end loop;
 

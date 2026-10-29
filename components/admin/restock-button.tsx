@@ -33,7 +33,7 @@ export function RestockButton({ variantId, suggested, label, tone = "brand" }: {
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
       <input value={qty} onChange={(e) => setQty(e.target.value.replace(/[^\d]/g, ""))} className="h-9 w-20 rounded-lg border border-line px-2 text-right" inputMode="numeric" aria-label="Quantity" autoFocus />
-      <Button size="sm" disabled={pending || !Number(qty)} onClick={() => save(1)}>Receive +{qty || 0}</Button>
+      <Button size="sm" disabled={pending || !Number(qty)} onClick={() => save(1)}>{pending ? "Saving…" : `Receive +${qty || 0}`}</Button>
       {!suggested && <Button size="sm" variant="ghost" disabled={pending || !Number(qty)} onClick={() => save(-1)}>Remove</Button>}
       <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
       {msg && <span className="text-sm text-rose-fg">{msg}</span>}

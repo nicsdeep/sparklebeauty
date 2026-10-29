@@ -48,7 +48,7 @@ export async function loadSales(days: number): Promise<Sale[]> {
     .from("orders")
     .select(`id, order_number, status, channel, payment_status, total_amount, created_at, customer_id, customer_name,
       tier:pricing_tiers(code), payments(method),
-      order_items(variant_id, product_id, product_name, quantity, line_total, product:products(category:categories(slug, parent:categories(slug))))`)
+      order_items(variant_id, product_id, product_name, quantity, line_total, product:products(category:categories(slug, parent:parent_id(slug))))`)
     .gte("created_at", since)
     .neq("status", "cancelled")
     .order("created_at", { ascending: false });

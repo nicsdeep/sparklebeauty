@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   const today = startOfTodayNairobi();
   const todays = sales.filter((s) => s.created_at >= today);
   const open = sales.filter((s) => ["pending", "confirmed", "paid", "processing", "packed"].includes(s.status));
-  const lowStock = stock.filter((r) => stockState(r) !== "ok");
+  const lowStock = stock.filter((r) => stockState(r) !== "ok").sort((a, b) => a.available / Math.max(1, a.reorder_level) - b.available / Math.max(1, b.reorder_level));
 
   const days = [...Array(14)].map((_, i) => dayKey(new Date(Date.now() - (13 - i) * 86400000).toISOString()));
   const byDay = new Map(days.map((d) => [d, 0]));
@@ -44,7 +44,7 @@ export default async function DashboardPage() {
       <PageHeader title="Dashboard" subtitle="Today at Sparkle Beauty & Cosmetics, online and in store." />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Today's sales" value={kes(sum(todays))} note={`${todays.length} orders today`} />
+        <Stat label="Today's sales" value={kes(sum(todays))} note={`${todays.length} order${todays.length === 1 ? "" : "s"} today`} />
         <Stat label="Orders to process" value={String(open.length)} note={`${sales.filter((s) => s.status === "pending").length} new`} />
         <Stat label="Customers" value={String(customers ?? 0)} note={`${newCustomers ?? 0} joined in the last 90 days`} />
         <Stat label="Low-stock items" value={String(lowStock.length)} note="At or below reorder level" tone={lowStock.length ? "amber" : undefined} />

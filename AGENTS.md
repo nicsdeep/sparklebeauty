@@ -113,6 +113,7 @@ Agree areas of work per task so agents don't edit the same files at once. Update
 | Area | Owner |
 | --- | --- |
 | Database schema and migrations (`supabase/`) | Claude (proposed; Nicholas to confirm) |
+| Demo app (`app/`, `components/`, `lib/`) | Claude built it; open to Codex via PRs |
 | _to be decided_ | |
 
 ## 9. Agent-specific notes

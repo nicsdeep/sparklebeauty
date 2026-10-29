@@ -16,10 +16,10 @@ export default async function LoyaltyPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Loyalty" subtitle="Sparkle Rewards: 1 point for every KES 100 on completed retail orders (online and in store). 100 welcome points. 1 point = KES 1 off." />
+      <PageHeader title="Loyalty" subtitle="Sparkle Rewards: 1 point for every KES 100 on completed retail orders (online and in store). 100 welcome points." />
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Members with points" value={String(members?.length ?? 0)} />
-        <Stat label="Points outstanding" value={total.toLocaleString()} note={`Worth KES ${total.toLocaleString()}`} />
+        <Stat label="Points outstanding" value={total.toLocaleString()} />
         <Stat label="Points earned (latest 15)" value={(recent ?? []).reduce((s, t) => s + t.points, 0).toLocaleString()} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">

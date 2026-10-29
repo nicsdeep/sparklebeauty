@@ -42,7 +42,7 @@ export default async function AccountPage() {
         <Card className="flex items-center gap-4 p-5">
           <span className="rounded-full bg-brand-50 p-3 text-brand-600"><Gift className="size-6" /></span>
           <div><p className="text-sm text-ink-muted">Loyalty points</p><p className="text-2xl font-bold">{profile.loyalty_points.toLocaleString()}</p>
-            <p className="text-sm text-ink-muted">Worth {kes(profile.loyalty_points)} off</p></div>
+            <p className="text-sm text-ink-muted">1 point per KES 100 spent</p></div>
         </Card>
         <Card className="flex items-center gap-4 p-5">
           <span className="rounded-full bg-brand-50 p-3 text-brand-600"><Package className="size-6" /></span>

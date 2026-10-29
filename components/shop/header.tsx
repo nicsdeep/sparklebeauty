@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Heart, Home, LayoutDashboard, Menu, Package, Search, ShoppingBag, User, X } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { cx } from "@/components/ui";
@@ -24,7 +24,13 @@ export const NAV = [
 ];
 
 export function ShopHeader({ userName, isStaff }: { userName: string | null; isStaff: boolean }) {
-  const { count, ready } = useCart();
+  const cart = useCart();
+  // The cart lives in localStorage; only show its count after this component mounts so the
+  // first client render matches the server HTML.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const ready = mounted && cart.ready;
+  const count = ready ? cart.count : 0;
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
