@@ -152,7 +152,7 @@ function CartStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }
       <ul className="divide-y divide-line">
         {items.map((i) => (
           <li key={i.variantId} className="flex items-center gap-4 py-3">
-            <div className="w-16"><ProductImage category={i.category} name={i.name} size="sm" /></div>
+            <div className="w-16"><ProductImage category={i.category} name={i.name} image={i.image} size="sm" /></div>
             <div className="flex-1">
               <p className="font-semibold">{i.name}</p>
               <p className="text-sm text-ink-muted">{i.variantName ? `${i.variantName} · ` : ""}Qty {i.quantity}</p>

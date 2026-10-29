@@ -27,6 +27,8 @@ export type Product = {
   review_count: number;
   is_featured: boolean;
   created_at: string;
+  /** First product photo, or null (the UI falls back to a category image). */
+  image: string | null;
   category: { slug: string; name: string; parentSlug: string | null };
   brand: string | null;
   variants: Variant[];
@@ -34,7 +36,7 @@ export type Product = {
 
 export type Category = { id: string; name: string; slug: string; description: string | null; parent_id: string | null; sort_order: number };
 
-const PRODUCT_SELECT = `id, name, slug, description, rating, review_count, is_featured, created_at,
+const PRODUCT_SELECT = `id, name, slug, description, rating, review_count, is_featured, created_at, image_urls,
   category:categories!inner(id, slug, name, parent:parent_id(slug)),
   brand:brands(name),
   product_variants(id, sku, name, color, shade, size, hair_length, hair_texture, hair_type, hair_style, is_active,
@@ -51,6 +53,7 @@ function toProduct(row: any): Product {
     review_count: row.review_count,
     is_featured: row.is_featured,
     created_at: row.created_at,
+    image: row.image_urls?.[0] ?? null,
     category: { slug: row.category.slug, name: row.category.name, parentSlug: row.category.parent?.slug ?? null },
     brand: row.brand?.name ?? null,
     variants: (row.product_variants ?? [])
@@ -133,3 +136,12 @@ export function productStock(product: Product, stock: Record<string, Stock>): St
   return { available, inStock: available > 0, low: available > 0 && rows.every((r) => !r.inStock || r.low) };
 }
 
+
+/** Product IDs on the signed-in customer's wishlist (empty when signed out). */
+export async function getWishlistIds(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase.from("wishlist_items").select("product_id, wishlist:wishlists!inner(user_id)").eq("wishlist.user_id", user.id);
+  return (data ?? []).map((r) => r.product_id);
+}

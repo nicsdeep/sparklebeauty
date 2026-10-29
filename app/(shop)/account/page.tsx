@@ -19,7 +19,7 @@ export default async function AccountPage() {
       .eq("customer_id", profile.id).order("created_at", { ascending: false }),
     supabase.from("notifications").select("id, title, body, link, read_at, created_at").eq("user_id", profile.id)
       .order("created_at", { ascending: false }).limit(8),
-    supabase.from("wishlist_items").select("product:products(id, name, slug, category:categories(slug), brand:brands(name)), wishlist:wishlists!inner(user_id)")
+    supabase.from("wishlist_items").select("product:products(id, name, slug, image_urls, category:categories(slug), brand:brands(name)), wishlist:wishlists!inner(user_id)")
       .eq("wishlist.user_id", profile.id),
     supabase.from("customer_addresses").select("*").eq("user_id", profile.id).order("is_default", { ascending: false }),
     supabase.from("loyalty_transactions").select("id, points, reason, created_at").eq("customer_id", profile.id)
@@ -109,10 +109,10 @@ export default async function AccountPage() {
           <div id="wishlist" className="scroll-mt-40"><CardHeader title="Wishlist" /></div>
           <ul className="grid grid-cols-2 gap-3 p-5">
             {(wishlist.data ?? []).map((w) => {
-              const p = w.product as unknown as { id: string; name: string; slug: string; category: { slug: string }; brand: { name: string } | null };
+              const p = w.product as unknown as { id: string; name: string; slug: string; image_urls: string[] | null; category: { slug: string }; brand: { name: string } | null };
               return (
                 <li key={p.id}><Link href={`/product/${p.slug}`} className="block text-sm font-semibold hover:text-brand-700">
-                  <ProductImage category={p.category.slug} name={p.name} size="sm" /><span className="mt-1.5 block">{p.name}</span></Link></li>
+                  <ProductImage category={p.category.slug} name={p.name} image={p.image_urls?.[0]} size="sm" /><span className="mt-1.5 block">{p.name}</span></Link></li>
               );
             })}
             {!wishlist.data?.length && <li className="col-span-2 flex items-center gap-2 text-ink-muted"><Heart className="size-4" /> Tap the heart on any product to save it.</li>}
