@@ -7,6 +7,7 @@ import { ProductGrid } from "@/components/shop/product-card";
 import { ProductImage } from "@/components/shop/product-image";
 import { getProduct, getStock, listProducts } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
+import { STORE } from "@/lib/store";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -60,7 +61,7 @@ export default async function ProductPage({ params }: Params) {
               </div>
               <div className="flex gap-3 rounded-2xl border border-line p-4">
                 <Store className="size-5 shrink-0 text-brand-600" />
-                <p className="text-sm"><strong>Free pickup</strong><br />Collect from our Moi Avenue shop, Nairobi CBD.</p>
+                <p className="text-sm"><strong>Free pickup</strong><br />Collect from our shop in {STORE.address}, open daily 7am–8pm.</p>
               </div>
             </div>
           </div>

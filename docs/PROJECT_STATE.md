@@ -4,6 +4,16 @@ This is the current truth about the project. Every agent reads it before working
 
 _Last updated: 2026-10-30 by Claude_
 
+## The shop
+
+From Nicholas, 2026-10-30. The app reads these from `lib/store.ts`; change them there, not on individual screens.
+
+- **Location:** Kware, Pipeline, Nairobi, near Redeemed Gospel Church and King Worship Centre
+- **Hours:** open daily, 7:00 am to 8:00 pm
+- **Phones:** 0799 912 191 (Shop 1), 0797 468 963 (Shop 2), 0719 707 857 (Shop 2)
+- **Sells:** hair extensions, braids, weaves, crochets and general cosmetics
+- **Delivery (real business):** free to Nairobi CBD, and countrywide. Orders are also taken through the shop's Facebook page.
+
 ## Product
 
 A digital commerce and business management platform for Sparkle Beauty & Cosmetics, in Nairobi, Kenya. It covers:
@@ -37,7 +47,7 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 | `app/admin/` | Admin:<br>• dashboard<br>• orders, POS (`pos/terminal.tsx`)<br>• products, categories, inventory<br>• customers (CRM)<br>• retail, wholesale, promotions, loyalty<br>• reports, insights, settings (demo reset)<br>• `actions.ts` |
 | `app/login/` | Sign-in page with one-click demo accounts; `actions.ts` (sign in/out) |
 | `components/` | Shared UI:<br>• `ui.tsx`: buttons, badges, cards, `AiCard`<br>• `shop/`, `admin/`<br>• `order-timeline.tsx` |
-| `lib/` | `supabase/server.ts` (server client), plus:<br>• `catalog.ts`: products, prices, stock<br>• `sales-data.ts`: orders and stock for reports<br>• `insights.ts`: rule-based AI<br>• `format.ts`: KES, dates, status labels, delivery fee<br>• `cart.tsx`, `checkout-state.ts`: client state<br>• `auth.ts`, `customers.ts` |
+| `lib/` | `supabase/server.ts` (server client), plus:<br>• `store.ts`: shop address, hours and phones<br>• `catalog.ts`: products, prices, stock<br>• `sales-data.ts`: orders and stock for reports<br>• `insights.ts`: rule-based AI<br>• `format.ts`: KES, dates, status labels, delivery fee<br>• `cart.tsx`, `checkout-state.ts`: client state<br>• `auth.ts`, `customers.ts` |
 | `middleware.ts` | Refreshes the Supabase session cookie |
 | `supabase/migrations/` | Database schema history: the only way to change the schema |
 | `.env.example` | Names of the environment variables (no values) |
@@ -78,7 +88,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261029210200`)
+## Database (as of migration `20261030090000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -87,6 +97,7 @@ Migrations, in order:
 4. `20261029210000_order_lifecycle_statuses.sql`: adds `paid`, `packed`, `dispatched` and `delivered` to `order_status`.
 5. `20261029210100_o2c_schema_and_functions.sql`: O2C tables, columns and business functions (below).
 6. `20261029210200_demo_seed.sql`: `demo_seed()`, `reset_demo()` and the initial seed.
+7. `20261030090000_store_address.sql`: redefines `demo_seed()` with the real shop address and updates the store location row.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -168,6 +179,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
   - No product photos. `ProductImage` shows branded placeholders; `products.image_urls` is still empty.
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
-- **Shop contact details are from the mockups.** The phone number 0702 388 724 and email hello@sparklebeauty.co.ke need confirming.
+- **Unconfirmed contact channels:** no WhatsApp number, email or Facebook page URL has been confirmed, so the app shows phone numbers only.
+- **Delivery rules don't match the business:** the demo charges Nairobi KES 300, elsewhere KES 500, and free over KES 10,000 (`place_order` and `deliveryFee`). The real shop delivers free to Nairobi CBD. Changing this needs a decision on how to identify CBD addresses.
 - **Advisor warnings are expected:** Supabase advisors flag the `SECURITY DEFINER` functions callable by signed-in users (and `get_variant_stock` by `anon`). This is intentional; each one checks the caller.
 - **Single location:** inventory assumes one location (`main_location_id()`).

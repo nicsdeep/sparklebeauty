@@ -6,7 +6,7 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakart
 
 export const metadata: Metadata = {
   title: { default: "Sparkle Beauty & Cosmetics", template: "%s · Sparkle Beauty & Cosmetics" },
-  description: "Wigs, braids, extensions, cosmetics, skincare and perfumes. Shop online or visit us on Moi Avenue, Nairobi.",
+  description: "Wigs, braids, extensions, cosmetics, skincare and perfumes. Shop online or visit us in Kware, Pipeline, Nairobi.",
 };
 
 export const viewport: Viewport = { themeColor: "#d0237a" };

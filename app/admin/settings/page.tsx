@@ -3,6 +3,7 @@ import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
 import { ResetDemo } from "./reset-demo";
+import { STORE } from "@/lib/store";
 
 export const metadata = { title: "Settings" };
 
@@ -22,7 +23,9 @@ export default async function SettingsPage() {
         <Card>
           <CardHeader title="Store" />
           <dl className="grid grid-cols-[140px_1fr] gap-y-2 p-5 text-[15px]">
-            <dt className="text-ink-muted">Shop</dt><dd>Sparkle Beauty &amp; Cosmetics, Moi Avenue, Nairobi CBD</dd>
+            <dt className="text-ink-muted">Shop</dt><dd>{STORE.name}, {STORE.address} ({STORE.landmark})</dd>
+            <dt className="text-ink-muted">Hours</dt><dd>{STORE.hours}</dd>
+            <dt className="text-ink-muted">Phones</dt><dd>{STORE.phones.map((p) => `${p.number} (${p.label})`).join(" · ")}</dd>
             <dt className="text-ink-muted">Currency</dt><dd>Kenyan Shilling (KES)</dd>
             <dt className="text-ink-muted">Delivery</dt><dd>Nairobi KES 300 · elsewhere KES 500 · free over KES 10,000 · pickup free</dd>
             <dt className="text-ink-muted">Loyalty</dt><dd>1 point per KES 100 on completed retail orders · 100 welcome points</dd>

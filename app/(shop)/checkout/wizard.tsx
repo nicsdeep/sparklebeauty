@@ -11,6 +11,7 @@ import { useCheckoutState, type CheckoutState } from "@/lib/checkout-state";
 import { deliveryFee, kes, maskPhone, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
 import { payOrder, placeOrder } from "../actions";
 import { demoSignIn } from "@/app/login/actions";
+import { STORE } from "@/lib/store";
 
 export type SavedAddress = { id: string; label: string; address_line1: string; address_line2: string | null; city: string; county: string | null; is_default: boolean };
 
@@ -214,7 +215,7 @@ function DeliveryStep({ initial, addresses, onBack, onNext }: {
         <div className="grid gap-3 sm:grid-cols-2">
           {([
             { id: "delivery", Icon: Truck, title: "Home delivery", text: "Nairobi KES 300 · elsewhere KES 500 · free over KES 10,000" },
-            { id: "pickup", Icon: Store, title: "Pick up in store", text: "Free · Moi Avenue, Nairobi CBD" },
+            { id: "pickup", Icon: Store, title: "Pick up in store", text: `Free · ${STORE.address}` },
           ] as const).map(({ id, Icon, title, text }) => (
             <button type="button" key={id} onClick={() => set({ method: id })} aria-pressed={d.method === id}
               className={cx("flex gap-3 rounded-2xl border p-4 text-left", d.method === id ? "border-brand-600 bg-brand-50" : "border-line hover:border-brand-200")}>
