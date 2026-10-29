@@ -15,6 +15,9 @@ Both agents read this file. Follow it on every task.
 - Don't edit files another agent's open PR is changing unless Nicholas asks.
 
 ## Database (Supabase)
+- Project: `sparkle-beauty` (ref `msrgdmzczxgbilxeayck`), org "Sparkle Beauty and Cosmetics", region eu-west-1 (Ireland).
+- API URL: `https://msrgdmzczxgbilxeayck.supabase.co`
+- Agent MCP access should be scoped to this project: `https://mcp.supabase.com/mcp?project_ref=msrgdmzczxgbilxeayck`
 - Every schema change is a SQL migration file in `supabase/migrations/`, committed with the PR that needs it.
 - Only apply migrations to the shared Supabase project after the PR is merged, and say so in the PR.
 - Never commit secrets: keys go in `.env.local` (git-ignored). `.env.example` lists the variable names only.
