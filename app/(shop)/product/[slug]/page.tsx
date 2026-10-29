@@ -42,7 +42,7 @@ export default async function ProductPage({ params }: Params) {
           {" / "}<Link href={`/shop?category=${product.category.slug}`} className="hover:text-brand-700">{product.category.name}</Link>
         </nav>
         <div className="grid gap-8 md:grid-cols-2 lg:gap-12">
-          <ProductImage category={product.category.slug} name={product.name} brand={product.brand} size="lg" className="rounded-3xl" />
+          <ProductImage category={product.category.slug} name={product.name} image={product.image} size="lg" priority className="rounded-3xl" />
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-ink-muted">{product.brand} · {product.category.name}</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">{product.name}</h1>

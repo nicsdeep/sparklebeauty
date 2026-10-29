@@ -15,6 +15,35 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Premium homepage and product photography
+- PR: (this PR, branch `claude/premium-homepage`)
+- Changed:
+  - Homepage rebuilt:
+    - full-bleed hero ("Look good, feel good, be you.", Shop Now / Browse Wigs, model photo)
+    - 7 photo category tiles
+    - benefits strip: Free Delivery, Secure Payments, Customer Support, Authentic Products, Loyalty Points
+    - Featured Products straight after
+    - two promotion banners read from `promotions`
+    - Special Offers and New Arrivals
+  - Product card redesigned:
+    - photo, discount or Best Seller badge, wishlist heart, brand, name, star rating, KES price with old price, subtle stock badge
+    - pink Add to Cart (single-option products) or Select Options
+  - New `lib/images.ts` and `components/shop/card-actions.tsx`. `ProductImage` renders photos with a category fallback.
+  - Product images flow through the product page, cart, checkout and account wishlist (`CartItem.image`).
+  - New `getWishlistIds()`.
+  - Migration `20261030120000_product_images.sql`.
+- Why: Nicholas asked for parity with the approved premium homepage concept, with real-looking product images instead of placeholders.
+- Tested:
+  - All 68 image URLs return 200.
+  - `demo_images()` set images on 66 of 66 products in a rolled-back block.
+  - `tsc` and `next build` pass.
+  - Local browser at 1440px and 375px: no horizontal overflow, 0 broken images; card Add to Cart adds to the cart.
+- Follow-ups:
+  - Apply the migration after merge.
+  - Add the official logo file.
+  - Replace demo photos with Sparkle's own.
+  - Confirm the WhatsApp number (the benefits strip uses phone support for now).
+
 ## 2026-10-30: Claude: Shop map on the contact page
 - PR: (this PR, branch `claude/store-map`)
 - Changed:

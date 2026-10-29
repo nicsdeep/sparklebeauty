@@ -73,7 +73,7 @@ export default function CartPage() {
             return (
               <li key={item.variantId} className="flex gap-4 p-4">
                 <Link href={`/product/${item.slug}`} className="w-24 shrink-0 sm:w-28">
-                  <ProductImage category={item.category} name={item.name} size="sm" />
+                  <ProductImage category={item.category} name={item.name} image={item.image} size="sm" />
                 </Link>
                 <div className="flex flex-1 flex-col gap-2">
                   <div className="flex justify-between gap-3">

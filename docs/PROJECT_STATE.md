@@ -48,7 +48,7 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 | `app/admin/` | Admin:<br>• dashboard<br>• orders, POS (`pos/terminal.tsx`)<br>• products, categories, inventory<br>• customers (CRM)<br>• retail, wholesale, promotions, loyalty<br>• reports, insights, settings (demo reset)<br>• `actions.ts` |
 | `app/login/` | Sign-in page with one-click demo accounts; `actions.ts` (sign in/out) |
 | `components/` | Shared UI:<br>• `ui.tsx`: buttons, badges, cards, `AiCard`<br>• `shop/`, `admin/`<br>• `order-timeline.tsx` |
-| `lib/` | `supabase/server.ts` (server client), plus:<br>• `store.ts`: shop address, hours and phones<br>• `catalog.ts`: products, prices, stock<br>• `sales-data.ts`: orders and stock for reports<br>• `insights.ts`: rule-based AI<br>• `format.ts`: KES, dates, status labels, delivery fee<br>• `cart.tsx`, `checkout-state.ts`: client state<br>• `auth.ts`, `customers.ts` |
+| `lib/` | `supabase/server.ts` (server client), plus:<br>• `store.ts`: shop address, hours and phones<br>• `images.ts`: hero, category and fallback photos, plus `sized()` for Unsplash URLs<br>• `catalog.ts`: products, prices, stock<br>• `sales-data.ts`: orders and stock for reports<br>• `insights.ts`: rule-based AI<br>• `format.ts`: KES, dates, status labels, delivery fee<br>• `cart.tsx`, `checkout-state.ts`: client state<br>• `auth.ts`, `customers.ts` |
 | `middleware.ts` | Refreshes the Supabase session cookie |
 | `supabase/migrations/` | Database schema history: the only way to change the schema |
 | `.env.example` | Names of the environment variables (no values) |
@@ -89,7 +89,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261030090000`)
+## Database (as of migration `20261030120000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -99,6 +99,7 @@ Migrations, in order:
 5. `20261029210100_o2c_schema_and_functions.sql`: O2C tables, columns and business functions (below).
 6. `20261029210200_demo_seed.sql`: `demo_seed()`, `reset_demo()` and the initial seed.
 7. `20261030090000_store_address.sql`: redefines `demo_seed()` with the real shop address and updates the store location row.
+8. `20261030120000_product_images.sql`: adds `demo_images()`, which sets one photo per product in `products.image_urls`. `reset_demo()` now runs `demo_seed()` then `demo_images()`.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -177,7 +178,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 - **Brand assets missing:**
   - No official logo file in the repo. `components/logo.tsx` shows a text wordmark until the real logo is added to `public/brand/`.
-  - No product photos. `ProductImage` shows branded placeholders; `products.image_urls` is still empty.
+  - Product photos are **demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list).
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
 - **Unconfirmed contact channels:** no WhatsApp number, email or Facebook page URL has been confirmed, so the app shows phone numbers only.
