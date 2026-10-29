@@ -35,9 +35,27 @@ export default function ContactPage() {
           <div><p className="font-semibold">Delivery</p><p className="text-ink-muted">Nairobi same or next day, KES 300 · Rest of Kenya 1–3 days, KES 500 · Free over KES 10,000 · Free pickup at the shop</p></div>
         </Card>
       </div>
-      <ButtonLink href={telHref(MAIN_PHONE)} size="lg" className="mt-6">
-        <Phone className="size-5" /> Call {MAIN_PHONE}
-      </ButtonLink>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <ButtonLink href={telHref(MAIN_PHONE)} size="lg">
+          <Phone className="size-5" /> Call {MAIN_PHONE}
+        </ButtonLink>
+        <ButtonLink href={STORE.directionsUrl} target="_blank" rel="noopener" size="lg" variant="secondary">
+          <MapPin className="size-5" /> Get Directions
+        </ButtonLink>
+      </div>
+      <section className="mt-8" aria-labelledby="map-title">
+        <h2 id="map-title" className="mb-3 text-xl font-semibold">Find us in Pipeline</h2>
+        <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-line sm:aspect-[16/9]">
+          <iframe
+            src={STORE.mapEmbedUrl}
+            title={`Map showing ${STORE.name}, ${STORE.address}`}
+            className="h-full w-full border-0"
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        </div>
+      </section>
     </div>
   );
 }

@@ -15,6 +15,15 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Shop map on the contact page
+- PR: (this PR, branch `claude/store-map`)
+- Changed:
+  - `lib/store.ts` gains `mapEmbedUrl` (the Google Maps embed from Nicholas) and `directionsUrl`.
+  - The contact page shows the map and a Get Directions button.
+- Why: customers need to find the shop in Pipeline.
+- Tested: `tsc` passes, and the map loads on the local contact page.
+- Follow-ups: the embed is a search result showing several similarly named shops. Swap in the embed from the shop's own listing.
+
 ## 2026-10-30: Claude: Real shop details
 - PR: (this PR, branch `claude/real-store-details`)
 - Changed:
