@@ -12,6 +12,7 @@ From Nicholas, 2026-10-30. The app reads these from `lib/store.ts`; change them 
 - **Hours:** open daily, 7:00 am to 8:00 pm
 - **Phones:** 0799 912 191 (Shop 1), 0797 468 963 (Shop 2), 0719 707 857 (Shop 2)
 - **Sells:** hair extensions, braids, weaves, crochets and general cosmetics
+- **Map:** the contact page embeds the shop's own Google Maps listing (`STORE.mapEmbedUrl`) and has a Get Directions link (`STORE.directionsUrl`).
 - **Delivery (real business):** free to Nairobi CBD, and countrywide. Orders are also taken through the shop's Facebook page.
 
 ## Product

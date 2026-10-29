@@ -15,6 +15,15 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Shop map on the contact page
+- PR: (this PR, branch `claude/store-map`)
+- Changed:
+  - `lib/store.ts` gains `mapEmbedUrl` (the Google Maps embed from Nicholas) and `directionsUrl`.
+  - The contact page shows the map and a Get Directions button.
+- Why: customers need to find the shop in Pipeline.
+- Tested: `tsc` passes. On the local contact page the map loads and pins only Sparkle Beauty & Cosmetics. The first embed was a search showing similarly named shops; it was replaced with the shop's own listing before merge.
+- Follow-ups: none
+
 ## 2026-10-30: Claude: Real shop details
 - PR: (this PR, branch `claude/real-store-details`)
 - Changed:
