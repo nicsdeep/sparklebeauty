@@ -1,6 +1,6 @@
 # Working agreement: Sparkle Beauty & Cosmetics
 
-This repo is built by Nicholas together with two AI agents, Claude (Claude Code) and Codex.
+This repo (`nicsdeep/sparklebeauty` on GitHub) is built by Nicholas together with two AI agents, Claude (Claude Code) and Codex.
 Both agents read this file. Follow it on every task.
 
 ## Design
