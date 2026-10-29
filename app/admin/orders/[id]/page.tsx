@@ -5,11 +5,12 @@ import { Badge, Card, CardHeader, PaymentBadge, StatusBadge, buttonClass } from 
 import { OrderTimeline, type OrderEvent } from "@/components/order-timeline";
 import { OrderActions } from "./order-actions";
 import { createClient } from "@/lib/supabase/server";
-import { STORE } from "@/lib/store";
-import { formatDateTime, kes, PAYMENT_LABEL, whatsappLink, type OrderStatus, type PaymentMethod } from "@/lib/format";
+import { formatDateTime, kes, PAYMENT_LABEL, type OrderStatus, type PaymentMethod } from "@/lib/format";
+import { getStoreSettings, whatsappHref } from "@/lib/store";
 
 export default async function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const store = await getStoreSettings();
   const supabase = await createClient();
   const { data: order } = await supabase.from("orders")
     .select("*, tier:pricing_tiers(name, code), order_items(*), payments(method, status, amount, provider_reference, paid_at), order_events(status, note, created_at, by:profiles(full_name))")
@@ -24,7 +25,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
   const address = order.shipping_address as { address_line1?: string; address_line2?: string; city?: string; county?: string } | null;
   const status = order.status as OrderStatus;
   const reserved = ["pending", "confirmed", "paid", "processing", "packed"].includes(status);
-  const wa = whatsappLink(order.customer_phone, `Hi ${order.customer_name?.split(" ")[0]}, this is Sparkle Beauty about your order ${order.order_number}.`);
+  const wa = order.customer_phone && whatsappHref(order.customer_phone, `Hi ${order.customer_name?.split(" ")[0]}, this is Sparkle Beauty about your order ${order.order_number}.`);
 
   return (
     <div>
@@ -54,7 +55,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               </div>
               <div>
                 <p className="text-sm font-semibold text-ink-muted">{order.delivery_method === "pickup" ? "Store pickup" : "Deliver to"}</p>
-                {order.delivery_method === "pickup" ? <p>Shop, {STORE.address}</p> : address && (
+                {order.delivery_method === "pickup" ? <p>Shop, {store.address}</p> : address && (
                   <p className="text-[15px]">{address.address_line1}{address.address_line2 ? `, ${address.address_line2}` : ""}<br />{address.city}{address.county && address.county !== address.city ? `, ${address.county}` : ""}</p>
                 )}
                 {order.notes && <p className="mt-2 rounded-lg bg-surface px-3 py-2 text-sm">“{order.notes}”</p>}

@@ -8,10 +8,11 @@ import { ProductImage } from "@/components/shop/product-image";
 import { Button, ButtonLink, Field, cx, inputClass } from "@/components/ui";
 import { useCart } from "@/lib/cart";
 import { useCheckoutState, type CheckoutState } from "@/lib/checkout-state";
+import { deliverySummary } from "@/lib/store-types";
 import { deliveryFee, kes, maskPhone, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
 import { payOrder, placeOrder } from "../actions";
 import { demoSignIn } from "@/app/login/actions";
-import { STORE } from "@/lib/store";
+import { useStore } from "@/components/store-provider";
 
 export type SavedAddress = { id: string; label: string; address_line1: string; address_line2: string | null; city: string; county: string | null; is_default: boolean };
 
@@ -35,6 +36,7 @@ export function CheckoutWizard({ profile, addresses }: {
   const step = (STEPS.find((s) => s.id === params.get("step"))?.id ?? "cart") as StepId;
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const cart = useCart();
+  const store = useStore();
   const [state, update, reset, loaded] = useCheckoutState();
 
   const go = (id: StepId) => router.push(`/checkout?step=${id}`, { scroll: true });
@@ -64,7 +66,7 @@ export function CheckoutWizard({ profile, addresses }: {
 
   const discount = state.discount ?? 0;
   const delivery = state.delivery ?? EMPTY_DELIVERY;
-  const fee = deliveryFee(delivery.method, delivery.city, cart.subtotal - discount);
+  const fee = deliveryFee(delivery.method, delivery, cart.subtotal - discount, store);
   const total = cart.subtotal - discount + fee;
 
   return (
@@ -206,6 +208,7 @@ function DeliveryStep({ initial, addresses, onBack, onNext }: {
   onBack: () => void;
   onNext: (d: NonNullable<CheckoutState["delivery"]>) => void;
 }) {
+  const store = useStore();
   const [d, setD] = useState(initial);
   const set = (patch: Partial<typeof d>) => setD({ ...d, ...patch });
   const valid = d.method === "pickup" || (d.address_line1.trim() && d.city.trim());
@@ -214,8 +217,8 @@ function DeliveryStep({ initial, addresses, onBack, onNext }: {
       <StepCard title="Delivery" footer={<><BackButton onClick={onBack} /><Button disabled={!valid}>Next: Payment <ArrowRight className="size-4" /></Button></>}>
         <div className="grid gap-3 sm:grid-cols-2">
           {([
-            { id: "delivery", Icon: Truck, title: "Home delivery", text: "Nairobi KES 300 · elsewhere KES 500 · free over KES 10,000" },
-            { id: "pickup", Icon: Store, title: "Pick up in store", text: `Free · ${STORE.address}` },
+            { id: "delivery", Icon: Truck, title: "Home delivery", text: deliverySummary(store) },
+            { id: "pickup", Icon: Store, title: "Pick up in store", text: `Free · ${store.address}` },
           ] as const).map(({ id, Icon, title, text }) => (
             <button type="button" key={id} onClick={() => set({ method: id })} aria-pressed={d.method === id}
               className={cx("flex gap-3 rounded-2xl border p-4 text-left", d.method === id ? "border-brand-600 bg-brand-50" : "border-line hover:border-brand-200")}>

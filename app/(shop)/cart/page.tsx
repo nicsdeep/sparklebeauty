@@ -6,7 +6,8 @@ import { ArrowLeft, Minus, Plus, Trash2 } from "lucide-react";
 import { ProductImage } from "@/components/shop/product-image";
 import { Button, ButtonLink, EmptyState, inputClass } from "@/components/ui";
 import { useCart } from "@/lib/cart";
-import { deliveryFee, FREE_DELIVERY_THRESHOLD, kes } from "@/lib/format";
+import { deliveryFee, kes } from "@/lib/format";
+import { useStore } from "@/components/store-provider";
 import { checkPromo, quoteCart } from "../actions";
 import { useCheckoutState } from "@/lib/checkout-state";
 
@@ -14,6 +15,8 @@ export default function CartPage() {
   const { items, ready, setQuantity, remove, subtotal } = useCart();
   const [quotes, setQuotes] = useState<Record<string, { price: number; available: number; low: boolean }>>({});
   const [checkout, update] = useCheckoutState();
+  const store = useStore();
+  const freeOver = store.free_delivery_threshold;
   const [code, setCode] = useState(checkout.promoCode ?? "");
   const [promoError, setPromoError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -25,7 +28,7 @@ export default function CartPage() {
   }, [ids]);
 
   const discount = checkout.promoCode && checkout.discount && subtotal > 0 ? Math.min(checkout.discount, subtotal) : 0;
-  const fee = deliveryFee("delivery", "Nairobi", subtotal - discount);
+  const fee = deliveryFee("delivery", { city: "Nairobi" }, subtotal - discount, store);
   const problems = items.filter((i) => quotes[i.variantId] && i.quantity > quotes[i.variantId].available);
 
   function applyPromo() {
@@ -122,7 +125,7 @@ export default function CartPage() {
             <div className="flex justify-between border-t border-line pt-3 text-lg font-bold"><dt>Total</dt><dd>{kes(subtotal - discount + fee)}</dd></div>
           </dl>
           <p className="text-sm text-ink-muted">
-            {subtotal - discount >= FREE_DELIVERY_THRESHOLD ? "You qualify for free delivery." : `Add ${kes(FREE_DELIVERY_THRESHOLD - (subtotal - discount))} more for free delivery. Outside Nairobi KES 500. Pickup is free.`}
+            {subtotal - discount >= freeOver ? "You qualify for free delivery." : `Add ${kes(freeOver - (subtotal - discount))} more for free delivery. Outside Nairobi ${kes(store.delivery_fee_other)}. Pickup is free.`}
           </p>
           <ButtonLink href="/checkout" size="lg" className={problems.length ? "pointer-events-none w-full opacity-50" : "w-full"} aria-disabled={problems.length > 0}>
             Proceed to Checkout

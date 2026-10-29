@@ -7,7 +7,8 @@ import { ProductGrid } from "@/components/shop/product-card";
 import { ProductImage } from "@/components/shop/product-image";
 import { getProduct, getStock, listProducts } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
-import { STORE } from "@/lib/store";
+import { getStoreSettings } from "@/lib/store";
+import { deliverySummary } from "@/lib/store-types";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -24,6 +25,7 @@ export default async function ProductPage({ params }: Params) {
   const related = (await listProducts({ category: product.category.slug })).filter((p) => p.id !== product.id).slice(0, 4);
   const stock = await getStock([...product.variants, ...related.flatMap((p) => p.variants)].map((v) => v.id));
 
+  const store = await getStoreSettings();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   let wishlisted = false;
@@ -57,11 +59,11 @@ export default async function ProductPage({ params }: Params) {
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <div className="flex gap-3 rounded-2xl border border-line p-4">
                 <Truck className="size-5 shrink-0 text-brand-600" />
-                <p className="text-sm"><strong>Delivery</strong><br />Nairobi KES 300, rest of Kenya KES 500. Free over KES 10,000.</p>
+                <p className="text-sm"><strong>Delivery</strong><br />{deliverySummary(store)}.</p>
               </div>
               <div className="flex gap-3 rounded-2xl border border-line p-4">
                 <Store className="size-5 shrink-0 text-brand-600" />
-                <p className="text-sm"><strong>Free pickup</strong><br />Collect from our shop in {STORE.address}, open daily 7am–8pm.</p>
+                <p className="text-sm"><strong>Free pickup</strong><br />Collect from our shop in {store.address}. {store.hours}.</p>
               </div>
             </div>
           </div>

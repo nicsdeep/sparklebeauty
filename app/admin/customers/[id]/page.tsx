@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { Cake, Mail, MessageCircle, Phone, Tag, PackageCheck } from "lucide-react";
 import { AiCard, Badge, Card, CardHeader, StatusBadge, buttonClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, formatDateTime, kes, whatsappLink } from "@/lib/format";
+import { formatDate, formatDateTime, kes } from "@/lib/format";
+import { whatsappHref } from "@/lib/store";
 import { loadSales } from "@/lib/sales-data";
 import { customerSentence } from "@/lib/insights";
 
@@ -32,7 +33,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   const insight = customerSentence(sales, id);
   const topProduct = preferred[0]?.[0];
 
-  const wa = (text: string) => whatsappLink(c.phone, text);
+  const wa = (text: string) => (c.phone ? whatsappHref(c.phone, text) : null);
   const templates = [
     { Icon: Tag, label: "Send offer", text: `Hi ${first}! As a valued Sparkle customer, enjoy 10% off your next order with code SPARKLE10. Shop at Sparkle Beauty & Cosmetics.` },
     { Icon: PackageCheck, label: "Restock alert", text: `Hi ${first}! Good news: ${topProduct ?? "your favourite products"} ${topProduct ? "is" : "are"} back in stock at Sparkle. Reply to reserve yours.` },

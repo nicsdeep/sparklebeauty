@@ -1,5 +1,6 @@
 import { listProducts, getStock } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
+import { getStoreSettings } from "@/lib/store";
 import { PosTerminal, type PosCustomer, type PosItem } from "./terminal";
 
 export const metadata = { title: "POS" };
@@ -12,6 +13,7 @@ export default async function PosPage() {
     supabase.from("wholesale_accounts").select("profile_id, business_name"),
     supabase.from("pricing_tiers").select("min_order_quantity").eq("code", "wholesale").single(),
   ]);
+  const store = await getStoreSettings();
   const stock = await getStock(products.flatMap((p) => p.variants.map((v) => v.id)));
   const wholesaleBy = new Map((wholesale ?? []).map((w) => [w.profile_id, w.business_name]));
 
@@ -34,5 +36,5 @@ export default async function PosPage() {
     business: wholesaleBy.get(c.id) ?? null,
   }));
 
-  return <PosTerminal items={items} customers={posCustomers} wholesaleMin={tier?.min_order_quantity ?? 6} />;
+  return <PosTerminal items={items} customers={posCustomers} wholesaleMin={tier?.min_order_quantity ?? 6} store={store} />;
 }

@@ -15,6 +15,32 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: WhatsApp, admin-editable shop settings and work users
+- PR: (this PR, branch `claude/admin-settings`)
+- Changed:
+  - Migration `20261030150000_store_settings_and_staff.sql`:
+    - `store_settings` table, seeded with the current details plus WhatsApp +254 727 939 626
+    - `delivery_fee()`, now used by `place_order()`
+    - `admin_list_users`, `admin_save_staff_user` and `admin_set_user_active`
+  - `lib/store.ts` now reads the database through `getStoreSettings()`, with a fallback. `StoreProvider` passes the settings to client pages.
+  - `deliveryFee()` takes the settings. The duplicate `whatsappLink` was removed in favour of `whatsappHref`.
+  - WhatsApp now appears in the footer, the contact page (card and button), the home benefits strip, and a floating chat button on every shop page.
+  - Admin → Settings has editable forms for shop details, phone numbers (add/remove), WhatsApp, email, map and delivery pricing, including free-delivery areas.
+  - A Work users section lets admins add users, edit role, phone or password, and deactivate or reactivate them.
+- Why: Nicholas gave the WhatsApp number and asked for such settings, work users and mobile numbers to be manageable in the admin.
+- Tested:
+  - Migration and functions in a rolled-back block on the live database. The checks covered:
+    - delivery fees: pickup 0, Nairobi 300, Mombasa 500, over KES 10,000 free, CBD area free
+    - an admin creates, lists and deactivates a staff user and can edit settings
+    - an admin can't deactivate themselves
+    - staff can't create users or edit settings
+    - signed-out visitors can read settings but not change them
+  - Confirmed nothing was left behind.
+  - `tsc` passes. Contact page checked locally: WhatsApp links go to wa.me/254727939626.
+- Follow-ups:
+  - Apply the migration after merge.
+  - Test the admin forms on the live site after it's applied.
+
 ## 2026-10-30: Claude: Premium homepage and product photography
 - PR: (this PR, branch `claude/premium-homepage`)
 - Changed:

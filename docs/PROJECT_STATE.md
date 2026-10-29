@@ -6,14 +6,16 @@ _Last updated: 2026-10-30 by Claude_
 
 ## The shop
 
-From Nicholas, 2026-10-30. The app reads these from `lib/store.ts`; change them there, not on individual screens.
+The shop's details live in the database table `store_settings` (one row). Admins edit them in **Admin → Settings**; the app reads them with `getStoreSettings()` (`lib/store.ts`). Don't hard-code them.
 
+As of 2026-10-30:
 - **Location:** Kware, Pipeline, Nairobi, near Redeemed Gospel Church and King Worship Centre
 - **Hours:** open daily, 7:00 am to 8:00 pm
 - **Phones:** 0799 912 191 (Shop 1), 0797 468 963 (Shop 2), 0719 707 857 (Shop 2)
+- **WhatsApp:** +254 727 939 626 (floating chat button on every shop page)
+- **Map:** the contact page embeds the shop's own Google Maps listing
 - **Sells:** hair extensions, braids, weaves, crochets and general cosmetics
-- **Map:** the contact page embeds the shop's own Google Maps listing (`STORE.mapEmbedUrl`) and has a Get Directions link (`STORE.directionsUrl`).
-- **Delivery (real business):** free to Nairobi CBD, and countrywide. Orders are also taken through the shop's Facebook page.
+- **Delivery pricing:** set in Admin → Settings: Nairobi fee, rest of Kenya fee, free-over threshold, and free-delivery areas (e.g. "CBD")
 
 ## Product
 
@@ -48,7 +50,7 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 | `app/admin/` | Admin:<br>• dashboard<br>• orders, POS (`pos/terminal.tsx`)<br>• products, categories, inventory<br>• customers (CRM)<br>• retail, wholesale, promotions, loyalty<br>• reports, insights, settings (demo reset)<br>• `actions.ts` |
 | `app/login/` | Sign-in page with one-click demo accounts; `actions.ts` (sign in/out) |
 | `components/` | Shared UI:<br>• `ui.tsx`: buttons, badges, cards, `AiCard`<br>• `shop/`, `admin/`<br>• `order-timeline.tsx` |
-| `lib/` | `supabase/server.ts` (server client), plus:<br>• `store.ts`: shop address, hours and phones<br>• `images.ts`: hero, category and fallback photos, plus `sized()` for Unsplash URLs<br>• `catalog.ts`: products, prices, stock<br>• `sales-data.ts`: orders and stock for reports<br>• `insights.ts`: rule-based AI<br>• `format.ts`: KES, dates, status labels, delivery fee<br>• `cart.tsx`, `checkout-state.ts`: client state<br>• `auth.ts`, `customers.ts` |
+| `lib/` | `supabase/server.ts` (server client), plus:<br>• `store.ts`: `getStoreSettings()` reads `store_settings`<br>• `store-types.ts`: settings type, `telHref`, `whatsappHref`, `deliverySummary` (client-safe)<br>• `images.ts`: hero, category and fallback photos, plus `sized()` for Unsplash URLs<br>• `catalog.ts`: products, prices, stock<br>• `sales-data.ts`: orders and stock for reports<br>• `insights.ts`: rule-based AI<br>• `format.ts`: KES, dates, status labels, delivery fee<br>• `cart.tsx`, `checkout-state.ts`: client state<br>• `auth.ts`, `customers.ts` |
 | `middleware.ts` | Refreshes the Supabase session cookie |
 | `supabase/migrations/` | Database schema history: the only way to change the schema |
 | `.env.example` | Names of the environment variables (no values) |
@@ -89,7 +91,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261030120000`)
+## Database (as of migration `20261030150000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -100,6 +102,7 @@ Migrations, in order:
 6. `20261029210200_demo_seed.sql`: `demo_seed()`, `reset_demo()` and the initial seed.
 7. `20261030090000_store_address.sql`: redefines `demo_seed()` with the real shop address and updates the store location row.
 8. `20261030120000_product_images.sql`: adds `demo_images()`, which sets one photo per product in `products.image_urls`. `reset_demo()` now runs `demo_seed()` then `demo_images()`.
+9. `20261030150000_store_settings_and_staff.sql`: adds the `store_settings` table (readable by everyone, editable by admins), `delivery_fee()` (now used by `place_order()`), and the admin user functions.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -140,6 +143,10 @@ Business functions. All are `SECURITY DEFINER` and validate the caller and their
 | `cancel_order(order_id, reason)` | staff | Cancels before dispatch and releases stock |
 | `pos_complete_sale(customer, tier, items, discount, method, tendered, phone)` | staff | In-store sale: retail or wholesale (needs a wholesale customer and at least 6 items). Deducts stock and records payment and loyalty |
 | `adjust_stock(variant_id, delta, reason)` | staff | Receive stock or correct counts |
+| `admin_list_users()` | admin | Work users (staff and admins), with active status and last sign-in |
+| `admin_save_staff_user(email, name, phone, role, password)` | admin | Creates a work user with a temporary password, or updates an existing account's role, phone or password. Admins can't remove their own admin role |
+| `admin_set_user_active(user_id, active)` | admin | Deactivate (blocks sign-in and ends sessions) or reactivate a user. Not allowed on yourself |
+| `delivery_fee(method, delivery, amount)` | anyone | The delivery rule, read from `store_settings`. `deliveryFee()` in `lib/format.ts` mirrors it for the cart estimate |
 | `reset_demo()` | admin | Runs `demo_seed()` (not callable from the API) to restore the seeded state |
 | `get_variant_stock(uuid[])` | anyone | Storefront availability (`quantity_available`, `in_stock`, `low_stock`) |
 | `is_admin()` / `is_role_admin()` | signed-in | Staff-or-admin / admin-only checks used by policies |
@@ -181,7 +188,8 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
   - Product photos are **demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list).
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
-- **Unconfirmed contact channels:** no WhatsApp number, email or Facebook page URL has been confirmed, so the app shows phone numbers only.
-- **Delivery rules don't match the business:** the demo charges Nairobi KES 300, elsewhere KES 500, and free over KES 10,000 (`place_order` and `deliveryFee`). The real shop delivers free to Nairobi CBD. Changing this needs a decision on how to identify CBD addresses.
+- **Work users are created directly in Supabase Auth by a database function:** this keeps the service-role key out of the app. There's no email invite or self-service password reset yet. Admins set a temporary password and share it privately.
+- **Unconfirmed contact channels:** no email or Facebook page URL has been confirmed. An admin can add an email in Settings.
+- **Free CBD delivery isn't switched on:** the real shop delivers free to Nairobi CBD. An admin can add "CBD" under Settings → Delivery pricing → Free delivery areas; it isn't set by default.
 - **Advisor warnings are expected:** Supabase advisors flag the `SECURITY DEFINER` functions callable by signed-in users (and `get_variant_stock` by `anon`). This is intentional; each one checks the caller.
 - **Single location:** inventory assumes one location (`main_location_id()`).
