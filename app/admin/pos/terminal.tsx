@@ -6,7 +6,7 @@ import { Banknote, CheckCircle2, CreditCard, Minus, Plus, Printer, ScanBarcode, 
 import { Badge, Button, cx, inputClass } from "@/components/ui";
 import { kes, maskPhone, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
 import { completeSale, type PosSaleResult } from "../actions";
-import { MAIN_PHONE, STORE } from "@/lib/store";
+import type { StoreSettings } from "@/lib/store-types";
 
 export type PosItem = { variantId: string; sku: string; name: string; variantName: string | null; category: string; group: string; retail: number; wholesale: number; available: number; low: boolean };
 export type PosCustomer = { id: string; name: string; phone: string; email: string; points: number; business: string | null };
@@ -16,7 +16,7 @@ const GROUPS = [["all", "All"], ["hair", "Hair"], ["cosmetics", "Cosmetics"], ["
 type Line = { item: PosItem; qty: number };
 type Receipt = PosSaleResult & { lines: Line[]; tier: "retail" | "wholesale"; customer: PosCustomer | null; method: PaymentMethod; subtotal: number; discount: number; tendered?: number; at: string };
 
-export function PosTerminal({ items, customers, wholesaleMin }: { items: PosItem[]; customers: PosCustomer[]; wholesaleMin: number }) {
+export function PosTerminal({ items, customers, wholesaleMin, store }: { items: PosItem[]; customers: PosCustomer[]; wholesaleMin: number; store: StoreSettings }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("all");
@@ -248,8 +248,8 @@ export function PosTerminal({ items, customers, wholesaleMin }: { items: PosItem
           <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl bg-white p-6">
             <div className="text-center">
               <CheckCircle2 className="no-print mx-auto size-12 text-mint-fg" />
-              <p className="mt-2 text-xl font-extrabold text-brand-600">Sparkle Beauty &amp; Cosmetics</p>
-              <p className="text-sm text-ink-muted">{STORE.address} · {MAIN_PHONE}</p>
+              <p className="mt-2 text-xl font-extrabold text-brand-600">{store.name}</p>
+              <p className="text-sm text-ink-muted">{store.address} · {store.phones[0]?.number}</p>
               <p className="mt-3 font-semibold">Receipt {receipt.orderNumber}</p>
               <p className="text-sm text-ink-muted">{receipt.at} · {receipt.tier === "wholesale" ? "Wholesale" : "Retail"}</p>
               {receipt.customer && <p className="text-sm">{receipt.customer.business ?? receipt.customer.name}</p>}

@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Gift, MapPin, Phone, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Gift, MapPin, MessageCircle, Phone, ShieldCheck, Truck } from "lucide-react";
 import { ProductGrid } from "@/components/shop/product-card";
 import { ButtonLink } from "@/components/ui";
 import { getStock, getWishlistIds, listProducts } from "@/lib/catalog";
 import { CATEGORY_IMAGES, HERO_IMAGE, sized } from "@/lib/images";
 import { createClient } from "@/lib/supabase/server";
-import { MAIN_PHONE, STORE } from "@/lib/store";
+import { getStoreSettings } from "@/lib/store";
+import { kes } from "@/lib/format";
 
 const DEPARTMENTS = [
   { slug: "wigs", name: "Wigs" },
@@ -17,16 +18,19 @@ const DEPARTMENTS = [
   { slug: "accessories", name: "Accessories" },
 ];
 
-const BENEFITS = [
-  { Icon: Truck, title: "Free Delivery", text: "On orders over KES 10,000" },
-  { Icon: ShieldCheck, title: "Secure Payments", text: "M-Pesa, card or cash" },
-  { Icon: Phone, title: "Customer Support", text: `Call ${MAIN_PHONE}` },
-  { Icon: BadgeCheck, title: "Authentic Products", text: "Trusted global brands" },
-  { Icon: Gift, title: "Loyalty Points", text: "Earn on every order" },
-];
 
 export default async function HomePage() {
   const supabase = await createClient();
+  const store = await getStoreSettings();
+  const benefits = [
+    { Icon: Truck, title: "Free Delivery", text: `On orders over ${kes(store.free_delivery_threshold)}` },
+    { Icon: ShieldCheck, title: "Secure Payments", text: "M-Pesa, card or cash" },
+    store.whatsapp
+      ? { Icon: MessageCircle, title: "WhatsApp Support", text: store.whatsapp }
+      : { Icon: Phone, title: "Customer Support", text: `Call ${store.phones[0]?.number ?? "us"}` },
+    { Icon: BadgeCheck, title: "Authentic Products", text: "Trusted global brands" },
+    { Icon: Gift, title: "Loyalty Points", text: "Earn on every order" },
+  ];
   const [featured, newest, offers, wishlist, { data: promos }] = await Promise.all([
     listProducts({ featured: true, limit: 6 }),
     listProducts({ sort: "newest", limit: 4 }),
@@ -54,7 +58,7 @@ export default async function HomePage() {
               <ButtonLink href="/shop?category=wigs" variant="secondary" size="lg">Browse Wigs</ButtonLink>
             </div>
             <p className="mt-8 flex items-center gap-2 text-sm text-ink-muted">
-              <MapPin className="size-4 text-brand-600" /> Visit us in {STORE.address} · open daily 7am–8pm
+              <MapPin className="size-4 text-brand-600" /> Visit us in {store.address} · {store.hours.toLowerCase()}
             </p>
           </div>
           <div className="relative order-1 min-h-[320px] md:order-2 md:min-h-[520px]">
@@ -93,7 +97,7 @@ export default async function HomePage() {
 
       {/* Benefits */}
       <section className="grid grid-cols-2 gap-x-4 gap-y-5 rounded-2xl bg-brand-50/70 px-5 py-6 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x lg:divide-brand-100" aria-label="Why shop with Sparkle">
-        {BENEFITS.map(({ Icon, title, text }) => (
+        {benefits.map(({ Icon, title, text }) => (
           <div key={title} className="flex items-center gap-3 lg:justify-center lg:px-3">
             <Icon className="size-7 shrink-0 text-brand-600" strokeWidth={1.6} />
             <div>

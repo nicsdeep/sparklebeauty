@@ -5,12 +5,13 @@ import { RestockButton } from "@/components/admin/restock-button";
 import { loadStock, stockState } from "@/lib/sales-data";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
-import { STORE } from "@/lib/store";
+import { getStoreSettings } from "@/lib/store";
 
 export const metadata = { title: "Inventory" };
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ filter?: string; q?: string }> }) {
   const sp = await searchParams;
+  const store = await getStoreSettings();
   const supabase = await createClient();
   const [stock, { data: movements }] = await Promise.all([
     loadStock(),
@@ -27,7 +28,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Inventory" subtitle={`Main Store, ${STORE.address}. Online orders reserve stock; dispatch and POS sales deduct it.`} />
+      <PageHeader title="Inventory" subtitle={`Main Store, ${store.address}. Online orders reserve stock; dispatch and POS sales deduct it.`} />
       <div className="grid gap-4 sm:grid-cols-4">
         <Stat label="Variants tracked" value={String(stock.length)} />
         <Stat label="Units on hand" value={stock.reduce((s, r) => s + r.quantity, 0).toLocaleString()} />

@@ -1,3 +1,5 @@
+import type { StoreSettings } from "@/lib/store-types";
+
 export type Tone = "mint" | "amber" | "rose" | "info" | "teal" | "ai" | "neutral" | "brand";
 
 export type OrderStatus =
@@ -74,18 +76,18 @@ export function maskPhone(phone: string) {
   return digits.length >= 4 ? `${digits.slice(0, 4)} XXX XXX` : phone;
 }
 
-export function whatsappLink(phone: string | null | undefined, text?: string) {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  const intl = digits.startsWith("0") ? "254" + digits.slice(1) : digits;
-  return `https://wa.me/${intl}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
-}
+type DeliveryRules = Pick<StoreSettings, "delivery_fee_nairobi" | "delivery_fee_other" | "free_delivery_threshold" | "free_delivery_areas">;
 
-/** Same rules as public.place_order: pickup free, free over KES 10,000, Nairobi 300, elsewhere 500. */
-export function deliveryFee(method: "delivery" | "pickup", city: string | undefined, amountAfterDiscount: number) {
-  if (method === "pickup" || amountAfterDiscount >= 10000 || amountAfterDiscount === 0) return 0;
-  return city?.trim().toLowerCase() === "nairobi" ? 300 : 500;
+/** Mirrors public.delivery_fee(), which sets the real fee when the order is placed. */
+export function deliveryFee(
+  method: "delivery" | "pickup",
+  address: { city?: string; address_line1?: string; address_line2?: string },
+  amountAfterDiscount: number,
+  rules: DeliveryRules,
+) {
+  if (method === "pickup" || amountAfterDiscount === 0 || amountAfterDiscount >= rules.free_delivery_threshold) return 0;
+  const where = [address.address_line1, address.address_line2, address.city].filter(Boolean).join(" ").toLowerCase();
+  if (rules.free_delivery_areas.some((a) => a.trim() && where.includes(a.trim().toLowerCase()))) return 0;
+  return address.city?.trim().toLowerCase() === "nairobi" ? rules.delivery_fee_nairobi : rules.delivery_fee_other;
 }
-
-export const FREE_DELIVERY_THRESHOLD = 10000;
 export const POINTS_PER_KES = 100;
