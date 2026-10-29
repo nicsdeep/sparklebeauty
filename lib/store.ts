@@ -5,9 +5,9 @@ export const STORE = {
   address: "Kware, Pipeline, Nairobi",
   landmark: "Near Redeemed Gospel Church and King Worship Centre",
   hours: "Open daily, 7:00 am – 8:00 pm",
-  // Google Maps embed supplied by Nicholas (search for the shop in Pipeline).
+  // Google Maps embed of the shop's own listing, supplied by Nicholas.
   mapEmbedUrl:
-    "https://www.google.com/maps/embed?pb=!1m12!1m8!1m3!1d510575.2266188962!2d36.8737081!3d-1.24993!3m2!1i1024!2i768!4f13.1!2m1!1ssparkle%20beauty%20and%20cosmetics%20pipeline!5e0!3m2!1sen!2ske!4v1793311769338!5m2!1sen!2ske",
+    "https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d510575.2266188962!2d36.8737081!3d-1.24993!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x182f12353c84667f%3A0xcf5304b1a32e7a1e!2sSparkle%20Beauty%20%26%20Cosmetics!5e0!3m2!1sen!2ske!4v1793312220120!5m2!1sen!2ske",
   directionsUrl: "https://www.google.com/maps/search/?api=1&query=Sparkle+Beauty+and+Cosmetics+Pipeline+Nairobi",
   phones: [
     { label: "Shop 1", number: "0799 912 191" },

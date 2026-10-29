@@ -12,7 +12,7 @@ From Nicholas, 2026-10-30. The app reads these from `lib/store.ts`; change them 
 - **Hours:** open daily, 7:00 am to 8:00 pm
 - **Phones:** 0799 912 191 (Shop 1), 0797 468 963 (Shop 2), 0719 707 857 (Shop 2)
 - **Sells:** hair extensions, braids, weaves, crochets and general cosmetics
-- **Map:** the contact page embeds Google Maps (`STORE.mapEmbedUrl`) and has a Get Directions link (`STORE.directionsUrl`).
+- **Map:** the contact page embeds the shop's own Google Maps listing (`STORE.mapEmbedUrl`) and has a Get Directions link (`STORE.directionsUrl`).
 - **Delivery (real business):** free to Nairobi CBD, and countrywide. Orders are also taken through the shop's Facebook page.
 
 ## Product
@@ -180,7 +180,6 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
   - No product photos. `ProductImage` shows branded placeholders; `products.image_urls` is still empty.
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
-- **The map isn't pinned to the shop:** the current embed is a Google Maps search, so it shows several similarly named shops across Nairobi. Replace `STORE.mapEmbedUrl` with the embed from the shop's own Google Maps listing (Share → Embed a map).
 - **Unconfirmed contact channels:** no WhatsApp number, email or Facebook page URL has been confirmed, so the app shows phone numbers only.
 - **Delivery rules don't match the business:** the demo charges Nairobi KES 300, elsewhere KES 500, and free over KES 10,000 (`place_order` and `deliveryFee`). The real shop delivers free to Nairobi CBD. Changing this needs a decision on how to identify CBD addresses.
 - **Advisor warnings are expected:** Supabase advisors flag the `SECURITY DEFINER` functions callable by signed-in users (and `get_variant_stock` by `anon`). This is intentional; each one checks the caller.
