@@ -10,3 +10,7 @@ Thumbs.db
 *.log
 .vercel/
 supabase/.temp/
+
+# Next.js
+next-env.d.ts
+*.tsbuildinfo
