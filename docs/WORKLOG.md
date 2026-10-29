@@ -15,6 +15,15 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Fix Vercel deployment config
+- PR: (this PR, branch `claude/vercel-config`)
+- Changed:
+  - Added `vercel.json` with `"framework": "nextjs"`.
+  - Added `"engines": { "node": "24.x" }` to `package.json`.
+- Why: the Vercel project `lazima-iwork/sparklebeauty` was created with Framework Preset "Other". The Next.js build succeeded, but Vercel then failed with `STATIC_BUILD_NO_OUT_DIR` because it looked for a `public` output folder. Vercel also defaulted to Node 26, while the app is built and tested on 24.
+- Tested: read the failed deployment log with `vercel inspect --logs`. The Vercel build itself is untested until this merges.
+- Follow-ups: Nicholas to add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `DEMO_PASSWORD` in Vercel. None are set yet.
+
 ## 2026-10-30: Claude: Connected O2C demo (storefront, checkout, admin, POS, CRM, insights)
 - PR: (this PR, branch `claude/o2c-demo`)
 - Changed:
