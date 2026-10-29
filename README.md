@@ -4,4 +4,6 @@ Sparkle Beauty & Cosmetics digital commerce and business management platform int
 
 - Design standard: [design/Sparkle_Beauty_Cosmetics_Design_System.md](design/Sparkle_Beauty_Cosmetics_Design_System.md)
 - Reference mockups: `td/`, `td2/`
-- How Claude and Codex work in this repo: [AGENTS.md](AGENTS.md)
+- **AI agents (Claude, Codex, Lovable, any other): read [AGENTS.md](AGENTS.md) first, on every task.**
+- Current state of the project: [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md)
+- What has been done, by which agent: [docs/WORKLOG.md](docs/WORKLOG.md)
