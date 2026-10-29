@@ -57,11 +57,12 @@ The names depend on the framework, once chosen. `.env.example` lists them for Ne
 
 If the app is Vite (Lovable's default), the public ones become `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (or `VITE_SUPABASE_ANON_KEY`).
 
-## Database (as of migration `20261029120000`)
+## Database (as of migration `20261029200000`)
 
-Applied migrations (repo and live database match):
+Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: captures the schema that existed before migrations were tracked.
 2. `20261029120000_protect_profile_role.sql`: stops users granting themselves a role or loyalty points.
+3. `20261029200000_rls_hardening_and_stock.sql`: adds the storefront stock lookup, locks down function privileges and rebuilds the RLS policies. Apply after its PR is merged.
 
 Tables in `public`, all with RLS on:
 - **People:** `profiles` (1:1 with `auth.users`; `role` is `app_role`: customer, staff or admin), `customer_addresses`, `customer_notes`, `loyalty_transactions`
@@ -81,6 +82,18 @@ Functions and triggers:
 | `is_role_admin()` | True for admin only |
 | `guard_profile_privileges()` | Trigger on `profiles` that protects `role` and `loyalty_points` |
 | `rls_auto_enable()` | Event trigger `ensure_rls`; turns RLS on for every new table |
+| `get_variant_stock(uuid[])` | Storefront stock lookup. Returns `variant_id`, `quantity_available`, `in_stock` for active variants of active products, summed over active locations. Callable by anyone. Use this instead of reading `inventory_levels`, which is staff-only |
+
+Access rules, after `20261029200000`:
+- Signed-out visitors (`anon`) can read active brands, categories, products and variants, all prices, current promotions, and stock via `get_variant_stock`. Nothing else.
+- Customers can also read their own profile, addresses, orders, order items, payments and loyalty history. They can edit their own profile (not `role` or `loyalty_points`), addresses and wishlist.
+- Staff and admins can read and write everything. Only admins can change roles.
+- Policy conventions:
+  - one permissive policy per role per action
+  - `auth.uid()` and `is_admin()` are wrapped as `(select ...)`
+  - staff policies apply `to authenticated` only.
+
+  Follow this pattern for new tables.
 
 Data: 2 rows in `pricing_tiers`, 1 in `inventory_locations`; everything else is empty.
 
@@ -94,6 +107,5 @@ Data: 2 rows in `pricing_tiers`, 1 in `inventory_locations`; everything else is 
 
 ## Known issues
 
-- Customers can't see stock levels (`inventory_levels` is staff-only), but product pages need availability.
-- The `SECURITY DEFINER` functions can be executed by `anon` and `authenticated` (Supabase advisor warning).
-- RLS performance warnings: `auth.uid()` is re-evaluated per row in 9 policies, and many tables have overlapping permissive policies.
+- `product_prices` is readable by everyone, including wholesale and special-tier prices. Decide whether wholesale prices should be hidden from the public storefront.
+- Supabase advisors will still flag `get_variant_stock`, `is_admin` and `is_role_admin` as `SECURITY DEFINER` functions callable by signed-in users (and `get_variant_stock` by `anon`). This is intentional: they only return stock figures or the caller's own role.
