@@ -15,6 +15,22 @@ Entry format:
 
 ---
 
+## 2026-10-29: Claude: RLS hardening and storefront stock lookup
+- PR: (this PR)
+- Changed:
+  - Migration `20261029200000_rls_hardening_and_stock.sql`.
+  - New `get_variant_stock(uuid[])`.
+  - Revoked function privileges from `anon` (and from everyone for the trigger functions).
+  - Rebuilt all 32 RLS policies.
+- Why: fix the three known issues from the baseline review:
+  - customers couldn't see stock
+  - `SECURITY DEFINER` functions were callable by anyone
+  - RLS performance warnings
+- Tested: 31 access cases (signed out, customer, other customer, staff, admin) on the live database in a rolled-back block. All 31 passed, and nothing was left behind.
+- Follow-ups:
+  - Apply with `supabase db push --linked` after merge.
+  - Decide whether wholesale prices should be public.
+
 ## 2026-10-29: Claude: Agent doctrine, project state and work log
 - PR: (this PR)
 - Changed:
@@ -37,7 +53,7 @@ Entry format:
 
 ## 2026-10-29: Claude: Baseline migration for the existing schema
 - PR: https://github.com/nicsdeep/sparklebeauty/pull/1
-- Changed: migration `20261029000000_baseline_schema.sql`, which records the 19 tables, 7 enums, 31 policies, 3 functions and the sign-up trigger.
+- Changed: migration `20261029000000_baseline_schema.sql`, which records the 19 tables, 7 enums, 32 policies, 3 functions and the sign-up trigger.
 - Why: the database had been built without migrations, so the repo didn't match it.
 - Tested: generated from the live catalog. Marked as applied with `supabase migration repair`, not re-run.
 - Follow-ups: three issues logged under "Known issues" in `docs/PROJECT_STATE.md`.
