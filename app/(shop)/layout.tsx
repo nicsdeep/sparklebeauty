@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Clock, MapPin, Phone } from "lucide-react";
 import { ShopHeader } from "@/components/shop/header";
 import { Logo } from "@/components/logo";
 import { CartProvider } from "@/lib/cart";
 import { getProfile } from "@/lib/auth";
+import { STORE, telHref } from "@/lib/store";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -40,10 +41,11 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
           <div>
             <h3 className="font-semibold">Visit or contact us</h3>
             <ul className="mt-3 space-y-2 text-ink-muted">
-              <li className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0" /> Moi Avenue, Nairobi CBD</li>
-              <li className="flex gap-2"><Phone className="mt-0.5 size-4 shrink-0" /> 0702 388 724</li>
-              <li className="flex gap-2"><MessageCircle className="mt-0.5 size-4 shrink-0" /> WhatsApp 0702 388 724</li>
-              <li className="flex gap-2"><Mail className="mt-0.5 size-4 shrink-0" /> hello@sparklebeauty.co.ke</li>
+              <li className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0" /> <span>{STORE.address}<br />{STORE.landmark}</span></li>
+              <li className="flex gap-2"><Clock className="mt-0.5 size-4 shrink-0" /> {STORE.hours}</li>
+              {STORE.phones.map((p) => (
+                <li key={p.number} className="flex gap-2"><Phone className="mt-0.5 size-4 shrink-0" /> <span><a href={telHref(p.number)} className="hover:text-brand-700">{p.number}</a> ({p.label})</span></li>
+              ))}
             </ul>
           </div>
         </div>

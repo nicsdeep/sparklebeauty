@@ -5,6 +5,7 @@ import { OrderTimeline, type OrderEvent } from "@/components/order-timeline";
 import { Card, CardHeader, PaymentBadge, StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { STORE } from "@/lib/store";
 import { formatDateTime, kes, PAYMENT_LABEL, type OrderStatus, type PaymentMethod } from "@/lib/format";
 
 type Params = { params: Promise<{ number: string }> };
@@ -55,7 +56,7 @@ export default async function OrderPage({ params }: Params) {
               <p className="font-semibold">{order.customer_name}</p>
               <p className="text-ink-muted">{order.customer_phone}</p>
               {order.delivery_method === "pickup"
-                ? <p className="mt-2">Sparkle Beauty, Moi Avenue, Nairobi CBD</p>
+                ? <p className="mt-2">{STORE.name}, {STORE.address}<br /><span className="text-ink-muted">{STORE.landmark} · {STORE.hours}</span></p>
                 : address && <p className="mt-2">{address.address_line1}{address.address_line2 ? `, ${address.address_line2}` : ""}<br />{address.city}</p>}
             </div>
           </Card>

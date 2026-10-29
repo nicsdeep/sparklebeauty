@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, MessageCircle, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Phone, ShieldCheck, Truck } from "lucide-react";
 import { ProductGrid } from "@/components/shop/product-card";
 import { ProductImage } from "@/components/shop/product-image";
 import { ButtonLink } from "@/components/ui";
 import { getStock, listProducts } from "@/lib/catalog";
+import { MAIN_PHONE } from "@/lib/store";
 
 const DEPARTMENTS = [
   { slug: "wigs", name: "Wigs" },
@@ -53,7 +54,7 @@ export default async function HomePage() {
           { Icon: BadgeCheck, title: "100% original products", text: "Authentic, trusted brands" },
           { Icon: Truck, title: "Fast delivery", text: "Nairobi KES 300 · free over KES 10,000" },
           { Icon: ShieldCheck, title: "Secure payments", text: "M-Pesa, card or cash on delivery" },
-          { Icon: MessageCircle, title: "Help on WhatsApp", text: "0702 388 724, 8am–8pm daily" },
+          { Icon: Phone, title: "Call or visit us", text: `${MAIN_PHONE} · open daily 7am–8pm` },
         ].map(({ Icon, title, text }) => (
           <div key={title} className="flex items-center gap-3 rounded-2xl border border-line p-4">
             <span className="rounded-full bg-brand-50 p-2.5 text-brand-600"><Icon className="size-5" /></span>

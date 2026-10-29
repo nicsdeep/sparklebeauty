@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Real shop details
+- PR: (this PR, branch `claude/real-store-details`)
+- Changed:
+  - New `lib/store.ts` holding the shop address, landmark, hours and phones from Nicholas.
+  - Replaced the mockup details (Moi Avenue, 0702 388 724, hello@…) in the footer, home, contact, product, checkout pickup, order tracking, POS receipt, admin inventory, order and settings pages, and the site description.
+  - Removed the unconfirmed WhatsApp and email.
+  - Migration `20261030090000_store_address.sql` redefines `demo_seed()` with the real address.
+- Why: the demo showed made-up contact details copied from the mockups.
+- Tested:
+  - Migration run with `demo_seed()` in a rolled-back block on the live database.
+  - `tsc` passes.
+  - Checked the contact page, footer (phone links dial 0799912191 etc.) and product pickup text in the local browser.
+- Follow-ups:
+  - Apply the migration after merge.
+  - Confirm the WhatsApp number, email and Facebook URL.
+  - Decide whether delivery fees should follow the real "free to Nairobi CBD" rule.
+
 ## 2026-10-30: Claude: Fix Vercel deployment config
 - PR: (this PR, branch `claude/vercel-config`)
 - Changed:
