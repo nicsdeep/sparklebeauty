@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, CardHeader, PageHeader, cx } from "@/components/ui";
 import { BarChart, HBars, SplitBar, Stat } from "@/components/admin/charts";
 import { dayKey, GROUP_LABEL, loadSales } from "@/lib/sales-data";
-import { kes, PAYMENT_LABEL } from "@/lib/format";
+import { CHANNEL_META, kes, PAYMENT_LABEL } from "@/lib/format";
 
 export const metadata = { title: "Reports" };
 
@@ -53,8 +53,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <Card><CardHeader title="By category" /><div className="p-5"><HBars rows={[...groups.entries()].sort((a, b) => b[1] - a[1]).map(([g, v]) => ({ label: GROUP_LABEL[g] ?? g, value: v }))} /></div></Card>
         <Card><CardHeader title="By payment method" /><div className="p-5"><HBars rows={tally((s) => s.payment_method ?? "other").map(([m, v]) => ({ label: PAYMENT_LABEL[m as keyof typeof PAYMENT_LABEL] ?? m, value: v }))} /></div></Card>
         <div className="space-y-6">
-          <Card><CardHeader title="Online vs POS" /><div className="p-5"><SplitBar a={{ label: "Online", value: tally((s) => s.channel).find(([c]) => c === "online")?.[1] ?? 0 }} b={{ label: "POS", value: tally((s) => s.channel).find(([c]) => c === "pos")?.[1] ?? 0 }} /></div></Card>
-          <Card><CardHeader title="Retail vs wholesale" /><div className="p-5"><SplitBar a={{ label: "Retail", value: tally((s) => s.tier).find(([c]) => c === "retail")?.[1] ?? 0 }} b={{ label: "Wholesale", value: tally((s) => s.tier).find(([c]) => c === "wholesale")?.[1] ?? 0 }} /></div></Card>
+          <Card><CardHeader title="Sales by channel" /><div className="p-5"><SplitBar parts={(["online", "pos", "wholesale"] as const).map((ch) => ({ label: CHANNEL_META[ch].label, value: tally((s) => s.channel).find(([c]) => c === ch)?.[1] ?? 0 }))} /></div></Card>
+          <Card><CardHeader title="Retail vs wholesale" /><div className="p-5"><SplitBar parts={[{ label: "Retail", value: tally((s) => s.tier).find(([c]) => c === "retail")?.[1] ?? 0 }, { label: "Wholesale", value: tally((s) => s.tier).find(([c]) => c === "wholesale")?.[1] ?? 0 }]} /></div></Card>
         </div>
       </div>
       <Card>

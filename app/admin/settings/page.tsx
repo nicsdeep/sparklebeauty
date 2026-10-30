@@ -40,7 +40,7 @@ export default async function SettingsPage() {
           <ul className="divide-y divide-line">
             {(tiers ?? []).map((t) => (
               <li key={t.code} className="flex justify-between px-5 py-3 text-[15px]"><span className="font-semibold">{t.name}</span>
-                <span className="text-ink-muted">{t.is_wholesale ? `Minimum ${t.min_order_quantity} items · about 25% below retail` : "Standard shelf price"}</span></li>
+                <span className="text-ink-muted">{t.is_wholesale ? `Automatic at ${t.min_order_quantity}+ units of a product, and always for wholesale customers` : "Standard shelf price"}</span></li>
             ))}
             <li className="flex justify-between px-5 py-3 text-[15px]"><span className="font-semibold">Loyalty</span>
               <span className="text-ink-muted">1 point per KES 100 on completed retail orders · 100 welcome points</span></li>

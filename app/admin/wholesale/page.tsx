@@ -30,7 +30,7 @@ export default async function WholesalePage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Wholesale accounts" value={String(accounts?.length ?? 0)} />
         <Stat label="Wholesale revenue" value={kes(revenue)} note="All time" />
-        <Stat label="Pricing rule" value={`Min ${tier?.min_order_quantity ?? 6} items`} note="About 25% below retail" />
+        <Stat label="Pricing rule" value={`${tier?.min_order_quantity ?? 10}+ units`} note="Wholesale price per product at this quantity; wholesale accounts always" />
       </div>
       <Card>
         <CardHeader title="Accounts" />

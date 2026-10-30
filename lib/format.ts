@@ -54,6 +54,16 @@ export const NEXT_ACTION: Partial<Record<OrderStatus, string>> = {
   delivered: "Complete Order",
 };
 
+export type Channel = "online" | "pos" | "wholesale";
+
+/** Where a sale came from: the website, the shop till, or a wholesale account (any device). */
+export const CHANNEL_META: Record<Channel, { label: string; tone: Tone }> = {
+  online: { label: "Online", tone: "info" },
+  pos: { label: "POS", tone: "brand" },
+  wholesale: { label: "Wholesale", tone: "teal" },
+};
+export const channelMeta = (c: string) => CHANNEL_META[c as Channel] ?? { label: c, tone: "neutral" as Tone };
+
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   mpesa: "M-Pesa",
   cash: "Cash",

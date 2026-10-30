@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentMethod } from "@/lib/format";
+import { toQuoteLine, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 const fail = (e: unknown) => ({ ok: false as const, error: (e as { message?: string })?.message ?? "Something went wrong." });
@@ -35,31 +36,69 @@ export async function adjustStock(variantId: string, delta: number, reason: stri
 
 export type PosSaleInput = {
   customerId: string | null;
-  tier: "retail" | "wholesale";
   items: { variant_id: string; quantity: number }[];
   discount: number;
   paymentMethod: PaymentMethod;
   amountTendered?: number;
   mpesaPhone?: string;
+  /** Unique per sale, so a retried or offline-synced sale is never recorded twice. */
+  clientRef: string;
+  /** Set when the sale was taken while the till was offline. */
+  offlineAt?: string;
 };
 
-export type PosSaleResult = { orderId: string; orderNumber: string; total: number; change: number; reference: string };
+export type PosReceiptLine = { name: string; sku: string; quantity: number; unitPrice: number; lineTotal: number; rule: PriceRule };
+export type PosSaleResult = {
+  orderId: string; orderNumber: string; total: number; change: number; reference: string; duplicate: boolean; lines: PosReceiptLine[];
+};
 
+/** Completes a till sale; the database prices every line with the shared engine and deducts stock atomically. */
 export async function completeSale(input: PosSaleInput): Promise<ActionResult<PosSaleResult>> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("pos_complete_sale", {
     p_customer_id: input.customerId,
-    p_price_tier: input.tier,
     p_items: input.items,
     p_discount: input.discount || 0,
     p_payment_method: input.paymentMethod,
     p_amount_tendered: input.amountTendered ?? null,
     p_mpesa_phone: input.mpesaPhone || null,
+    p_client_ref: input.clientRef,
+    p_offline_at: input.offlineAt ?? null,
   });
   if (error) return fail(error);
-  const row = (data as { order_id: string; order_number: string; total_amount: number; change_due: number; payment_reference: string }[])[0];
+  const row = (data as { order_id: string; order_number: string; total_amount: number; change_due: number; payment_reference: string; duplicate: boolean }[])[0];
+  const { data: lines } = await supabase.from("order_items").select("product_name, sku, quantity, unit_price, line_total, price_rule").eq("order_id", row.order_id);
   revalidatePath("/admin", "layout");
-  return { ok: true, data: { orderId: row.order_id, orderNumber: row.order_number, total: Number(row.total_amount), change: Number(row.change_due), reference: row.payment_reference } };
+  return {
+    ok: true,
+    data: {
+      orderId: row.order_id, orderNumber: row.order_number, total: Number(row.total_amount), change: Number(row.change_due),
+      reference: row.payment_reference, duplicate: row.duplicate,
+      lines: (lines ?? []).map((l) => ({ name: l.product_name, sku: l.sku ?? "", quantity: l.quantity, unitPrice: Number(l.unit_price),
+        lineTotal: Number(l.line_total), rule: (l.price_rule ?? "retail") as PriceRule })),
+    },
+  };
+}
+
+/** Price breaks from the pricing engine for every product, for the selected customer (null = walk-in). */
+export async function posPriceSheet(customerId: string | null): Promise<ActionResult<Record<string, PriceBreak[]>>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("pos_price_sheet", { p_customer_id: customerId });
+  if (error) return fail(error);
+  const sheet: Record<string, PriceBreak[]> = {};
+  for (const r of (data ?? []) as { variant_id: string; min_qty: number; unit_price: number; rule: PriceRule }[]) {
+    (sheet[r.variant_id] ??= []).push({ min_qty: Number(r.min_qty), unit_price: Number(r.unit_price), rule: r.rule });
+  }
+  return { ok: true, data: sheet };
+}
+
+/** Server confirmation of a till cart: engine prices plus live availability per line. */
+export async function posQuote(customerId: string | null, items: { variant_id: string; quantity: number }[]): Promise<ActionResult<QuoteLine[]>> {
+  if (!items.length) return { ok: true, data: [] };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("pos_quote", { p_customer_id: customerId, p_items: items });
+  if (error) return fail(error);
+  return { ok: true, data: ((data ?? []) as Record<string, unknown>[]).map(toQuoteLine) };
 }
 
 export async function resetDemo(formData: FormData): Promise<ActionResult> {
@@ -285,5 +324,30 @@ export async function createPromotion(formData: FormData): Promise<ActionResult>
   });
   if (error) return error.code === "23505" ? { ok: false, error: `The code ${code} is already used by another promotion.` } : fail(error);
   revalidatePath("/admin/promotions");
+  return { ok: true, data: undefined };
+}
+
+/** Saves a negotiated price for one customer and product code (RLS: staff only). */
+export async function setCustomerPrice(customerId: string, formData: FormData): Promise<ActionResult> {
+  const sku = text(formData, "sku").toUpperCase();
+  const amount = Number(formData.get("amount"));
+  if (!(amount > 0)) return { ok: false, error: "Enter a price in KES." };
+  const supabase = await createClient();
+  const { data: variant } = await supabase.from("product_variants").select("id").eq("sku", sku).maybeSingle();
+  if (!variant) return { ok: false, error: `No product with code ${sku}.` };
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from("customer_prices").upsert({
+    customer_id: customerId, variant_id: variant.id, amount, note: text(formData, "note") || null, created_by: user?.id ?? null, updated_at: new Date().toISOString(),
+  });
+  if (error) return fail(error);
+  revalidatePath(`/admin/customers/${customerId}`);
+  return { ok: true, data: undefined };
+}
+
+export async function removeCustomerPrice(customerId: string, variantId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("customer_prices").delete().eq("customer_id", customerId).eq("variant_id", variantId);
+  if (error) return fail(error);
+  revalidatePath(`/admin/customers/${customerId}`);
   return { ok: true, data: undefined };
 }

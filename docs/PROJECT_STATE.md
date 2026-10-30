@@ -108,7 +108,42 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261031150000`)
+## One system: pricing, stock and live updates
+
+**Website + POS + wholesale + admin use one database, one pricing engine and one inventory.** These are mandatory rules for every agent.
+
+- **Pricing engine (database only).** `price_breaks(customer, variants)` resolves each product's unit price by quantity, in this order:
+  1. a negotiated customer price (`customer_prices`);
+  2. the customer's wholesale-account tier;
+  3. the wholesale price at **10+ units of that product** (`pricing_tiers.min_order_quantity` of the wholesale tier);
+  4. retail.
+
+  `price_line` / `price_cart` build on it. Entry points:
+  - `quote_cart` for website carts (the signed-in customer only);
+  - `pos_quote` and `pos_price_sheet` for the till (staff);
+  - `place_order` and `pos_complete_sale`, which price every order line.
+
+  Screens never decide prices. They read the server's price breaks (`lib/pricing.ts` `breakFor`) for instant feedback, then the server quote, or the order itself, confirms the price. Each order line records `price_rule`. Don't add pricing logic anywhere else.
+- **Stock.** Every sale or reservation locks the stock row (`for update`), checks availability and changes it in the same transaction. Constraints stop stock or reservations going negative, and stop reservations exceeding stock. The losing buyer of the last unit gets "Only N left".
+- **Channels.** `orders.channel` is one of:
+  - `online`: website;
+  - `pos`: the shop till;
+  - `wholesale`: any sale to a wholesale account.
+
+  A till sale starts as `completed`, which is how screens tell in-store sales from online orders.
+- **Live updates (no page reloads).** Database triggers broadcast through Supabase Realtime:
+  - public topic `catalog`: `stock` {variant_id, available} and `catalog` (a product or price changed);
+  - private topic `admin`: `change` {table}, for orders, payments and profiles. Only staff can receive it (RLS on `realtime.messages`).
+
+  `lib/live.ts` joins each topic once per tab. `components/live-refresh.tsx` re-renders the current page in place (shop layout and admin shell). The cart and the POS re-confirm their prices and stock on stock events.
+- **Offline POS.** If the till loses its connection while open:
+  - it shows Offline and allows cash sales only;
+  - it labels stock "last known";
+  - it queues sales in the browser (`app/admin/pos/offline-queue.ts`), each with a unique `client_ref`.
+
+  When the connection returns, it syncs them. `pos_complete_sale` returns an already-recorded `client_ref` instead of recording it twice, and refuses a sale that no longer fits the stock. Refused sales stay on the till as "needs attention" for a manager. They are never forced through.
+
+## Database (as of migration `20261031180000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -134,6 +169,12 @@ Migrations, in order:
     - adds the public `product-images` storage bucket (5 MB; JPEG, PNG or WebP). Anyone can view it; only staff can upload, replace or delete (RLS on `storage.objects`);
     - adds `admin_update_product()` and `admin_set_customer_login()`;
     - redefines `admin_create_product()` to take a list of photos.
+17. `20261031180000_pricing_engine_live_pos.sql`:
+    - the pricing engine and the `customer_prices` table (see "One system" above);
+    - adds the `wholesale` channel, `order_items.price_rule`, `orders.client_ref` (unique) and a reserved-within-stock check;
+    - redefines `place_order()` and `pos_complete_sale()`;
+    - adds the realtime broadcast triggers and the staff policy on `realtime.messages`;
+    - sets the wholesale threshold to 10, and `reset_demo()` keeps it at 10.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -152,7 +193,7 @@ Tables in `public`, all with RLS on:
   - `inventory_levels`: `quantity` on hand, `reserved` for open online orders; available = quantity − reserved; `reorder_level` drives "Low Stock".
   - `stock_movements`
 - **Sales:**
-  - `orders`: channel `online` or `pos`; holds a customer contact snapshot, `delivery_method`, `promotion_id` and `created_by`.
+  - `orders`: channel `online`, `pos` or `wholesale`; `client_ref` (till sales, unique); holds a customer contact snapshot, `delivery_method`, `promotion_id` and `created_by`.
   - `order_items`, `payments`, `promotions`
   - `order_events`: the status timeline.
 - **Other:** `wishlists`, `wishlist_items`, and `activity_log` (staff actions, demo resets).
@@ -168,11 +209,13 @@ Business functions. All are `SECURITY DEFINER` and validate the caller and their
 
 | Function | Who | What it does |
 | --- | --- | --- |
-| `place_order(items, contact, delivery, payment_method, promo_code)` | signed-in customer | Re-prices from `product_prices`, checks and reserves stock, applies the promo, works out delivery, and creates the order, items, pending payment, event and notification |
+| `place_order(items, contact, delivery, payment_method, promo_code)` | signed-in customer | Prices every line through the pricing engine (wholesale accounts get their tier; 10+ units get wholesale), records channel `online` or `wholesale`, checks and reserves stock, applies the promo, works out delivery, and creates the order, items, pending payment, event and notification |
 | `pay_order(order_id, phone)` | order's customer | Simulated M-Pesa/card success: marks the payment paid with a reference |
 | `advance_order(order_id, note)` | staff | Moves the order one lifecycle step. Handles payment confirmation, stock deduction on dispatch and loyalty on completion |
 | `cancel_order(order_id, reason)` | staff | Cancels before dispatch and releases stock |
-| `pos_complete_sale(customer, tier, items, discount, method, tendered, phone)` | staff | In-store sale: retail or wholesale (needs a wholesale customer and at least 6 items). Deducts stock and records payment and loyalty |
+| `pos_complete_sale(customer, items, discount, method, tendered, phone, client_ref, offline_at)` | staff | In-store sale priced by the engine (no manual tier). Records channel `pos` or `wholesale`, deducts stock atomically, and records payment and loyalty. Idempotent by `client_ref`. Offline sales must be cash |
+| `quote_cart(items)` | anyone | Engine prices and live availability for the caller's own cart |
+| `pos_quote(customer, items)` / `pos_price_sheet(customer)` | staff | Engine prices for a till cart / price breaks for every product |
 | `adjust_stock(variant_id, delta, reason)` | staff | Receive stock or correct counts |
 | `admin_list_users()` | admin | Work users (staff and admins), with active status and last sign-in |
 | `admin_save_staff_user(email, name, phone, role, password)` | admin | Creates a work user with a temporary password, or updates an existing account's role, phone or password. Admins can't remove their own admin role |
@@ -215,9 +258,17 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 | 2026-10-29 | `sparkle-beauty` is the single Supabase project. Schema changes only through migrations | Nicholas |
 | 2026-10-29 | The written design system overrides the mockups | Nicholas |
 | 2026-10-29 | Stack: Next.js 15 + Supabase on Vercel. Money and stock changes only through database functions; no service-role key in the app | Claude, for the CEO demo |
+| 2026-10-30 | One pricing engine in the database for every channel: negotiated, then wholesale account, then 10+ units, then retail. Wholesale sales are their own channel. The till works offline for cash only and never forces a sale past real stock | Nicholas |
 | 2026-10-29 | The O2C demo migrations were applied to the live database before their PR merged, to build and test the demo in time. The database held no real data | Nicholas approved |
 
 ## Known issues
+
+- **Offline POS limits:**
+  - the till must already be open when the connection drops (there's no offline page caching);
+  - queued and parked sales live only in that browser;
+  - M-Pesa and card need a connection;
+  - if prices changed while offline, the synced sale is recorded at server prices and flagged for a manager.
+- **Negotiated prices are set by product code** on the customer page ("Special prices"). There's no bulk import.
 
 - **Product photos are demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list). Nicholas OK'd using the shop's Facebook photos; so far only the Kids Collection uses them.
 - **Kids Collection gaps:** Marvel Junior has no photo (it shows the category image), because no Sparkle post shows it. Sasha and Barbie use crops of the Angels brand poster that Sparkle posted, not pack shots. Kids products have a single variant (no colour options). No photo of the Angels Marvel Junior pack could be found online either.

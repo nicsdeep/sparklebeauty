@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { OrderStatus, PaymentMethod } from "@/lib/format";
+import type { Channel, OrderStatus, PaymentMethod } from "@/lib/format";
 
 export type SaleLine = {
   variant_id: string | null;
@@ -15,7 +15,7 @@ export type Sale = {
   id: string;
   order_number: string;
   status: OrderStatus;
-  channel: "online" | "pos";
+  channel: Channel;
   payment_status: string;
   payment_method: PaymentMethod | null;
   tier: "retail" | "wholesale";

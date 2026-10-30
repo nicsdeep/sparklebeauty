@@ -7,7 +7,7 @@ import { Badge, Card, StatusBadge, cx } from "@/components/ui";
 import { BarChart, KpiCard, SplitBar } from "@/components/admin/charts";
 import { ProductImage } from "@/components/shop/product-image";
 import { createClient } from "@/lib/supabase/server";
-import { formatDateTime, kes, startOfTodayNairobi } from "@/lib/format";
+import { CHANNEL_META, formatDateTime, kes, startOfTodayNairobi, channelMeta } from "@/lib/format";
 import { dayKey, loadSales, loadStock, stockState } from "@/lib/sales-data";
 
 export const metadata = { title: "Dashboard" };
@@ -144,7 +144,7 @@ export default async function DashboardPage() {
                           <span className="max-w-[7rem] truncate" title={o.customer_name ?? undefined}>{o.customer_name || "Walk-in customer"}</span>
                         </span>
                       </td>
-                      <td className="px-2.5 py-3"><Badge tone={o.channel === "pos" ? "brand" : "info"}>{o.channel === "pos" ? "POS" : "Online"}</Badge></td>
+                      <td className="px-2.5 py-3"><Badge tone={channelMeta(o.channel).tone}>{channelMeta(o.channel).label}</Badge></td>
                       <td className="px-2.5 py-3"><StatusBadge status={o.status} /></td>
                       <td className="px-2.5 py-3 text-center">{(o.order_items ?? []).reduce((t: number, i: { quantity: number }) => t + i.quantity, 0)}</td>
                       <td className="whitespace-nowrap px-2.5 py-3 text-right font-bold">{kes(o.total_amount)}</td>
@@ -179,12 +179,12 @@ export default async function DashboardPage() {
 
         <div className="space-y-6">
           <Card>
-            <SectionTitle Icon={Store} title="Online vs in-store" subtitle="Last 30 days" />
-            <div className="p-5"><SplitBar a={{ label: "Online", value: sum(sales.filter((s) => s.channel === "online")) }} b={{ label: "POS (shop)", value: sum(sales.filter((s) => s.channel === "pos")) }} /></div>
+            <SectionTitle Icon={Store} title="Sales by channel" subtitle="Last 30 days" />
+            <div className="p-5"><SplitBar parts={(["online", "pos", "wholesale"] as const).map((c) => ({ label: CHANNEL_META[c].label, value: sum(sales.filter((s) => s.channel === c)) }))} /></div>
           </Card>
           <Card>
             <SectionTitle Icon={ShoppingCart} title="Retail vs wholesale" subtitle="Last 30 days" />
-            <div className="p-5"><SplitBar a={{ label: "Retail", value: sum(sales.filter((s) => s.tier === "retail")) }} b={{ label: "Wholesale", value: sum(sales.filter((s) => s.tier === "wholesale")) }} /></div>
+            <div className="p-5"><SplitBar parts={[{ label: "Retail", value: sum(sales.filter((s) => s.tier === "retail")) }, { label: "Wholesale", value: sum(sales.filter((s) => s.tier === "wholesale")) }]} /></div>
           </Card>
           <Card>
             <SectionTitle Icon={Trophy} title="Best sellers" subtitle="Last 30 days" tone="text-amber-fg" action={<ViewAll href="/admin/reports" />} />

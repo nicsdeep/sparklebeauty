@@ -15,6 +15,54 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: One pricing engine, live POS, real-time sync and offline till
+- PR: (this PR, branch `claude/pricing-engine-live-pos`)
+- Changed:
+  - **Migration `20261031180000_pricing_engine_live_pos.sql`:**
+    - pricing engine (`price_breaks`, `price_line`, `price_cart`, `quote_cart`, `pos_quote`, `pos_price_sheet`) and `customer_prices`;
+    - `place_order` and `pos_complete_sale` priced by the engine;
+    - the `wholesale` channel, `price_rule`, `client_ref` idempotency, and the reserved ≤ quantity check;
+    - realtime broadcast triggers and the staff-only `admin` topic policy;
+    - wholesale threshold 10.
+  - **POS (`app/admin/pos/`) rebuilt to the mockup:**
+    - status bar (Online/Offline, live, sync queue) and clock;
+    - search and scan, New Sale, Recent Sales, category chips with More;
+    - product cards with photo, price, 10+ price and stock;
+    - customer picker with pricing banner, cart with rule badges, discount %, totals, payment tiles, Complete Sale, Print and Send receipt (WhatsApp or email);
+    - quick actions F2–F7 (scan, manual product by SKU, discount, add customer, park, suspended) and recent products;
+    - offline queue with sync and a conflicts panel (`offline-queue.ts`).
+    The manual retail/wholesale toggle is gone.
+  - **Website:**
+    - `lib/cart.tsx` prices lines through `quote_cart` (instant from price breaks, then confirmed) and re-quotes on live stock events;
+    - the cart and checkout show the engine prices and rule labels;
+    - the product page shows "Buy 10+ and pay KES X each" and switches the price at 10+.
+  - **Shared:**
+    - `lib/pricing.ts`, `lib/live.ts` and `components/live-refresh.tsx` (mounted in the shop layout and the admin shell);
+    - `CHANNEL_META` (Online / POS / Wholesale) for every badge, the orders filter, and 3-way "Sales by channel" on the dashboard and Reports (`SplitBar` now takes parts);
+    - the order timeline detects till sales by their first event.
+  - **Customer page:** a "Special prices" card for negotiated prices. Wholesale copy updated in Settings and on the Wholesale page.
+- Why: Nicholas asked for the POS to be part of one live system with the website and wholesale (one database, one inventory, one pricing engine), automatic wholesale pricing at 10+ units, real-time updates without reloads, and a safe offline till.
+- Tested:
+  - **On the live database, inside a block that rolled back.** Afterwards, no tables or functions remained and stock was unchanged.
+    - **Quotes:** a guest pays 650 for 9 and 500 each for 10 (rule `quantity`). A salon gets its tier price at 1 unit (`customer_tier`). A negotiated 480 holds at 1 and 12 units.
+    - **Permissions:** a customer can't call `pos_quote`.
+    - **Website order:** 10 Darling braids at 350 (wholesale), channel `online`, 10 reserved.
+    - **POS:** a cash sale of 10 NIVEA at 500 with change 1,000. Retrying the same `client_ref` returned `duplicate`: one order, stock 34 → 24 once.
+    - **Refusals:** overselling ("Only 24 in stock"), offline M-Pesa refused, an offline cash sale stamps its offline time, the reserved > quantity constraint holds.
+  - `tsc --noEmit` passes.
+  - **Local preview:**
+    - the POS renders to the mockup (80 products, chips, cart, payment tiles);
+    - the live status reaches "Live with website" (after fixing duplicate topic joins);
+    - simulated offline: only cash, the sale queued with an offline receipt;
+    - back online: the sync ran and, before the migration, showed "1 need attention" as designed;
+    - all shop and admin pages return 200.
+  - **Not tested before merge:**
+    - wholesale-account sales, because Postgres can't use a new enum value in the transaction that adds it;
+    - the engine prices in the UI;
+    - a live cross-tab update.
+    All need the migration applied.
+- Follow-ups: after merge, test a wholesale-account sale in a rolled-back block, and the 9 → 10 price switch and a cross-tab stock update in the UI.
+
 ## 2026-10-30: Claude: Edit products, upload photos, customer sign-in
 - PR: (this PR, branch `claude/product-edit-photos-login`)
 - Changed:

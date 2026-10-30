@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { Cake, Mail, MessageCircle, Phone, Tag, PackageCheck } from "lucide-react";
 import { AiCard, Badge, Card, CardHeader, StatusBadge, buttonClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, formatDateTime, kes } from "@/lib/format";
+import { formatDate, formatDateTime, kes, channelMeta } from "@/lib/format";
 import { whatsappHref } from "@/lib/store";
 import { loadSales } from "@/lib/sales-data";
 import { customerSentence } from "@/lib/insights";
 import { OnlineAccess } from "./online-access";
+import { SpecialPrices, type SpecialPrice } from "./special-prices";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,6 +23,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
     supabase.from("wholesale_accounts").select("business_name, business_location").eq("profile_id", id).maybeSingle(),
     loadSales(180),
   ]);
+  const { data: special } = await supabase.from("customer_prices")
+    .select("variant_id, amount, variant:product_variants(sku, name, product:products(name), product_prices(amount, tier:pricing_tiers(code)))").eq("customer_id", id);
   if (!c) notFound();
 
   const valid = (orders ?? []).filter((o) => o.status !== "cancelled");
@@ -89,7 +92,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
               <li key={o.id} className="px-5 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Link href={`/admin/orders/${o.id}`} className="font-semibold text-brand-700">{o.order_number}</Link>
-                  <div className="flex items-center gap-2"><Badge tone={o.channel === "pos" ? "neutral" : "brand"}>{o.channel === "pos" ? "POS" : "Online"}</Badge><StatusBadge status={o.status} /><span className="font-semibold">{kes(o.total_amount)}</span></div>
+                  <div className="flex items-center gap-2"><Badge tone={channelMeta(o.channel).tone}>{channelMeta(o.channel).label}</Badge><StatusBadge status={o.status} /><span className="font-semibold">{kes(o.total_amount)}</span></div>
                 </div>
                 <p className="text-sm text-ink-muted">{formatDateTime(o.created_at)} · {o.order_items.map((i: { quantity: number; product_name: string }) => `${i.quantity}× ${i.product_name}`).join(", ")}</p>
               </li>
@@ -116,6 +119,13 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             </div>
           </Card>
           {c.role === "customer" && <OnlineAccess customerId={c.id} email={c.email} firstName={first} />}
+          {c.role === "customer" && <SpecialPrices customerId={c.id} prices={(special ?? []).map((sp) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const v = sp.variant as any;
+            return { variantId: sp.variant_id, sku: v?.sku ?? "", name: `${v?.product?.name ?? ""}${v?.name ? ` – ${v.name}` : ""}`, amount: Number(sp.amount),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              retail: Number(v?.product_prices?.find((p: any) => p.tier?.code === "retail")?.amount ?? 0) } satisfies SpecialPrice;
+          })} />}
           <Card>
             <CardHeader title="Loyalty" subtitle={`${c.loyalty_points} points`} />
             <ul className="divide-y divide-line">

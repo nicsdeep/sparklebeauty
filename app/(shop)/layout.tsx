@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { LiveRefresh } from "@/components/live-refresh";
 import Link from "next/link";
 import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { ShopHeader } from "@/components/shop/header";
@@ -16,6 +17,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         <Suspense>
           <ShopHeader userName={profile?.full_name ?? null} isStaff={!!profile && profile.role !== "customer"} />
         </Suspense>
+        <LiveRefresh />
         <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 md:pb-12">{children}</main>
         <footer className="border-t border-line bg-surface pb-20 md:pb-0">
           <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">

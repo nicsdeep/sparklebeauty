@@ -7,6 +7,7 @@ import {
   BarChart3, Bell, Boxes, Briefcase, ChevronDown, ExternalLink, FolderTree, Gift, Headset, LayoutDashboard, LogOut, Menu, Package,
   Percent, Search, Settings, ShoppingCart, Sparkles, Store, Tags, Users, X,
 } from "lucide-react";
+import { LiveRefresh } from "@/components/live-refresh";
 import { Logo } from "@/components/logo";
 import { cx } from "@/components/ui";
 import { signOut } from "@/app/login/actions";
@@ -186,6 +187,7 @@ export function AdminShell({ user, newOrders, lowStock, alerts, supportHref, chi
             </div>
           </div>
         </header>
+        <LiveRefresh staff />
         <main className="mx-auto max-w-[1440px] px-4 py-6 lg:px-8">{children}</main>
       </div>
     </div>

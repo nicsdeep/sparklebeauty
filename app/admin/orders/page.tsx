@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge, Card, EmptyState, PageHeader, PaymentBadge, StatusBadge, cx } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
-import { formatDateTime, kes } from "@/lib/format";
+import { formatDateTime, kes, channelMeta } from "@/lib/format";
 
 export const metadata = { title: "Orders" };
 
@@ -21,7 +21,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     .select("id, order_number, customer_name, customer_phone, channel, status, payment_status, total_amount, created_at, tier:pricing_tiers(code), order_items(quantity)")
     .order("created_at", { ascending: false }).limit(200);
   if (tab.statuses) query = query.in("status", tab.statuses);
-  if (sp.channel === "online" || sp.channel === "pos") query = query.eq("channel", sp.channel);
+  if (sp.channel === "online" || sp.channel === "pos" || sp.channel === "wholesale") query = query.eq("channel", sp.channel);
   if (sp.q) query = query.or(`order_number.ilike.%${sp.q.replace(/[%,()]/g, "")}%,customer_name.ilike.%${sp.q.replace(/[%,()]/g, "")}%`);
   const { data: orders } = await query;
 
@@ -39,7 +39,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
             className={cx("rounded-full px-4 py-2 text-sm font-semibold", t.id === tab.id ? "bg-brand-600 text-white" : "border border-line bg-white hover:bg-surface")}>{t.label}</Link>
         ))}
         <span className="mx-2 h-6 w-px bg-line" />
-        {[["", "All channels"], ["online", "Online"], ["pos", "POS"]].map(([c, label]) => (
+        {[["", "All channels"], ["online", "Online"], ["pos", "POS"], ["wholesale", "Wholesale"]].map(([c, label]) => (
           <Link key={c} href={link({ channel: c || undefined })}
             className={cx("rounded-full px-4 py-2 text-sm font-semibold", (sp.channel ?? "") === c ? "bg-ink text-white" : "border border-line bg-white hover:bg-surface")}>{label}</Link>
         ))}
@@ -63,7 +63,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                       <span className="block text-xs text-ink-muted">{formatDateTime(o.created_at)}</span></td>
                     <td className="px-3 py-3">{o.customer_name}<span className="block text-sm text-ink-muted">{o.customer_phone}</span></td>
                     <td className="px-3 py-3"><div className="flex gap-1">
-                      <Badge tone={o.channel === "pos" ? "neutral" : "brand"}>{o.channel === "pos" ? "POS" : "Online"}</Badge>
+                      <Badge tone={channelMeta(o.channel).tone}>{channelMeta(o.channel).label}</Badge>
                       {(o.tier as unknown as { code: string } | null)?.code === "wholesale" && <Badge tone="info">Wholesale</Badge>}</div></td>
                     <td className="px-3 py-3">{o.order_items.reduce((s: number, i: { quantity: number }) => s + i.quantity, 0)}</td>
                     <td className="px-3 py-3"><PaymentBadge status={o.payment_status} /></td>

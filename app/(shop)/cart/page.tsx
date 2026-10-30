@@ -8,12 +8,13 @@ import { Button, ButtonLink, EmptyState, inputClass } from "@/components/ui";
 import { useCart } from "@/lib/cart";
 import { deliveryFee, kes } from "@/lib/format";
 import { useStore } from "@/components/store-provider";
-import { checkPromo, quoteCart } from "../actions";
+import { checkPromo } from "../actions";
+import { MAX_LINE_QTY } from "@/lib/cart";
+import { ruleLabel } from "@/lib/pricing";
 import { useCheckoutState } from "@/lib/checkout-state";
 
 export default function CartPage() {
-  const { items, ready, setQuantity, remove, subtotal } = useCart();
-  const [quotes, setQuotes] = useState<Record<string, { price: number; available: number; low: boolean }>>({});
+  const { items, ready, setQuantity, remove, subtotal, priceOf, pricing } = useCart();
   const [checkout, update] = useCheckoutState();
   const store = useStore();
   const freeOver = store.free_delivery_threshold;
@@ -21,15 +22,9 @@ export default function CartPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const ids = items.map((i) => i.variantId).join(",");
-  useEffect(() => {
-    if (!ids) return;
-    quoteCart(ids.split(",")).then(setQuotes);
-  }, [ids]);
-
   const discount = checkout.promoCode && checkout.discount && subtotal > 0 ? Math.min(checkout.discount, subtotal) : 0;
   const fee = deliveryFee("delivery", { city: "Nairobi" }, subtotal - discount, store);
-  const problems = items.filter((i) => quotes[i.variantId] && i.quantity > quotes[i.variantId].available);
+  const problems = items.filter((i) => { const a = priceOf(i).available; return a !== null && i.quantity > a; });
 
   function applyPromo() {
     setPromoError(null);
@@ -71,8 +66,9 @@ export default function CartPage() {
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <ul className="divide-y divide-line rounded-2xl border border-line">
           {items.map((item) => {
-            const q = quotes[item.variantId];
-            const over = q && item.quantity > q.available;
+            const p = priceOf(item);
+            const over = p.available !== null && item.quantity > p.available;
+            const label = ruleLabel(p.rule, p.minQty);
             return (
               <li key={item.variantId} className="flex gap-4 p-4">
                 <Link href={`/product/${item.slug}`} className="w-24 shrink-0 sm:w-28">
@@ -83,22 +79,25 @@ export default function CartPage() {
                     <div>
                       <Link href={`/product/${item.slug}`} className="font-semibold hover:text-brand-700">{item.name}</Link>
                       {item.variantName && <p className="text-sm text-ink-muted">{item.variantName}</p>}
-                      <p className="text-sm text-ink-muted">{kes(item.price)} each</p>
+                      <p className="text-sm text-ink-muted">
+                        {kes(p.unit)} each{p.unit < p.retail && <span className="ml-1.5 line-through">{kes(p.retail)}</span>}
+                      </p>
+                      {label && <p className="mt-1 inline-flex rounded-full bg-teal-bg px-2.5 py-0.5 text-xs font-semibold text-teal-fg">{label}</p>}
                     </div>
-                    <p className="font-bold">{kes(item.price * item.quantity)}</p>
+                    <p className={`font-bold transition-opacity ${p.confirmed ? "" : "opacity-60"}`}>{kes(p.unit * item.quantity)}</p>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center rounded-full border border-line">
                       <button className="p-2.5 disabled:opacity-40" onClick={() => setQuantity(item.variantId, item.quantity - 1)} disabled={item.quantity <= 1} aria-label={`Decrease ${item.name}`}><Minus className="size-4" /></button>
                       <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                      <button className="p-2.5 disabled:opacity-40" onClick={() => setQuantity(item.variantId, item.quantity + 1)} disabled={!!q && item.quantity >= q.available} aria-label={`Increase ${item.name}`}><Plus className="size-4" /></button>
+                      <button className="p-2.5 disabled:opacity-40" onClick={() => setQuantity(item.variantId, item.quantity + 1)} disabled={(p.available !== null && item.quantity >= p.available) || item.quantity >= MAX_LINE_QTY} aria-label={`Increase ${item.name}`}><Plus className="size-4" /></button>
                     </div>
                     <button onClick={() => remove(item.variantId)} className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted hover:text-rose-fg">
                       <Trash2 className="size-4" /> Remove
                     </button>
                   </div>
-                  {over && <p className="rounded-lg bg-rose-bg px-3 py-2 text-sm text-rose-fg">Only {q.available} available. Please reduce the quantity.</p>}
-                  {!over && q?.low && <p className="text-sm font-semibold text-amber-fg">! Low stock: only {q.available} left</p>}
+                  {over && <p className="rounded-lg bg-rose-bg px-3 py-2 text-sm text-rose-fg">Only {p.available} available. Please reduce the quantity.</p>}
+                  {!over && p.available !== null && p.available <= 5 && <p className="text-sm font-semibold text-amber-fg">! Low stock: only {p.available} left</p>}
                 </div>
               </li>
             );
@@ -119,7 +118,7 @@ export default function CartPage() {
             </p>
           )}
           <dl className="space-y-2 text-[15px]">
-            <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(subtotal)}</dd></div>
+            <div className="flex justify-between"><dt>Subtotal</dt><dd className={pricing ? "opacity-60" : ""}>{kes(subtotal)}</dd></div>
             {discount > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount</dt><dd>-{kes(discount)}</dd></div>}
             <div className="flex justify-between"><dt>Delivery <span className="text-ink-muted">(Nairobi)</span></dt><dd>{fee ? kes(fee) : "Free"}</dd></div>
             <div className="flex justify-between border-t border-line pt-3 text-lg font-bold"><dt>Total</dt><dd>{kes(subtotal - discount + fee)}</dd></div>

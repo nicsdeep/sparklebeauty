@@ -11,6 +11,7 @@ import { ShareButton } from "@/components/shop/share-button";
 import { getProduct, getReviews, getStock, getWishlistIds, listProducts, reviewEligibility, type Review } from "@/lib/catalog";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { quoteCart } from "../../actions";
 import { getStoreSettings } from "@/lib/store";
 import { deliverySummary } from "@/lib/store-types";
 
@@ -52,7 +53,12 @@ export default async function ProductPage({ params }: Params) {
     related = [...related, ...more.filter((p) => p.id !== product.id && !related.some((r) => r.id === p.id))];
   }
   related = related.slice(0, 4);
-  const stock = await getStock([...product.variants, ...related.flatMap((p) => p.variants)].map((v) => v.id));
+  const [stock, quotes] = await Promise.all([
+    getStock([...product.variants, ...related.flatMap((p) => p.variants)].map((v) => v.id)),
+    // The viewer's price breaks per option (their wholesale/negotiated price, or 10+ units).
+    quoteCart(product.variants.map((v) => ({ variant_id: v.id, quantity: 1 }))).catch(() => []),
+  ]);
+  const breaks = Object.fromEntries(quotes.map((q) => [q.variant_id, q.breaks]));
 
   const tabs: ProductTab[] = [
     {
@@ -122,7 +128,7 @@ export default async function ProductPage({ params }: Params) {
           {product.description && <p className="mt-4 text-[16px] leading-relaxed text-ink-muted">{product.description}</p>}
 
           <div className="mt-6">
-            <AddToCart product={product} stock={stock} wishlisted={wishlist.includes(product.id)} />
+            <AddToCart product={product} stock={stock} breaks={breaks} wishlisted={wishlist.includes(product.id)} />
           </div>
 
           {product.benefits.length > 0 && (

@@ -36,12 +36,12 @@ export default async function OrderPage({ params }: Params) {
         <h1 className="text-3xl font-bold tracking-tight">Order {order.order_number}</h1>
         <StatusBadge status={order.status} />
       </div>
-      <p className="mt-1 text-ink-muted">Placed {formatDateTime(order.created_at)} · {order.channel === "pos" ? "In store" : "Online"}</p>
+      <p className="mt-1 text-ink-muted">Placed {formatDateTime(order.created_at)} · {order.channel === "pos" ? "In store" : order.channel === "wholesale" ? "Wholesale order" : "Online"}</p>
 
       <div className="mt-6 grid gap-6 md:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader title="Order tracking" />
-          <div className="p-5"><OrderTimeline status={order.status as OrderStatus} events={events} channel={order.channel} /></div>
+          <div className="p-5"><OrderTimeline status={order.status as OrderStatus} events={events} /></div>
         </Card>
         <div className="space-y-6">
           <Card>
