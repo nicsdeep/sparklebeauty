@@ -21,7 +21,7 @@ export default async function OrderPage({ params }: Params) {
   const supabase = await createClient();
   // RLS limits this to the customer's own orders (or staff).
   const { data: order } = await supabase.from("orders")
-    .select("*, order_items(*), payments(method, status, amount, provider_reference, paid_at), order_events(status, note, created_at)")
+    .select("*, order_items(*), payments(method, status, amount, provider_reference, paid_at), order_events(status, note, created_at), invoices(id)")
     .eq("order_number", number).maybeSingle();
   if (!order) notFound();
 
@@ -54,6 +54,7 @@ export default async function OrderPage({ params }: Params) {
                   {p.provider_reference && <p className="text-ink-muted">Ref <span className="font-mono font-semibold text-ink">{p.provider_reference}</span></p>}
                 </div>
               ))}
+              {(order.invoices as { id: string }[]).length > 0 && <Link href={`/order/${order.order_number}/invoice`} className="block font-semibold text-brand-700">View tax invoice ›</Link>}
             </div>
           </Card>
           <Card>
@@ -82,6 +83,7 @@ export default async function OrderPage({ params }: Params) {
           <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(order.subtotal)}</dd></div>
           {Number(order.discount_amount) > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount</dt><dd>-{kes(order.discount_amount)}</dd></div>}
           <div className="flex justify-between"><dt>Delivery</dt><dd>{Number(order.delivery_amount) ? kes(order.delivery_amount) : "Free"}</dd></div>
+          {Number(order.tax_amount) > 0 && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(order.tax_amount)}</dd></div>}
           <div className="flex justify-between pt-2 text-lg font-bold"><dt>Total</dt><dd>{kes(order.total_amount)}</dd></div>
         </dl>
       </Card>

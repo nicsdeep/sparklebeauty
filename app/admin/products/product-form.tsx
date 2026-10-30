@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import { Badge, Button, Card, CardHeader, Field, cx, inputClass } from "@/components/ui";
 import { PhotoManager } from "@/components/admin/photo-manager";
+import { TAX_TYPES, type TaxType } from "@/lib/tax";
 import { createProduct, updateProduct, type ProductInput } from "../actions";
 
 type Category = { slug: string; name: string; parent: string | null };
@@ -22,7 +23,7 @@ const OPTION_TYPES = [
 ];
 export const EMPTY_PRODUCT: ProductFormValues = {
   name: "", category_slug: "", brand: "", description: "", images: [], is_featured: false, is_active: true,
-  benefits: [], how_to_use: "", ingredients: "", option_type: "none", hair_texture: "", hair_type: "",
+  benefits: [], how_to_use: "", ingredients: "", option_type: "none", hair_texture: "", hair_type: "", tax_type: "B",
 };
 
 /**
@@ -103,6 +104,11 @@ export function ProductForm({ categories, brands, initial = EMPTY_PRODUCT, initi
               <Field label="Hair type (optional)"><input value={p.hair_type} onChange={(e) => set({ hair_type: e.target.value })} className={inputClass} placeholder="e.g. 100% Human Hair" /></Field>
             </>
           )}
+          <Field label="VAT (KRA tax type)" hint="Standard-rated goods are VAT 16%. Prices are entered before VAT.">
+            <select value={p.tax_type} onChange={(e) => set({ tax_type: e.target.value as TaxType })} className={inputClass}>
+              {(Object.keys(TAX_TYPES) as TaxType[]).map((t) => <option key={t} value={t}>{t} · {TAX_TYPES[t]}</option>)}
+            </select>
+          </Field>
           <label className="flex items-center gap-2.5 text-[15px] font-semibold sm:col-span-2">
             <input type="checkbox" checked={p.is_featured} onChange={(e) => set({ is_featured: e.target.checked })} className="size-5 accent-brand-600" /> Feature on the homepage
           </label>

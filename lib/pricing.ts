@@ -15,6 +15,8 @@ export type QuoteLine = {
   line_total: number;
   available: number;
   breaks: PriceBreak[];
+  /** VAT rate in percent for this line (0 when exempt, zero-rated or non-VAT). */
+  tax_rate: number;
 };
 
 /** The server-resolved break that applies at this quantity (highest min_qty not above it). */
@@ -48,4 +50,5 @@ export const toQuoteLine = (r: Record<string, unknown>): QuoteLine => ({
   available: Number(r.available),
   breaks: ((r.breaks as { min_qty: number; unit_price: number | string; rule: PriceRule }[] | null) ?? [])
     .map((b) => ({ min_qty: Number(b.min_qty), unit_price: Number(b.unit_price), rule: b.rule })),
+  tax_rate: Number(r.tax_rate ?? 0),
 });

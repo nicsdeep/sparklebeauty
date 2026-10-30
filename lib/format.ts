@@ -10,8 +10,11 @@ export type PaymentMethod = "mpesa" | "cash" | "card" | "bank_transfer" | "other
 
 const TZ = "Africa/Nairobi";
 
-export const kes = (n: number | string | null | undefined) =>
-  "KES " + Math.round(Number(n ?? 0)).toLocaleString("en-KE");
+/** KES amount; cents are shown only when there are any (VAT can add them). */
+export const kes = (n: number | string | null | undefined) => {
+  const v = Math.round(Number(n ?? 0) * 100) / 100;
+  return "KES " + v.toLocaleString("en-KE", Number.isInteger(v) ? undefined : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 export const formatDate = (d: string | Date) =>
   new Date(d).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });

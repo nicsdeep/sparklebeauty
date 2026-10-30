@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BarChart3, Bell, Boxes, Briefcase, ChevronDown, ExternalLink, FolderTree, Gift, Headset, LayoutDashboard, LogOut, Menu, Package,
-  Percent, Search, Settings, ShoppingCart, Sparkles, Store, Tags, Users, X,
+  Percent, ReceiptText, Search, Settings, ShoppingCart, Sparkles, Store, Tags, Users, X,
 } from "lucide-react";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Logo } from "@/components/logo";
@@ -18,6 +18,7 @@ const LINKS = [
   { href: "/admin", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", Icon: ShoppingCart },
   { href: "/admin/pos", label: "POS", Icon: Store },
+  { href: "/admin/invoices", label: "Invoices", Icon: ReceiptText },
   { href: "/admin/products", label: "Products", Icon: Package },
   { href: "/admin/categories", label: "Categories", Icon: FolderTree },
   { href: "/admin/inventory", label: "Inventory", Icon: Boxes },

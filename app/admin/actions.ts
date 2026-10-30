@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentMethod } from "@/lib/format";
+import { KRA_PIN, type TaxType } from "@/lib/tax";
 import { toQuoteLine, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
@@ -52,7 +53,9 @@ export type PosPaymentMethod = Exclude<PaymentMethod, "other">;
 export type PosRecordedPayment = { method: PosPaymentMethod; amount: number; reference: string };
 export type PosReceiptLine = { name: string; sku: string; quantity: number; unitPrice: number; lineTotal: number; rule: PriceRule };
 export type PosSaleResult = {
-  orderId: string; orderNumber: string; total: number; change: number; payments: PosRecordedPayment[]; duplicate: boolean; lines: PosReceiptLine[];
+  orderId: string; orderNumber: string; total: number; tax: number; change: number; payments: PosRecordedPayment[]; duplicate: boolean; lines: PosReceiptLine[];
+  /** Tax invoice issued for the sale (waiting in the eTIMS queue until the KRA link is set up). */
+  invoiceNumber: string | null;
 };
 
 /** Completes a till sale; the database prices every line with the shared engine and deducts stock atomically. */
@@ -68,12 +71,17 @@ export async function completeSale(input: PosSaleInput): Promise<ActionResult<Po
   });
   if (error) return fail(error);
   const row = (data as { order_id: string; order_number: string; total_amount: number; change_due: number; payments: PosRecordedPayment[]; duplicate: boolean }[])[0];
-  const { data: lines } = await supabase.from("order_items").select("product_name, sku, quantity, unit_price, line_total, price_rule").eq("order_id", row.order_id);
+  const [{ data: lines }, { data: order }, { data: invoice }] = await Promise.all([
+    supabase.from("order_items").select("product_name, sku, quantity, unit_price, line_total, price_rule").eq("order_id", row.order_id),
+    supabase.from("orders").select("tax_amount").eq("id", row.order_id).single(),
+    supabase.from("invoices").select("invoice_number").eq("order_id", row.order_id).eq("kind", "invoice").maybeSingle(),
+  ]);
   revalidatePath("/admin", "layout");
   return {
     ok: true,
     data: {
       orderId: row.order_id, orderNumber: row.order_number, total: Number(row.total_amount), change: Number(row.change_due),
+      tax: Number(order?.tax_amount ?? 0), invoiceNumber: invoice?.invoice_number ?? null,
       payments: row.payments.map((p) => ({ ...p, amount: Number(p.amount) })), duplicate: row.duplicate,
       lines: (lines ?? []).map((l) => ({ name: l.product_name, sku: l.sku ?? "", quantity: l.quantity, unitPrice: Number(l.unit_price),
         lineTotal: Number(l.line_total), rule: (l.price_rule ?? "retail") as PriceRule })),
@@ -148,6 +156,9 @@ export async function saveStoreSettings(formData: FormData): Promise<ActionResul
   const instagram = text(formData, "instagram_url");
   if ([facebook, instagram].some((u) => u && !u.startsWith("https://"))) return { ok: false, error: "Social media links must start with https://" };
 
+  const kraPin = text(formData, "kra_pin").toUpperCase();
+  if (kraPin && !KRA_PIN.test(kraPin)) return { ok: false, error: "A KRA PIN is a letter, 9 digits and a letter, e.g. P051234567X." };
+
   const fees = { nairobi: money(formData, "delivery_fee_nairobi"), other: money(formData, "delivery_fee_other"), free: money(formData, "free_delivery_threshold") };
   if (Object.values(fees).some(Number.isNaN)) return { ok: false, error: "Delivery fees must be numbers of 0 or more." };
 
@@ -166,6 +177,8 @@ export async function saveStoreSettings(formData: FormData): Promise<ActionResul
     delivery_fee_other: fees.other,
     free_delivery_threshold: fees.free,
     free_delivery_areas: text(formData, "free_delivery_areas").split(",").map((a) => a.trim()).filter(Boolean),
+    kra_pin: kraPin || null,
+    vat_registered: formData.get("vat_registered") === "on",
     updated_at: new Date().toISOString(),
     updated_by: user?.id ?? null,
   }).eq("id", true).select("id");
@@ -262,6 +275,8 @@ export type ProductInput = {
   product: {
     name: string; category_slug: string; brand: string; description: string; images: string[]; is_featured: boolean; is_active: boolean;
     benefits: string[]; how_to_use: string; ingredients: string; option_type: string; hair_texture: string; hair_type: string;
+    /** KRA eTIMS tax type (B = VAT 16%). Saved to products.tax_type after the product itself. */
+    tax_type: TaxType;
   };
   variants: { id?: string; option: string; sku: string; retail: string; wholesale: string; stock: string; reorder_level: string; active: boolean }[];
 };
@@ -271,6 +286,8 @@ export async function createProduct(input: ProductInput): Promise<ActionResult<{
   const { data: slug, error } = await supabase.rpc("admin_create_product", { p_product: input.product, p_variants: input.variants });
   if (error) return fail(error);
   const { data } = await supabase.from("products").select("id").eq("slug", slug as string).single();
+  const { error: taxError } = await supabase.from("products").update({ tax_type: input.product.tax_type }).eq("id", data!.id);
+  if (taxError) return fail(taxError);
   revalidatePath("/", "layout");
   return { ok: true, data: { id: data!.id } };
 }
@@ -282,10 +299,24 @@ export async function updateProduct(id: string, input: ProductInput, previousPho
   const supabase = await createClient();
   const { error } = await supabase.rpc("admin_update_product", { p_id: id, p_product: input.product, p_variants: input.variants });
   if (error) return fail(error);
+  const { error: taxError } = await supabase.from("products").update({ tax_type: input.product.tax_type }).eq("id", id);
+  if (taxError) return fail(taxError);
   const removed = previousPhotos.filter((u) => !input.product.images.includes(u) && u.startsWith(process.env.NEXT_PUBLIC_SUPABASE_URL + PHOTO_PREFIX))
     .map((u) => decodeURIComponent(u.slice((process.env.NEXT_PUBLIC_SUPABASE_URL + PHOTO_PREFIX).length)));
   if (removed.length) await supabase.storage.from("product-images").remove(removed);
   revalidatePath("/", "layout");
+  return { ok: true, data: undefined };
+}
+
+/** Sets (or clears) a customer's KRA PIN for their tax invoices. */
+export async function setCustomerKraPin(customerId: string, pin: string): Promise<ActionResult> {
+  const value = pin.trim().toUpperCase();
+  if (value && !KRA_PIN.test(value)) return { ok: false, error: "A KRA PIN is a letter, 9 digits and a letter, e.g. A012345678Z." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("profiles").update({ kra_pin: value || null }).eq("id", customerId).eq("role", "customer").select("id");
+  if (error) return fail(error);
+  if (!data?.length) return { ok: false, error: "Customer not found." };
+  revalidatePath(`/admin/customers/${customerId}`);
   return { ok: true, data: undefined };
 }
 

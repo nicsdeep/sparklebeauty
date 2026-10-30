@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
+import { Button, Card, CardHeader, Field, cx, inputClass } from "@/components/ui";
 import type { StorePhone, StoreSettings } from "@/lib/store-types";
 import { saveStoreSettings } from "../actions";
 
@@ -68,6 +68,17 @@ export function StoreSettingsForm({ settings, canEdit }: { settings: StoreSettin
                 <input name="free_delivery_areas" defaultValue={settings.free_delivery_areas.join(", ")} className={inputClass} placeholder="CBD, Pipeline" />
               </Field>
             </div>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Tax and KRA" subtitle="Printed on every tax invoice. Prices are VAT-exclusive: VAT is added on top at the till and checkout." />
+          <div className="grid gap-4 p-5 sm:grid-cols-2">
+            <Field label="Shop KRA PIN" hint="11 characters, e.g. P051234567X."><input name="kra_pin" defaultValue={settings.kra_pin ?? ""} className={cx(inputClass, "uppercase")} maxLength={11} placeholder="P051234567X" /></Field>
+            <label className="flex items-start gap-3 self-end rounded-xl border border-line p-3">
+              <input type="checkbox" name="vat_registered" defaultChecked={settings.vat_registered} className="mt-1 size-4 accent-brand-600" />
+              <span><span className="block font-semibold">VAT registered</span><span className="text-sm text-ink-muted">Adds VAT by each product&apos;s tax type (16% standard). Untick if the shop is not registered for VAT.</span></span>
+            </label>
           </div>
         </Card>
       </fieldset>

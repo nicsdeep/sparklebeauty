@@ -69,7 +69,8 @@ export function CheckoutWizard({ profile, addresses }: {
   const discount = state.discount ?? 0;
   const delivery = state.delivery ?? EMPTY_DELIVERY;
   const fee = deliveryFee(delivery.method, delivery, cart.subtotal - discount, store);
-  const total = cart.subtotal - discount + fee;
+  const vat = cart.taxFor(discount, fee, store.vat_registered);
+  const total = vat.total;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -126,6 +127,7 @@ export function CheckoutWizard({ profile, addresses }: {
               <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(cart.subtotal)}</dd></div>
               {discount > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount ({state.promoCode})</dt><dd>-{kes(discount)}</dd></div>}
               <div className="flex justify-between"><dt>Delivery</dt><dd>{stepIndex < 2 ? "Next step" : fee ? kes(fee) : "Free"}</dd></div>
+              {store.vat_registered && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(vat.tax)}</dd></div>}
               <div className="flex justify-between border-t border-line pt-2 text-lg font-bold"><dt>Total</dt><dd>{kes(placed?.total ?? total)}</dd></div>
             </dl>
           </aside>

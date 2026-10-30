@@ -15,6 +15,24 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: VAT and KRA tax invoices (eTIMS-ready)
+- PR: (this PR, branch `claude/etims-invoicing`, built on `claude/pos-checkout-flow`)
+- Changed:
+  - Migration `20261101120000_vat_and_etims_invoices.sql` (see PROJECT_STATE, Database 20): tax types on products, KRA PINs, VAT on orders and lines, the `invoices` table, automatic tax invoices and credit notes, and VAT in `place_order()` and `pos_complete_sale()`.
+  - `lib/tax.ts` (new): the same VAT rule as the database, in whole cents; tax type labels; KRA PIN check.
+  - Till: VAT per line on top of prices, VAT row, receipt shows VAT and the tax invoice number.
+  - Cart and checkout: VAT row; totals include VAT.
+  - Admin: Invoices list (eTIMS queue, credit notes, search) and printable tax invoice; order page shows VAT and links its invoice; Settings → Tax and KRA (shop KRA PIN, VAT registered); product form → VAT tax type; customer page → KRA PIN.
+  - Customer: order page shows VAT and "View tax invoice".
+  - `kes()` shows cents when an amount has them.
+- Why: Nicholas asked for invoicing and tax for KRA eTIMS. Decisions: VAT registered, prices VAT-exclusive, build now and connect eTIMS when the KRA credentials are available.
+- Tested:
+  - Live database, in a block that rolled back: a till sale paid at the pre-VAT amount is refused (KES 46.40 still to pay); a sale with a discount and an exempt item gives VAT 42.79 and total 480.79, and the invoice lines add up to the total; not VAT registered gives type D and no VAT; an online order gets VAT on delivery, no invoice until paid, an invoice after `pay_order`, and a credit note after `cancel_order`; the customer sees only her own invoices; anon sees none; `apply_order_tax` can't be called from the API. Nothing was left behind.
+  - `lib/tax.ts` gives the same figures as the database for those cases.
+  - `tsc --noEmit` and `next build` pass.
+  - Not tested in the browser: the screens need the migration, which is applied after merge.
+- Follow-ups: apply the migration right after merge (the till refuses pre-VAT payments once it's applied); set the shop KRA PIN; connect eTIMS when KRA credentials arrive.
+
 ## 2026-10-31: Claude: POS cart and payment always in view
 - PR: https://github.com/nicsdeep/sparklebeauty/pull/28 (branch `claude/pos-checkout-flow`)
 - Changed: `app/admin/pos/terminal.tsx`

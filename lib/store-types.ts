@@ -18,6 +18,10 @@ export type StoreSettings = {
   delivery_fee_other: number;
   free_delivery_threshold: number;
   free_delivery_areas: string[];
+  /** Shop's KRA PIN, printed on tax invoices. */
+  kra_pin: string | null;
+  /** VAT registered: VAT is added on top of prices (they are VAT-exclusive). */
+  vat_registered: boolean;
 };
 
 const ksh = (n: number) => "KES " + Math.round(n).toLocaleString("en-KE");

@@ -147,7 +147,7 @@ Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded cu
 
   When the connection returns, it syncs them. `pos_complete_sale` returns an already-recorded `client_ref` instead of recording it twice, and refuses a sale that no longer fits the stock. Refused sales stay on the till as "needs attention" for a manager. They are never forced through.
 
-## Database (as of migration `20261101090000`)
+## Database (as of migration `20261101120000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -181,6 +181,7 @@ Migrations, in order:
     - sets the wholesale threshold to 10, and `reset_demo()` keeps it at 10.
 18. `20261031200000_kids_demo_ratings.sql`: adds `demo_ratings()`, which gives the 8 Kids Collection products demo ratings (4.5–4.9) so no demo product is unrated. It never overwrites real reviews. `reset_demo()` now calls it after `demo_kids_collection()`.
 19. `20261101090000_pos_split_payments.sql`: `pos_complete_sale()` takes a list of payments instead of one method, so a till sale can be split (e.g. part cash, the balance by M-Pesa, card or bank transfer). One `payments` row per method.
+20. `20261101120000_vat_and_etims_invoices.sql`: VAT and KRA tax invoices. Adds `products.tax_type` (eTIMS A/B/C/D/E, default B = 16%), `store_settings.kra_pin` and `vat_registered`, `profiles.kra_pin`, `orders.tax_amount`, and `order_items.tax_type`/`tax_rate`/`tax_amount`. New `invoices` table (tax invoices and credit notes, with eTIMS status), issued by the trigger `orders_issue_tax_documents`. `apply_order_tax()` adds VAT in `place_order()` and `pos_complete_sale()`; `price_cart`/`quote_cart`/`pos_quote` return each line's `tax_rate`; `variant_tax_rates()` gives the till every rate.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -220,6 +221,9 @@ Business functions. All are `SECURITY DEFINER` and validate the caller and their
 | `advance_order(order_id, note)` | staff | Moves the order one lifecycle step. Handles payment confirmation, stock deduction on dispatch and loyalty on completion |
 | `cancel_order(order_id, reason)` | staff | Cancels before dispatch and releases stock |
 | `pos_complete_sale(customer, items, discount, payments, client_ref, offline_at)` | staff | In-store sale priced by the engine (no manual tier). Records channel `pos` or `wholesale`, deducts stock atomically, and records payments and loyalty. `payments` is a list of up to 5 `{method, amount, phone?, reference?}` (cash, M-Pesa, card, bank transfer): cash is the amount received and gives change; the others can't add up to more than the total. An M-Pesa code can be used only once. Returns the recorded payments. Idempotent by `client_ref`. Offline sales must be cash |
+| `apply_order_tax(order)` | internal | Adds VAT to an order: spreads the discount over the lines, VAT per line by the product's tax type, VAT on delivery at the standard rate; sets `orders.tax_amount` and the total. `lib/tax.ts` repeats the same rule so screens match to the cent |
+| `tax_rate(type)` / `effective_tax_type(type)` / `variant_tax_rates()` | anyone | VAT % for an eTIMS tax type (B 16, E 8, others 0; all 0 and type D when the shop isn't VAT registered), and every active variant's rate |
+| `issue_tax_documents()` (trigger on `orders`) | internal | When an order becomes paid, issues its tax invoice (`INV-…`) with a snapshot of the lines and the VAT summary per tax type; when a paid order is refunded, issues a credit note (`CN-…`). Both start as eTIMS `pending` |
 | `quote_cart(items)` | anyone | Engine prices and live availability for the caller's own cart |
 | `pos_quote(customer, items)` / `pos_price_sheet(customer)` | staff | Engine prices for a till cart / price breaks for every product |
 | `adjust_stock(variant_id, delta, reason)` | staff | Receive stock or correct counts |
@@ -265,10 +269,14 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 | 2026-10-29 | The written design system overrides the mockups | Nicholas |
 | 2026-10-29 | Stack: Next.js 15 + Supabase on Vercel. Money and stock changes only through database functions; no service-role key in the app | Claude, for the CEO demo |
 | 2026-10-30 | One pricing engine in the database for every channel: negotiated, then wholesale account, then 10+ units, then retail. Wholesale sales are their own channel. The till works offline for cash only and never forces a sale past real stock | Nicholas |
+| 2026-10-31 | Sparkle is VAT registered. Prices are VAT-exclusive: VAT is added on top at the till and checkout. Tax invoices are built now; the KRA eTIMS connection is added when the KRA credentials are available | Nicholas |
 | 2026-10-29 | The O2C demo migrations were applied to the live database before their PR merged, to build and test the demo in time. The database held no real data | Nicholas approved |
 
 ## Known issues
 
+- **KRA eTIMS isn't connected yet.** Tax invoices and credit notes are issued and kept in order with `etims_status = 'pending'`; nothing is sent to KRA. Connecting needs Sparkle's eTIMS (OSCU) registration from KRA: the shop's KRA PIN, branch ID, device serial and communication key (server-only secret). Then a server job sends pending invoices and stores KRA's reply (`etims_receipt_number`, `etims_signature`, `etims_internal_data`, `etims_sent_at`). Admin → Invoices shows how many are waiting.
+- **Shop KRA PIN not set:** add it in Admin → Settings → Tax and KRA; until then invoices print "not set".
+- **Orders from before VAT** (including the demo seed) have no VAT lines and no tax invoice. Reports and dashboard revenue use order totals, which now include VAT for new orders.
 - **Offline POS limits:**
   - the till must already be open when the connection drops (there's no offline page caching);
   - queued and parked sales live only in that browser;
