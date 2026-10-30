@@ -32,30 +32,45 @@ export function WishlistHeart({ productId, slug, initial }: { productId: string;
   );
 }
 
-/** Adds a single-option product straight to the cart; products with options go to their page. */
-export function QuickAdd({ item, hasOptions, available, slug }: {
+/**
+ * Adds a single-option product straight to the cart; products with options go to their page.
+ * `compact` renders a round cart icon (for small cards) instead of a full-width button.
+ */
+export function QuickAdd({ item, hasOptions, available, slug, compact = false }: {
   item: Omit<CartItem, "quantity">;
   hasOptions: boolean;
   available: number;
   slug: string;
+  compact?: boolean;
 }) {
   const { add, items } = useCart();
   const [added, setAdded] = useState(false);
   const inCart = items.find((i) => i.variantId === item.variantId)?.quantity ?? 0;
 
+  const iconClass = "grid size-8 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700 transition hover:bg-brand-600 hover:text-white disabled:opacity-40";
   if (hasOptions) {
+    if (compact) return <Link href={`/product/${slug}`} aria-label={`Choose options for ${item.name}`} className={iconClass}><ShoppingBag className="size-4" /></Link>;
     return <Link href={`/product/${slug}`} className={cx(buttonClass({ size: "sm" }), "w-full")}>Select Options</Link>;
   }
   const out = available - inCart <= 0;
+  const onAdd = () => {
+    add(item, 1);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+  if (compact) {
+    return (
+      <button type="button" disabled={out} onClick={onAdd} className={iconClass}
+        aria-label={added ? `${item.name} added to cart` : out ? `${item.name} unavailable` : `Add ${item.name} to cart`}>
+        {added ? <Check className="size-4" /> : <ShoppingBag className="size-4" />}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
       disabled={out}
-      onClick={() => {
-        add(item, 1);
-        setAdded(true);
-        setTimeout(() => setAdded(false), 2000);
-      }}
+      onClick={onAdd}
       className={cx(buttonClass({ size: "sm" }), "w-full")}
     >
       {added ? <><Check className="size-4" /> Added</> : out ? (available <= 0 ? "Out of Stock" : "All in Cart") : <><ShoppingBag className="size-4" /> Add to Cart</>}
