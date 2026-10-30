@@ -26,7 +26,7 @@ export default async function OrderPage({ params }: Params) {
   if (!order) notFound();
 
   const events = ([...order.order_events] as OrderEvent[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
-  const payment = order.payments[0] as { method: PaymentMethod; status: string; provider_reference: string | null } | undefined;
+  const payments = order.payments as { method: PaymentMethod; status: string; amount: number; provider_reference: string | null }[];
   const address = order.shipping_address as { address_line1?: string; address_line2?: string; city?: string } | null;
 
   return (
@@ -47,8 +47,13 @@ export default async function OrderPage({ params }: Params) {
           <Card>
             <CardHeader title="Payment" />
             <div className="space-y-2 p-5 text-[15px]">
-              <div className="flex justify-between"><span>{payment ? PAYMENT_LABEL[payment.method] : "-"}</span><PaymentBadge status={order.payment_status} /></div>
-              {payment?.provider_reference && <p className="text-ink-muted">Ref <span className="font-mono font-semibold text-ink">{payment.provider_reference}</span></p>}
+              <div className="flex justify-between"><span>{payments.length > 1 ? "Split payment" : payments[0] ? PAYMENT_LABEL[payments[0].method] : "-"}</span><PaymentBadge status={order.payment_status} /></div>
+              {payments.map((p, i) => (
+                <div key={i}>
+                  {payments.length > 1 && <p className="flex justify-between"><span>{PAYMENT_LABEL[p.method]}</span><span>{kes(p.amount)}</span></p>}
+                  {p.provider_reference && <p className="text-ink-muted">Ref <span className="font-mono font-semibold text-ink">{p.provider_reference}</span></p>}
+                </div>
+              ))}
             </div>
           </Card>
           <Card>

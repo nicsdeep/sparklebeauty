@@ -137,6 +137,7 @@ Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded cu
   - private topic `admin`: `change` {table}, for orders, payments and profiles. Only staff can receive it (RLS on `realtime.messages`).
 
   `lib/live.ts` joins each topic once per tab. `components/live-refresh.tsx` re-renders the current page in place (shop layout and admin shell). The cart and the POS re-confirm their prices and stock on stock events.
+- **Split payments at the till.** A customer can pay with several methods in one sale, e.g. KES 350 cash and the KES 150 balance by M-Pesa, card or bank, without leaving the till. After a part payment the till shows the balance with one-tap buttons to pay it by another method. M-Pesa takes either the customer's number (simulated STK prompt) or the code of a payment they already made to the till; card and bank take an optional reference. Order pages list each payment.
 - **Offline POS.** If the till loses its connection while open:
   - it shows Offline and allows cash sales only;
   - it labels stock "last known";
@@ -144,7 +145,7 @@ Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded cu
 
   When the connection returns, it syncs them. `pos_complete_sale` returns an already-recorded `client_ref` instead of recording it twice, and refuses a sale that no longer fits the stock. Refused sales stay on the till as "needs attention" for a manager. They are never forced through.
 
-## Database (as of migration `20261031200000`)
+## Database (as of migration `20261101090000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -177,6 +178,7 @@ Migrations, in order:
     - adds the realtime broadcast triggers and the staff policy on `realtime.messages`;
     - sets the wholesale threshold to 10, and `reset_demo()` keeps it at 10.
 18. `20261031200000_kids_demo_ratings.sql`: adds `demo_ratings()`, which gives the 8 Kids Collection products demo ratings (4.5–4.9) so no demo product is unrated. It never overwrites real reviews. `reset_demo()` now calls it after `demo_kids_collection()`.
+19. `20261101090000_pos_split_payments.sql`: `pos_complete_sale()` takes a list of payments instead of one method, so a till sale can be split (e.g. part cash, the balance by M-Pesa, card or bank transfer). One `payments` row per method.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -215,7 +217,7 @@ Business functions. All are `SECURITY DEFINER` and validate the caller and their
 | `pay_order(order_id, phone)` | order's customer | Simulated M-Pesa/card success: marks the payment paid with a reference |
 | `advance_order(order_id, note)` | staff | Moves the order one lifecycle step. Handles payment confirmation, stock deduction on dispatch and loyalty on completion |
 | `cancel_order(order_id, reason)` | staff | Cancels before dispatch and releases stock |
-| `pos_complete_sale(customer, items, discount, method, tendered, phone, client_ref, offline_at)` | staff | In-store sale priced by the engine (no manual tier). Records channel `pos` or `wholesale`, deducts stock atomically, and records payment and loyalty. Idempotent by `client_ref`. Offline sales must be cash |
+| `pos_complete_sale(customer, items, discount, payments, client_ref, offline_at)` | staff | In-store sale priced by the engine (no manual tier). Records channel `pos` or `wholesale`, deducts stock atomically, and records payments and loyalty. `payments` is a list of up to 5 `{method, amount, phone?, reference?}` (cash, M-Pesa, card, bank transfer): cash is the amount received and gives change; the others can't add up to more than the total. An M-Pesa code can be used only once. Returns the recorded payments. Idempotent by `client_ref`. Offline sales must be cash |
 | `quote_cart(items)` | anyone | Engine prices and live availability for the caller's own cart |
 | `pos_quote(customer, items)` / `pos_price_sheet(customer)` | staff | Engine prices for a till cart / price breaks for every product |
 | `adjust_stock(variant_id, delta, reason)` | staff | Receive stock or correct counts |

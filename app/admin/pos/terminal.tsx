@@ -5,15 +5,15 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Banknote, BadgePercent, CheckCircle2, ChevronDown, CircleAlert, Clock, CreditCard, History, Mail, Minus, PackagePlus, PauseCircle, Plus,
-  Printer, RefreshCw, ScanBarcode, Search, ShoppingCart, Smartphone, Trash2, UserPlus, UserRound, WifiOff, X,
+  Landmark, Printer, RefreshCw, ScanBarcode, Search, ShoppingCart, Smartphone, Trash2, UserPlus, UserRound, WifiOff, X,
 } from "lucide-react";
 import { Badge, Button, cx, inputClass } from "@/components/ui";
 import { ProductImage } from "@/components/shop/product-image";
-import { channelMeta, formatDateTime, kes, maskPhone, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
+import { channelMeta, formatDateTime, kes, maskPhone, PAYMENT_LABEL } from "@/lib/format";
 import { useLiveTopic } from "@/lib/live";
 import { breakFor, nextBreak, ruleLabel, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
 import { whatsappHref, type StoreSettings } from "@/lib/store-types";
-import { completeSale, posPriceSheet, posQuote, type PosReceiptLine } from "../actions";
+import { completeSale, posPriceSheet, posQuote, type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment } from "../actions";
 import { loadParked, loadQueue, newClientRef, saveParked, saveQueue, type ParkedSale, type QueuedSale } from "./offline-queue";
 
 export type PosItem = {
@@ -22,16 +22,35 @@ export type PosItem = {
 };
 export type PosCustomer = { id: string; name: string; phone: string; email: string; points: number; business: string | null };
 export type PosCategory = { slug: string; name: string };
-export type PosRecentSale = { id: string; number: string; customer: string; channel: string; total: number; at: string; method: string | null };
+export type PosRecentSale = { id: string; number: string; customer: string; channel: string; total: number; at: string; methods: string[] };
 
 type Line = { variantId: string; qty: number };
+/** One part of the payment. amount "" means "whatever is left to pay" (for M-Pesa, card or bank). */
+type Tender = { id: string; method: PosPaymentMethod; amount: string; phone: string; reference: string };
 type Receipt = {
   number: string; offline: boolean; at: string; customer: PosCustomer | null; lines: PosReceiptLine[];
-  subtotal: number; discount: number; total: number; method: PaymentMethod; reference: string; tendered?: number; change: number;
+  subtotal: number; discount: number; total: number; payments: PosRecordedPayment[]; cashReceived: number; change: number;
 };
 type Sheet = Record<string, PriceBreak[]>;
 
 const RECENT_KEY = "sparkle-pos-recent-v1";
+const MAX_TENDERS = 5;
+const METHODS = [["mpesa", Smartphone], ["cash", Banknote], ["card", CreditCard], ["bank_transfer", Landmark]] as const;
+const SHORT_LABEL: Record<PosPaymentMethod, string> = { mpesa: "M-Pesa", cash: "Cash", card: "Card", bank_transfer: "Bank" };
+const isMpesaCode = (v: string) => /^[A-Z0-9]{8,12}$/i.test(v.trim());
+const newTender = (method: PosPaymentMethod, phone = ""): Tender => ({ id: Math.random().toString(36).slice(2), method, amount: "", phone, reference: "" });
+
+/** Amount each tender pays: typed amounts as entered; the last blank M-Pesa/card/bank one takes the balance. */
+function settle(tenders: Tender[], total: number) {
+  const typed = tenders.map((t) => (t.amount === "" ? null : Number(t.amount) || 0));
+  const fixed = typed.reduce<number>((a, v) => a + (v ?? 0), 0);
+  const auto = tenders.map((t, i) => (t.amount === "" && t.method !== "cash" ? i : -1)).filter((i) => i >= 0).pop() ?? -1;
+  const amounts = typed.map((v, i) => v ?? (i === auto ? Math.max(0, total - fixed) : 0));
+  const paid = amounts.reduce((a, v) => a + v, 0);
+  const cash = amounts.reduce((a, v, i) => a + (tenders[i].method === "cash" ? v : 0), 0);
+  const nonCash = paid - cash;
+  return { amounts, paid, cash, nonCash, balance: Math.max(0, total - paid), change: Math.max(0, paid - total), overCharged: nonCash > total };
+}
 const VISIBLE_CHIPS = 8;
 const isNetworkError = (e: unknown) => e instanceof TypeError || /fetch|network|failed to fetch/i.test(String((e as Error)?.message ?? e));
 
@@ -46,10 +65,8 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const [lines, setLines] = useState<Line[]>([]);
   const [customer, setCustomer] = useState<PosCustomer | null>(null);
   const [discountPct, setDiscountPct] = useState("");
-  const [method, setMethod] = useState<PaymentMethod>("mpesa");
-  const [tendered, setTendered] = useState("");
-  const [phone, setPhone] = useState("");
-  const [mpesaPrompt, setMpesaPrompt] = useState(false);
+  const [tenders, setTenders] = useState<Tender[]>(() => [newTender("mpesa")]);
+  const [mpesaSent, setMpesaSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -143,9 +160,8 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const discount = Math.round((subtotal * pct) / 100);
   const total = subtotal - discount;
   const units = priced.reduce((s, l) => s + l.qty, 0);
-  const change = Math.max(0, (Number(tendered) || 0) - total);
+  const pay = settle(tenders, total);
   const allConfirmed = !online || priced.every((l) => confirmed?.key.startsWith(cartKey) && confirmed.lines[l.variantId]?.quantity === l.qty);
-  const effectiveMethod: PaymentMethod = online ? method : "cash";
 
   // Product list
   const shown = useMemo(() => {
@@ -193,13 +209,27 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     setCustomer(c);
     setCustomerQuery("");
     setCustomerOpen(false);
-    setPhone(c?.phone ?? "");
+    setTenders((ts) => ts.map((t) => (t.method === "mpesa" && !t.phone ? { ...t, phone: c?.phone ?? "" } : t)));
     setConfirmed(null);
   }
 
+  // Payment editing. Any change means a sent M-Pesa request no longer matches, so it is re-sent.
+  function updateTender(id: string, patch: Partial<Tender>) {
+    setTenders((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch, phone: patch.method === "mpesa" && !t.phone ? customer?.phone ?? "" : patch.phone ?? t.phone } : t)));
+    setMpesaSent(false); setError(null);
+  }
+  function addTender(method: PosPaymentMethod) {
+    setTenders((ts) => (ts.length >= MAX_TENDERS ? ts : [...ts, newTender(method, method === "mpesa" ? customer?.phone ?? "" : "")]));
+    setMpesaSent(false); setError(null);
+  }
+  function removeTender(id: string) {
+    setTenders((ts) => (ts.length > 1 ? ts.filter((t) => t.id !== id) : ts));
+    setMpesaSent(false);
+  }
+
   function resetSale() {
-    setLines([]); setDiscountPct(""); setTendered(""); setMpesaPrompt(false); setError(null); setCustomer(null); setPhone("");
-    setMethod(online ? "mpesa" : "cash"); setConfirmed(null);
+    setLines([]); setDiscountPct(""); setMpesaSent(false); setError(null); setCustomer(null);
+    setTenders([newTender(online ? "mpesa" : "cash")]); setConfirmed(null);
   }
   function newSale() {
     if (receipt) setLastReceipt(receipt);
@@ -209,12 +239,12 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     setTimeout(() => searchRef.current?.focus(), 50);
   }
 
-  function receiptFromCart(number: string, offline: boolean, reference: string, serverLines?: PosReceiptLine[], serverTotal?: number, serverChange?: number): Receipt {
+  function receiptFromCart(number: string, offline: boolean, payments: PosRecordedPayment[], serverLines?: PosReceiptLine[], serverTotal?: number, serverChange?: number): Receipt {
     const ls = serverLines ?? priced.map((l) => ({ name: l.item.name + (l.item.variantName ? ` – ${l.item.variantName}` : ""), sku: l.item.sku, quantity: l.qty, unitPrice: l.price.unit, lineTotal: l.price.unit * l.qty, rule: l.price.rule }));
     return {
       number, offline, at: new Date().toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "medium", timeStyle: "short" }),
-      customer, lines: ls, subtotal: ls.reduce((s, l) => s + l.lineTotal, 0), discount, total: serverTotal ?? total, method: effectiveMethod, reference,
-      tendered: effectiveMethod === "cash" ? Number(tendered) || 0 : undefined, change: serverChange ?? (effectiveMethod === "cash" ? change : 0),
+      customer, lines: ls, subtotal: ls.reduce((s, l) => s + l.lineTotal, 0), discount, total: serverTotal ?? total, payments,
+      cashReceived: pay.cash, change: serverChange ?? pay.change,
     };
   }
 
@@ -223,39 +253,39 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
       clientRef: newClientRef(), offlineAt: new Date().toISOString(), customerId: customer?.id ?? null,
       customerName: customer ? customer.business ?? customer.name : null,
       items: priced.map((l) => ({ variant_id: l.variantId, quantity: l.qty, name: l.item.name })),
-      discount, amountTendered: Number(tendered) || 0, chargedTotal: total, status: "pending",
+      discount, amountTendered: pay.cash, chargedTotal: total, status: "pending",
     };
     const next = [...queue, sale];
     setQueue(next); saveQueue(next);
-    setReceipt(receiptFromCart(`OFFLINE-${sale.clientRef.slice(0, 6).toUpperCase()}`, true, "Cash (pending sync)"));
+    setReceipt(receiptFromCart(`OFFLINE-${sale.clientRef.slice(0, 6).toUpperCase()}`, true, [{ method: "cash", amount: total, reference: "Pending sync" }]));
   }
 
   async function charge() {
     setError(null);
     if (!online) {
-      if ((Number(tendered) || 0) < total) { setError("Enter the cash received."); return; }
+      if (!allCash || pay.balance > 0) { setError("Offline: take the full amount in cash."); return; }
       queueOffline();
       return;
     }
-    if (method === "mpesa" && !mpesaPrompt) { setMpesaPrompt(true); return; }
+    if (needsPrompt && !mpesaSent) { setMpesaSent(true); return; }
     setPending(true);
     const clientRef = newClientRef();
     try {
       const res = await completeSale({
         customerId: customer?.id ?? null,
         items: lines.map((l) => ({ variant_id: l.variantId, quantity: l.qty })),
-        discount, paymentMethod: method, clientRef,
-        amountTendered: method === "cash" ? Number(tendered) || 0 : undefined,
-        mpesaPhone: method === "mpesa" ? phone : undefined,
+        discount, clientRef,
+        payments: tenders.map((t, i) => ({ method: t.method, amount: pay.amounts[i], phone: t.method === "mpesa" ? t.phone : undefined, reference: t.reference.trim() || undefined }))
+          .filter((p) => p.amount > 0),
       });
-      setMpesaPrompt(false);
+      setMpesaSent(false);
       if (!res.ok) { setError(res.error); return; }
-      setReceipt(receiptFromCart(res.data.orderNumber, false, res.data.reference, res.data.lines, res.data.total, res.data.change));
+      setReceipt(receiptFromCart(res.data.orderNumber, false, res.data.payments, res.data.lines, res.data.total, res.data.change));
     } catch (e) {
       if (!isNetworkError(e)) { setError("Something went wrong. Please try again."); return; }
       setServerOk(false);
-      if (method === "cash" && (Number(tendered) || 0) >= total) queueOffline();
-      else setError("The connection dropped. M-Pesa and card need a connection; take cash or wait for the connection to return.");
+      if (allCash && pay.balance === 0) queueOffline();
+      else setError("The connection dropped. M-Pesa, card and bank need a connection; take cash or wait for the connection to return.");
     } finally {
       setPending(false);
     }
@@ -271,7 +301,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
       try {
         const res = await completeSale({
           customerId: sale.customerId, items: sale.items.map(({ variant_id, quantity }) => ({ variant_id, quantity })),
-          discount: sale.discount, paymentMethod: "cash", amountTendered: sale.amountTendered, clientRef: sale.clientRef, offlineAt: sale.offlineAt,
+          discount: sale.discount, payments: [{ method: "cash", amount: sale.amountTendered }], clientRef: sale.clientRef, offlineAt: sale.offlineAt,
         });
         current = res.ok
           ? current.filter((s) => s.clientRef !== sale.clientRef)
@@ -308,7 +338,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     setLines(p.lines.filter((l) => itemsBy.has(l.variantId)));
     setDiscountPct(p.discountPct);
     const c = customers.find((x) => x.id === p.customerId) ?? null;
-    setCustomer(c); setPhone(c?.phone ?? ""); setPanel(null);
+    setCustomer(c); setTenders([newTender(online ? "mpesa" : "cash", c?.phone ?? "")]); setPanel(null);
   }
 
   // Keyboard shortcuts (shown on the quick-action buttons).
@@ -326,9 +356,17 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const canCharge = priced.length > 0 && !pending && allConfirmed
-    && (effectiveMethod !== "cash" || (Number(tendered) || 0) >= total)
-    && (effectiveMethod !== "mpesa" || phone.replace(/\D/g, "").length >= 9);
+  const allCash = tenders.every((t) => t.method === "cash");
+  // M-Pesa parts without a code the customer already has go through the (simulated) phone prompt.
+  const promptTenders = tenders.filter((t, i) => t.method === "mpesa" && !isMpesaCode(t.reference) && pay.amounts[i] > 0);
+  const needsPrompt = promptTenders.length > 0;
+  const promptAmount = tenders.reduce((a, t, i) => a + (promptTenders.includes(t) ? pay.amounts[i] : 0), 0);
+  const paymentProblem = !online && !allCash ? "Offline: only cash can be taken."
+    : pay.overCharged ? "M-Pesa, card and bank add up to more than the total."
+    : tenders.some((t) => t.method === "mpesa" && t.reference.trim() && !isMpesaCode(t.reference)) ? "An M-Pesa code is 10 letters and numbers, e.g. SGH7K2LMQP."
+    : promptTenders.some((t) => t.phone.replace(/\D/g, "").length < 9) ? "Enter the customer's M-Pesa number, or the M-Pesa code if they already paid."
+    : null;
+  const canCharge = priced.length > 0 && !pending && allConfirmed && pay.balance === 0 && !paymentProblem;
   const conflicts = queue.filter((s) => s.status === "conflict").length;
   const waiting = queue.filter((s) => s.status === "pending").length;
   const chips = categories.slice(0, VISIBLE_CHIPS);
@@ -445,7 +483,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
         </section>
 
         {/* Sale */}
-        <section className="h-fit space-y-4 rounded-2xl border border-line bg-white p-4 xl:sticky xl:top-20">
+        <section className="h-fit space-y-4 rounded-2xl border border-line bg-white p-4 xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
           <div>
             <div className="mb-2 flex items-center justify-between"><p className="font-semibold">Customer</p>
               <a href="/admin/customers/new" target="_blank" className="text-sm font-semibold text-brand-700">New Customer ›</a></div>
@@ -528,36 +566,17 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
               <dd className={cx("text-3xl font-extrabold text-brand-600 transition-opacity", allConfirmed ? "" : "opacity-60")}>{kes(total)}</dd></div>
           </dl>
 
-          <div>
-            <p className="mb-2 font-semibold">Payment Method</p>
-            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Payment method">
-              {([["mpesa", Smartphone], ["cash", Banknote], ["card", CreditCard]] as const).map(([m, Icon]) => {
-                const disabled = !online && m !== "cash";
-                return (
-                  <button key={m} role="radio" aria-checked={effectiveMethod === m} disabled={disabled} onClick={() => { setMethod(m); setMpesaPrompt(false); }}
-                    title={disabled ? "Needs a connection" : undefined}
-                    className={cx("flex flex-col items-center gap-1 rounded-xl border py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40",
-                      effectiveMethod === m ? "border-brand-600 bg-brand-50 text-brand-700" : "border-line hover:border-brand-200")}>
-                    <Icon className="size-6" strokeWidth={1.7} /> {PAYMENT_LABEL[m]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {effectiveMethod === "mpesa" && <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} placeholder="Customer M-Pesa number" inputMode="tel" aria-label="M-Pesa phone" />}
-          {effectiveMethod === "cash" && (
-            <div className="flex items-center gap-3">
-              <input value={tendered} onChange={(e) => setTendered(e.target.value.replace(/[^\d]/g, ""))} className={inputClass} placeholder="Cash received (KES)" inputMode="numeric" aria-label="Cash received" />
-              <span className="whitespace-nowrap text-[15px]">Change <strong>{kes(change)}</strong></span>
-            </div>
+          <PaymentPanel tenders={tenders} pay={pay} online={online} total={total} hasItems={priced.length > 0}
+            onUpdate={updateTender} onAdd={addTender} onRemove={removeTender} />
+          {mpesaSent && needsPrompt && (
+            <p className="rounded-xl bg-mint-bg p-3 text-sm text-mint-fg">M-Pesa request sent to <strong>{promptTenders.map((t) => maskPhone(t.phone)).join(", ")}</strong> for <strong>{kes(promptAmount)}</strong>. Ask the customer to enter their PIN.</p>
           )}
-          {mpesaPrompt && (
-            <p className="rounded-xl bg-mint-bg p-3 text-sm text-mint-fg">M-Pesa request sent to <strong>{maskPhone(phone)}</strong> for <strong>{kes(total)}</strong>. Ask the customer to enter their PIN.</p>
-          )}
+          {priced.length > 0 && paymentProblem && <p className="text-sm text-amber-fg">{paymentProblem}</p>}
           {error && <p className="rounded-xl bg-rose-bg px-3 py-2 text-sm text-rose-fg" role="alert">{error}</p>}
           <Button size="lg" className="w-full text-lg" disabled={!canCharge} onClick={charge}>
-            {pending ? "Completing…" : !online ? `Complete Cash Sale (offline) – ${kes(total)}`
-              : method === "mpesa" && mpesaPrompt ? "Simulate M-Pesa Payment & Complete" : method === "mpesa" ? `Send M-Pesa Request – ${kes(total)}` : `Complete Sale – ${kes(total)}`}
+            {pending ? "Completing…" : pay.balance > 0 && priced.length ? `${kes(pay.balance)} still to pay`
+              : !online ? `Complete Cash Sale (offline) – ${kes(total)}`
+              : needsPrompt && mpesaSent ? "Simulate M-Pesa Payment & Complete" : needsPrompt ? `Send M-Pesa Request – ${kes(promptAmount)}` : `Complete Sale – ${kes(total)}`}
           </Button>
           {!allConfirmed && priced.length > 0 && <p className="-mt-2 text-center text-xs text-ink-muted">Confirming prices and stock…</p>}
           <div className="grid grid-cols-2 gap-2">
@@ -579,7 +598,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
                 {recentSales.map((s) => (
                   <li key={s.id}><Link href={`/admin/orders/${s.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:bg-surface">
                     <span><span className="font-semibold text-brand-700">{s.number}</span> <Badge tone={channelMeta(s.channel).tone}>{channelMeta(s.channel).label}</Badge>
-                      <span className="block text-sm text-ink-muted">{s.customer} · {formatDateTime(s.at)}{s.method ? ` · ${PAYMENT_LABEL[s.method as PaymentMethod] ?? s.method}` : ""}</span></span>
+                      <span className="block text-sm text-ink-muted">{s.customer} · {formatDateTime(s.at)}{s.methods.length ? ` · ${s.methods.map((m) => PAYMENT_LABEL[m as PosPaymentMethod] ?? m).join(" + ")}` : ""}</span></span>
                     <span className="font-bold">{kes(s.total)}</span></Link></li>
                 ))}
                 {!recentSales.length && <li className="py-6 text-center text-ink-muted">No till sales yet.</li>}
@@ -634,6 +653,83 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   );
 }
 
+function PaymentPanel({ tenders, pay, online, total, hasItems, onUpdate, onAdd, onRemove }: {
+  tenders: Tender[]; pay: ReturnType<typeof settle>; online: boolean; total: number; hasItems: boolean;
+  onUpdate: (id: string, patch: Partial<Tender>) => void; onAdd: (m: PosPaymentMethod) => void; onRemove: (id: string) => void;
+}) {
+  const split = tenders.length > 1;
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="font-semibold">Payment</p>
+        {!split && online && hasItems && <button onClick={() => onAdd(tenders[0].method === "cash" ? "mpesa" : "cash")} className="text-sm font-semibold text-brand-700">Split payment</button>}
+      </div>
+      <ul className="space-y-3">
+        {tenders.map((t, i) => (
+          <li key={t.id} className={cx("space-y-2", split && "rounded-xl border border-line p-3")}>
+            {split && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold">Payment {i + 1}{t.amount === "" && t.method !== "cash" ? " · balance" : ""}</span>
+                <span className="flex items-center gap-2"><strong>{kes(pay.amounts[i])}</strong>
+                  <button onClick={() => onRemove(t.id)} aria-label={`Remove payment ${i + 1}`} className="text-rose-fg"><X className="size-4" /></button></span>
+              </div>
+            )}
+            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={`Payment ${i + 1} method`}>
+              {METHODS.map(([m, Icon]) => {
+                const disabled = !online && m !== "cash";
+                return (
+                  <button key={m} role="radio" aria-checked={t.method === m} disabled={disabled} onClick={() => onUpdate(t.id, { method: m, reference: "" })}
+                    title={disabled ? "Needs a connection" : undefined}
+                    className={cx("flex flex-col items-center gap-1 rounded-xl border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40", split ? "py-2" : "py-3",
+                      t.method === m ? "border-brand-600 bg-brand-50 text-brand-700" : "border-line hover:border-brand-200")}>
+                    <Icon className={split ? "size-5" : "size-6"} strokeWidth={1.7} /> {SHORT_LABEL[m]}
+                  </button>
+                );
+              })}
+            </div>
+            {(t.method === "cash" || split) && (
+              <input value={t.amount} onChange={(e) => onUpdate(t.id, { amount: e.target.value.replace(/[^\d]/g, "") })} className={inputClass} inputMode="numeric"
+                placeholder={t.method === "cash" ? "Cash received (KES)" : `Amount (KES), blank = balance ${kes(pay.amounts[i])}`}
+                aria-label={t.method === "cash" ? `Cash received, payment ${i + 1}` : `Amount, payment ${i + 1}`} />
+            )}
+            {t.method === "mpesa" && (
+              <div className="grid grid-cols-2 gap-2">
+                <input value={t.phone} onChange={(e) => onUpdate(t.id, { phone: e.target.value })} className={inputClass} placeholder="Customer M-Pesa number"
+                  inputMode="tel" aria-label="M-Pesa phone" disabled={isMpesaCode(t.reference)} />
+                <input value={t.reference} onChange={(e) => onUpdate(t.id, { reference: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12) })}
+                  className={cx(inputClass, "font-mono")} placeholder="or M-Pesa code" aria-label="M-Pesa code, if the customer already paid" />
+              </div>
+            )}
+            {(t.method === "card" || t.method === "bank_transfer") && (
+              <input value={t.reference} onChange={(e) => onUpdate(t.id, { reference: e.target.value.slice(0, 40) })} className={inputClass}
+                placeholder={t.method === "card" ? "Card approval code (optional)" : "Bank reference (optional)"} aria-label={`${SHORT_LABEL[t.method]} reference`} />
+            )}
+          </li>
+        ))}
+      </ul>
+      {hasItems && (split || pay.cash > 0) && (
+        <div className="mt-3 space-y-2 rounded-xl bg-surface px-3 py-2.5 text-[15px]">
+          <div className="flex justify-between"><span>Paid</span><span>{kes(pay.paid)} of {kes(total)}</span></div>
+          {pay.balance > 0 ? <div className="flex justify-between font-bold text-rose-fg"><span>Balance</span><span>{kes(pay.balance)}</span></div>
+            : <div className="flex justify-between font-bold"><span>Change</span><span>{kes(pay.change)}</span></div>}
+          {pay.balance > 0 && tenders.length < MAX_TENDERS && (
+            <div>
+              <p className="mb-1.5 text-sm text-ink-muted">Pay the {kes(pay.balance)} balance by:</p>
+              <div className="grid grid-cols-4 gap-2">
+                {METHODS.filter(([m]) => online || m === "cash").map(([m, Icon]) => (
+                  <button key={m} onClick={() => onAdd(m)} className="flex flex-col items-center gap-1 rounded-xl border border-line bg-white py-2 text-xs font-semibold hover:border-brand-200">
+                    <Icon className="size-5" strokeWidth={1.7} /> {SHORT_LABEL[m]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ManualProduct({ items, onAdd }: { items: PosItem[]; onAdd: (item: PosItem, qty: number) => void }) {
   const [sku, setSku] = useState("");
   const [qty, setQty] = useState("1");
@@ -652,7 +748,9 @@ function ReceiptDialog({ receipt, store, threshold, onNewSale, onClose }: { rece
   const [to, setTo] = useState(receipt.customer?.phone ?? "");
   const text = [`${store.name} – Receipt ${receipt.number}`, receipt.at,
     ...receipt.lines.map((l) => `${l.quantity} x ${l.name} @ ${kes(l.unitPrice)} = ${kes(l.lineTotal)}`),
-    receipt.discount ? `Discount: -${kes(receipt.discount)}` : "", `Total: ${kes(receipt.total)} (${PAYMENT_LABEL[receipt.method]})`, "Thank you for shopping with Sparkle!"]
+    receipt.discount ? `Discount: -${kes(receipt.discount)}` : "", `Total: ${kes(receipt.total)}`,
+    `Paid: ${receipt.payments.map((p) => `${PAYMENT_LABEL[p.method]} ${kes(p.amount)}`).join(" + ")}`,
+    receipt.change > 0 ? `Cash ${kes(receipt.cashReceived)}, change ${kes(receipt.change)}` : "", "Thank you for shopping with Sparkle!"]
     .filter(Boolean).join("\n");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4" role="dialog" aria-modal="true" aria-label="Receipt">
@@ -678,8 +776,10 @@ function ReceiptDialog({ receipt, store, threshold, onNewSale, onClose }: { rece
           <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(receipt.subtotal)}</dd></div>
           {receipt.discount > 0 && <div className="flex justify-between"><dt>Discount</dt><dd>-{kes(receipt.discount)}</dd></div>}
           <div className="flex justify-between text-base font-bold"><dt>Total</dt><dd>{kes(receipt.total)}</dd></div>
-          <div className="flex justify-between"><dt>Paid by {PAYMENT_LABEL[receipt.method]}</dt><dd className="font-mono text-xs">{receipt.reference}</dd></div>
-          {receipt.method === "cash" && receipt.tendered !== undefined && <div className="flex justify-between"><dt>Cash / Change</dt><dd>{kes(receipt.tendered)} / {kes(receipt.change)}</dd></div>}
+          {receipt.payments.map((p, i) => (
+            <div key={i} className="flex justify-between gap-3"><dt>{PAYMENT_LABEL[p.method]} <span className="font-mono text-xs text-ink-muted">{p.reference}</span></dt><dd>{kes(p.amount)}</dd></div>
+          ))}
+          {receipt.change > 0 && <div className="flex justify-between"><dt>Cash received / Change</dt><dd>{kes(receipt.cashReceived)} / {kes(receipt.change)}</dd></div>}
           {receipt.customer && !receipt.customer.business && !receipt.offline && <div className="flex justify-between"><dt>Points earned</dt><dd>+{Math.floor(receipt.total / 100)}</dd></div>}
         </dl>
         <p className="mt-4 text-center text-sm text-ink-muted">Thank you for shopping with Sparkle!</p>
