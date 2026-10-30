@@ -15,6 +15,18 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Switch to Nicholas's SVG logo and favicon
+- PR: (this PR, branch `claude/svg-logo`)
+- Changed:
+  - The logo is now `public/brand/sparkle-logo.svg`, an unchanged copy of `td2/Sparkle_Beauty_Logo.svg`. The trimmed PNG was removed.
+  - The favicon is now `app/icon.svg` plus `app/favicon.ico`, unchanged copies of Nicholas's files. `app/icon.png` was removed; `app/apple-icon.png` stays for iPhones.
+- Why: Nicholas asked to use his SVG and ICO files.
+- Tested:
+  - `tsc` passes.
+  - Local browser: the header logo renders.
+  - `/favicon.ico`, `/icon.svg` and `/brand/sparkle-logo.svg` return 200 and are linked in the page head.
+- Follow-ups: none.
+
 ## 2026-10-30: Claude: Official logo and favicon
 - PR: (this PR, branch `claude/brand-logo`)
 - Changed:

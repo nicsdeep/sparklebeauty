@@ -61,11 +61,12 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 
 ## Brand assets
 
-- **Logo:** `public/brand/sparkle-logo.png` (424×360), shown by `components/logo.tsx` in the header, footer, login and admin. It is the official logo, `td2/Sparkle_Beauty_Logo_Original_Clear.png`, trimmed to its edges and resized; colours and shapes are unchanged.
-  - `td2/Sparkle_Beauty_Logo.svg` is a traced version with visibly faceted curves, so it isn't used.
-- **Favicon:** `app/icon.png` (512×512) and `app/apple-icon.png` (180×180), made from `td2/Sparkle_Beauty_Favicon.png`.
-- **Logo colours:** pink about `#FB0982`, blue about `#02ADF9`. The design token `--color-logo-blue` (`#0aa8f2`) matches the logo's blue.
-- **Admin design reference:** `td2/admin design.png`, supplied by Nicholas.
+Nicholas chose the SVG files (2026-10-30). Use them unchanged.
+- **Logo:** `public/brand/sparkle-logo.svg`, a copy of `td2/Sparkle_Beauty_Logo.svg`. `components/logo.tsx` shows it in the header, footer, login and admin.
+- **Favicon:** `app/icon.svg` (from `td2/Sparkle_Beauty_Favicon.svg`) and `app/favicon.ico` (from `td2/Sparkle_Beauty_Favicon.ico`, 6 sizes).
+- **Phone home-screen icon:** `app/apple-icon.png` (180×180, from `td2/Sparkle_Beauty_Favicon.png`). iPhones need a PNG here.
+- **Logo colours:** pink `#FB0982`, blue `#16AEF7`. The design token `--color-logo-blue` is `#0aa8f2`.
+- **Other originals in `td2/`:** `Sparkle_Beauty_Logo_Original_Clear.png`, `Sparkle_Beauty_Favicon.png`, and the admin design reference `admin design.png`.
 
 ## Stack
 
