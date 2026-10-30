@@ -15,6 +15,40 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Edit products, upload photos, customer sign-in
+- PR: (this PR, branch `claude/product-edit-photos-login`)
+- Changed:
+  - **Edit Product** (`/admin/products/[id]/edit`), with a form shared with Add Product (`app/admin/products/product-form.tsx`, which replaces `new/product-form.tsx`):
+    - details, visibility in the shop, featured;
+    - photos;
+    - options: prices, SKU and reorder level; hide or show; add new options with opening stock. Current stock is shown, linking to Inventory;
+    - benefits, how to use and ingredients.
+  - The product list links to Edit and shows hidden products. `listProducts({ includeHidden })` and `Product.is_active` are new.
+  - **Photo upload:** `components/admin/photo-manager.tsx` uploads several photos from the device, resized to 1600px JPEG in the browser. It also accepts pasted links, reordering (first = main) and removal. Uploads go through `lib/supabase/client.ts`, a new browser client using the existing `@supabase/ssr`. `updateProduct` deletes removed bucket files after a successful save.
+  - **Customer sign-in:**
+    - "Online access" card on each customer page (`online-access.tsx`): staff set the email and a temporary password;
+    - "Change password" card on My Account (`change-password.tsx`, `changePassword` action): checks the current password first.
+  - The customer page no longer shows an empty Email link or button for customers without an email.
+  - Migration `20261031150000_product_edit_photos_customer_login.sql`.
+- Why: Nicholas asked to close the three gaps left by the create forms (no editing, link-only photos, staff-added customers can't sign in) now rather than leave them pending.
+- Tested:
+  - **On the live database, in blocks that rolled back** (afterwards, no bucket, functions, policies or test customer were left, and Temple Curl was unchanged):
+    - editing Temple Curl: renamed, slug unchanged, two photos, price change, a new colour option with 4 in stock and an opening-stock movement;
+    - rejected: leaving out an option, hiding all options, a non-http photo link, a duplicate SKU;
+    - a staff-set login: email confirmed, the password hash checks out, an email identity is created;
+    - refused: a staff account as target, a duplicate email, a short password;
+    - storage: the admin can upload, a customer can't;
+    - a customer can't edit products or set logins;
+    - creating a product with two photos, a single `image_url` (still accepted) and no photo; a bad link rejected.
+  - **Bugs the tests caught and I fixed:** the "all options included" check also counted options being added; and saving a single-option product would have wiped its size or colour detail.
+  - `tsc --noEmit` passes.
+  - **Local preview:**
+    - the edit page loads Temple Curl's real data, including 3 photos and 36 in stock;
+    - Grace's Online access card shows her email;
+    - Change password rejects mismatched passwords and a wrong current password without changing anything.
+  - Not tested before merge: uploading to the bucket and saving edits in the UI, which need the migration.
+- Follow-ups: an SMTP service for a self-service "forgot password".
+
 ## 2026-10-30: Claude: Admin dashboard to match the mockup, plus create forms for the quick actions
 - PR: (this PR, branch `claude/admin-dashboard`)
 - Changed:

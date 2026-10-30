@@ -26,6 +26,8 @@ export type Product = {
   rating: number;
   review_count: number;
   is_featured: boolean;
+  /** False when staff hid the product from the shop (only admin lists include these). */
+  is_active: boolean;
   created_at: string;
   /** First product photo, or null (the UI falls back to a category image). */
   image: string | null;
@@ -41,7 +43,7 @@ export type Product = {
 
 export type Category = { id: string; name: string; slug: string; description: string | null; parent_id: string | null; sort_order: number };
 
-const PRODUCT_SELECT = `id, name, slug, description, rating, review_count, is_featured, created_at, image_urls,
+const PRODUCT_SELECT = `id, name, slug, description, rating, review_count, is_featured, is_active, created_at, image_urls,
   benefits, how_to_use, ingredients,
   category:categories!inner(id, slug, name, parent:parent_id(slug)),
   brand:brands(name),
@@ -58,6 +60,7 @@ function toProduct(row: any): Product {
     rating: Number(row.rating),
     review_count: row.review_count,
     is_featured: row.is_featured,
+    is_active: row.is_active,
     created_at: row.created_at,
     image: row.image_urls?.[0] ?? null,
     images: row.image_urls ?? [],
@@ -93,11 +96,12 @@ export async function getCategories(): Promise<Category[]> {
   return (data ?? []) as Category[];
 }
 
-export type ProductFilters = { category?: string; q?: string; offers?: boolean; brand?: string; sort?: string; featured?: boolean; limit?: number };
+export type ProductFilters = { category?: string; q?: string; offers?: boolean; brand?: string; sort?: string; featured?: boolean; limit?: number; includeHidden?: boolean };
 
 export async function listProducts(filters: ProductFilters = {}): Promise<Product[]> {
   const supabase = await createClient();
-  let query = supabase.from("products").select(PRODUCT_SELECT).eq("is_active", true);
+  let query = supabase.from("products").select(PRODUCT_SELECT);
+  if (!filters.includeHidden) query = query.eq("is_active", true);
 
   if (filters.category) {
     const cats = await getCategories();

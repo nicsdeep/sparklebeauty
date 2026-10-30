@@ -218,20 +218,46 @@ export async function createCustomer(formData: FormData): Promise<ActionResult<{
   return { ok: true, data: { id: data as string } };
 }
 
-export type NewProductInput = {
+export type ProductInput = {
   product: {
-    name: string; category_slug: string; brand: string; description: string; image_url: string; is_featured: boolean;
+    name: string; category_slug: string; brand: string; description: string; images: string[]; is_featured: boolean; is_active: boolean;
     benefits: string[]; how_to_use: string; ingredients: string; option_type: string; hair_texture: string; hair_type: string;
   };
-  variants: { option: string; sku: string; retail: string; wholesale: string; stock: string; reorder_level: string }[];
+  variants: { id?: string; option: string; sku: string; retail: string; wholesale: string; stock: string; reorder_level: string; active: boolean }[];
 };
 
-export async function createProduct(input: NewProductInput): Promise<ActionResult<{ slug: string }>> {
+export async function createProduct(input: ProductInput): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_create_product", { p_product: input.product, p_variants: input.variants });
+  const { data: slug, error } = await supabase.rpc("admin_create_product", { p_product: input.product, p_variants: input.variants });
   if (error) return fail(error);
+  const { data } = await supabase.from("products").select("id").eq("slug", slug as string).single();
   revalidatePath("/", "layout");
-  return { ok: true, data: { slug: data as string } };
+  return { ok: true, data: { id: data!.id } };
+}
+
+const PHOTO_PREFIX = "/storage/v1/object/public/product-images/";
+
+/** Saves a product; afterwards deletes uploaded photos that were removed from it (only files in our bucket). */
+export async function updateProduct(id: string, input: ProductInput, previousPhotos: string[]): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_update_product", { p_id: id, p_product: input.product, p_variants: input.variants });
+  if (error) return fail(error);
+  const removed = previousPhotos.filter((u) => !input.product.images.includes(u) && u.startsWith(process.env.NEXT_PUBLIC_SUPABASE_URL + PHOTO_PREFIX))
+    .map((u) => decodeURIComponent(u.slice((process.env.NEXT_PUBLIC_SUPABASE_URL + PHOTO_PREFIX).length)));
+  if (removed.length) await supabase.storage.from("product-images").remove(removed);
+  revalidatePath("/", "layout");
+  return { ok: true, data: undefined };
+}
+
+/** Gives a customer online access: their email plus a temporary password that staff share privately. */
+export async function setCustomerLogin(customerId: string, formData: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_customer_login", {
+    p_customer_id: customerId, p_email: text(formData, "email"), p_password: String(formData.get("password") ?? ""),
+  });
+  if (error) return fail(error);
+  revalidatePath(`/admin/customers/${customerId}`);
+  return { ok: true, data: undefined };
 }
 
 export async function createPromotion(formData: FormData): Promise<ActionResult> {

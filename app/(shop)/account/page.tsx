@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatDateTime, kes } from "@/lib/format";
 import { markNotificationsRead, updatePreferences } from "../actions";
 import { signOut } from "@/app/login/actions";
+import { ChangePassword } from "./change-password";
 
 export const metadata: Metadata = { title: "My account" };
 
@@ -144,6 +145,7 @@ export default async function AccountPage() {
             <Button className="w-full">Save Preferences</Button>
           </form>
         </Card>
+        <ChangePassword />
       </div>
     </div>
   );

@@ -123,3 +123,20 @@ export async function submitReview(productId: string, slug: string, rating: numb
   revalidatePath(`/product/${slug}`);
   return { ok: true, data: undefined };
 }
+
+/** Changes the signed-in customer's password after checking the current one. */
+export async function changePassword(formData: FormData): Promise<ActionResult> {
+  const current = String(formData.get("current") ?? "");
+  const next = String(formData.get("next") ?? "");
+  if (next.length < 8) return { ok: false, error: "Choose a new password of at least 8 characters." };
+  if (next !== String(formData.get("confirm") ?? "")) return { ok: false, error: "The new passwords don't match." };
+  if (next === current) return { ok: false, error: "Choose a password different from the current one." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { ok: false, error: "Please sign in again." };
+  const check = await supabase.auth.signInWithPassword({ email: user.email, password: current });
+  if (check.error) return { ok: false, error: "Your current password is not correct." };
+  const { error } = await supabase.auth.updateUser({ password: next });
+  if (error) return fail(error);
+  return { ok: true, data: undefined };
+}
