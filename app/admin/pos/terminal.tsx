@@ -78,6 +78,10 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerOpen, setCustomerOpen] = useState(false);
   const [panel, setPanel] = useState<null | "recent" | "parked" | "manual" | "sync">(null);
+  // Below the lg breakpoint the sale panel is a drawer opened from the bar at the bottom.
+  const [cartOpen, setCartOpen] = useState(false);
+  const [added, setAdded] = useState<string | null>(null);
+  useEffect(() => { if (!added) return; const t = setTimeout(() => setAdded(null), 1800); return () => clearTimeout(t); }, [added]);
   const [recentIds, setRecentIds] = useState<string[]>([]);
   const [parked, setParked] = useState<ParkedSale[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -182,6 +186,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     setLines((prev) => (prev.some((l) => l.variantId === item.variantId)
       ? prev.map((l) => (l.variantId === item.variantId ? { ...l, qty: want } : l))
       : [...prev, { variantId: item.variantId, qty }]));
+    setAdded(`Added ${item.name}${item.variantName ? ` (${item.variantName})` : ""}`);
     setRecentIds((r) => {
       const next = [item.variantId, ...r.filter((x) => x !== item.variantId)].slice(0, 8);
       try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* ignore */ }
@@ -232,6 +237,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     setTenders([newTender(online ? "mpesa" : "cash")]); setConfirmed(null);
   }
   function newSale() {
+    setCartOpen(false);
     if (receipt) setLastReceipt(receipt);
     setReceipt(null);
     resetSale();
@@ -395,7 +401,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid grid-cols-1 gap-5 pb-20 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-0 xl:grid-cols-[minmax(0,1fr)_400px]">
         {/* Products */}
         <section className="min-w-0 space-y-4">
           <div className="flex flex-wrap gap-3">
@@ -427,7 +433,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
             {shown.map((i) => {
               const left = i.available - qtyOf(i.variantId);
               const one = breakFor(sheet?.[i.variantId], 1);
@@ -442,10 +448,13 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
                     {i.variantName && <p className="text-xs text-ink-muted">{i.variantName}</p>}
                     <p className="mt-auto text-lg font-bold text-brand-600">{kes(one?.unit_price ?? i.retail)}</p>
                     {bulk && <p className="text-xs text-teal-fg">{bulk.min_qty}+: {kes(bulk.unit_price)} each</p>}
-                    <span className={cx("self-start rounded-full px-2 py-0.5 text-xs font-semibold", left <= 0 ? "bg-rose-bg text-rose-fg" : i.low ? "bg-amber-bg text-amber-fg" : "bg-mint-bg text-mint-fg")}>
-                      {left <= 0 ? "Out of stock" : `${i.low ? "Low" : "In Stock"} (${left})`}{!online && " · last known"}
+                    <span className="flex flex-wrap gap-1">
+                      <span className={cx("rounded-full px-2 py-0.5 text-xs font-semibold", i.available <= 0 ? "bg-rose-bg text-rose-fg" : i.low ? "bg-amber-bg text-amber-fg" : "bg-mint-bg text-mint-fg")}>
+                        {i.available <= 0 ? "Out of stock" : `${i.low ? "Low" : "In Stock"} (${i.available})`}{!online && " · last known"}
+                      </span>
+                      {qtyOf(i.variantId) > 0 && <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">{qtyOf(i.variantId)} in cart</span>}
                     </span>
-                    <Button size="sm" className="mt-2 w-full" disabled={left <= 0} onClick={() => addItem(i)}><ShoppingCart className="size-4" /> Add</Button>
+                    <Button size="sm" className="mt-2 w-full" disabled={left <= 0} onClick={() => addItem(i)}><ShoppingCart className="size-4" /> {left <= 0 && i.available > 0 ? "All in cart" : "Add"}</Button>
                   </div>
                 </article>
               );
@@ -483,7 +492,14 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
         </section>
 
         {/* Sale */}
-        <section className="h-fit space-y-4 rounded-2xl border border-line bg-white p-4 xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
+        {cartOpen && <div className="fixed inset-0 z-40 bg-ink/40 lg:hidden" onClick={() => setCartOpen(false)} aria-hidden />}
+        <section aria-label="Current sale" className={cx("h-fit space-y-4 border border-line bg-white p-4",
+          "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:max-h-[92vh] max-lg:overflow-y-auto max-lg:rounded-t-3xl max-lg:shadow-2xl",
+          "lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:rounded-2xl", !cartOpen && "max-lg:hidden")}>
+          <div className="flex items-center justify-between lg:hidden">
+            <p className="text-lg font-bold">Current sale</p>
+            <button onClick={() => setCartOpen(false)} aria-label="Back to products" className="rounded-full p-2 hover:bg-surface"><X className="size-5" /></button>
+          </div>
           <div>
             <div className="mb-2 flex items-center justify-between"><p className="font-semibold">Customer</p>
               <a href="/admin/customers/new" target="_blank" className="text-sm font-semibold text-brand-700">New Customer ›</a></div>
@@ -580,8 +596,8 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
           </Button>
           {!allConfirmed && priced.length > 0 && <p className="-mt-2 text-center text-xs text-ink-muted">Confirming prices and stock…</p>}
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="ghost" className="border border-line" disabled={!lastReceipt} onClick={() => lastReceipt && setReceipt(lastReceipt)}><Printer className="size-4" /> Print Receipt</Button>
-            <Button variant="ghost" className="border border-line" disabled={!lastReceipt} onClick={() => lastReceipt && setReceipt(lastReceipt)}><Mail className="size-4" /> Send Receipt</Button>
+            <Button variant="ghost" className="border border-line" disabled={!lastReceipt} onClick={() => lastReceipt && setReceipt(lastReceipt)}><Printer className="size-4" /> Reprint Last Receipt</Button>
+            <Button variant="ghost" className="border border-line" disabled={!lastReceipt} onClick={() => lastReceipt && setReceipt(lastReceipt)}><Mail className="size-4" /> Resend Last Receipt</Button>
           </div>
         </section>
       </div>
@@ -645,6 +661,18 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {!cartOpen && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white p-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.2)] lg:hidden">
+          {(added || error) && <p className={cx("mb-2 rounded-xl px-3 py-1.5 text-sm font-medium", error ? "bg-rose-bg text-rose-fg" : "bg-mint-bg text-mint-fg")} role="status">{error ?? added}</p>}
+          <button onClick={() => setCartOpen(true)} className="flex w-full items-center gap-3 rounded-2xl bg-brand-600 px-4 py-3 text-left text-white">
+            <ShoppingCart className="size-6 shrink-0" />
+            <span className="flex-1"><span className="block font-bold">{units ? `${units} item${units === 1 ? "" : "s"} · ${kes(total)}` : "Cart is empty"}</span>
+              <span className="block text-sm text-white/85">{units ? "Review cart, choose payment and complete the sale" : "Tap Add on a product to start a sale"}</span></span>
+            <span className="rounded-full bg-white px-4 py-2 font-bold text-brand-700">{units ? "Pay" : "Open"}</span>
+          </button>
         </div>
       )}
 

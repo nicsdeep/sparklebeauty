@@ -15,6 +15,19 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: POS cart and payment always in view
+- PR: https://github.com/nicsdeep/sparklebeauty/pull/28 (branch `claude/pos-checkout-flow`)
+- Changed: `app/admin/pos/terminal.tsx`
+  - The cart and payment panel sits beside the products from 1024 px wide (was 1280 px). Below that it is a drawer opened from a bar fixed to the bottom of the screen, which shows the item count, total and a Pay button, plus "Added …" after each Add (or the error, e.g. not enough stock).
+  - Product cards show the real stock and a separate "N in cart" tag. Before, the stock number dropped on Add, which looked like stock was being taken before payment.
+  - The receipt buttons under Complete are labelled "Reprint/Resend Last Receipt".
+- Why: Nicholas reported that tapping Add reduced stock and nothing else happened, with no visible way to pay. On screens under 1280 px the cart was about 12,000 px down, below every product.
+- Tested (local preview, live database):
+  - At 1024×768 the cart is beside the products. Sale SPK-1066 (3 × Ballerina (Kids), KES 450) was completed with KES 100 cash + KES 350 card; the receipt lists both payments, and stock went from 36 to 33.
+  - At 768×1024 the bottom bar shows "Added …" and the total; one tap on Pay opens the cart with the payment options.
+  - `tsc --noEmit` passes.
+- Follow-ups: none.
+
 ## 2026-10-31: Claude: Search as you type, faster pages, one-click buttons
 - PR: (this PR, branch `claude/fast-search`)
 - Changed:
