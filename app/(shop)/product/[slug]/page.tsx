@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { ArrowRight, BadgeCheck, Check, ChevronRight, Sparkles, Star, Store, Truck } from "lucide-react";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { ProductGallery } from "@/components/shop/product-gallery";
-import { ProductGrid } from "@/components/shop/product-card";
+import { ProductMiniCard } from "@/components/shop/product-card";
 import { ProductTabs, type ProductTab } from "@/components/shop/product-tabs";
 import { ReviewForm } from "@/components/shop/review-form";
 import { ShareButton } from "@/components/shop/share-button";
@@ -149,7 +149,7 @@ export default async function ProductPage({ params }: Params) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-12">
+      <div className="grid grid-cols-1 gap-10 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] xl:gap-12">
         <section id="product-info" aria-label="Product information" className="scroll-mt-28">
           <ProductTabs tabs={tabs} />
         </section>
@@ -159,7 +159,10 @@ export default async function ProductPage({ params }: Params) {
               <h2 id="related-title" className="text-2xl font-bold tracking-tight">You May Also Like</h2>
               <Link href={`/shop?category=${product.category.slug}`} className="flex items-center gap-1 font-semibold text-brand-700">View All <ArrowRight className="size-4" /></Link>
             </div>
-            <ProductGrid products={related} stock={stock} wishlist={wishlist} columns={2} />
+            {/* Compact cards, one row of four: beside the tabs on wide screens (same height), below them otherwise. */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {related.map((p) => <ProductMiniCard key={p.id} product={p} stock={stock} wishlisted={wishlist.includes(p.id)} />)}
+            </div>
           </section>
         )}
       </div>

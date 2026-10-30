@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Balanced "You May Also Like" beside the product tabs
+- PR: (this PR, branch `claude/related-compact`)
+- Changed:
+  - New `ProductMiniCard` in `components/shop/product-card.tsx`: photo, wishlist heart, brand, name, price and a round cart icon.
+  - `QuickAdd` gets a `compact` icon mode (`card-actions.tsx`).
+  - The product page shows related products as one row of four mini cards.
+    - On screens 1280px and wider, they sit beside the tabs, and the tabs card stretches to the same height.
+    - Below that, they go under the tabs, full width.
+  - Removed the now-unused `ProductGrid columns={2}` option.
+- Why: Nicholas pointed out the large white gap under the short tabs card, beside a tall 2×2 grid of full-size cards.
+- Tested: local preview at 1400px, 1100px and 375px.
+  - At 1400px: tabs and cards are both 300px tall and top-aligned, and each price fits on one line.
+  - At 1100px: tabs span the full width, with four cards (254px each) below.
+  - At 375px: two cards across, no horizontal overflow.
+  - `tsc --noEmit` passes.
+- Follow-ups: none.
+
 ## 2026-10-31: Claude: Premium product page, product details and customer reviews
 - PR: (this PR, branch `claude/product-page`)
 - Changed:

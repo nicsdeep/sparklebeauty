@@ -19,7 +19,7 @@ export function ProductTabs({ tabs }: { tabs: ProductTab[] }) {
   }
 
   return (
-    <div className="rounded-3xl border border-line bg-white">
+    <div className="h-full rounded-3xl border border-line bg-white">
       <div className="flex overflow-x-auto border-b border-line px-2 sm:px-4" role="tablist" aria-label="Product information">
         {tabs.map((t, i) => (
           <button key={t.id} ref={(el) => { refs.current[t.id] = el; }} type="button" role="tab" id={`tab-${t.id}`}

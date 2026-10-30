@@ -69,19 +69,42 @@ export function ProductGrid({ products, stock, wishlist = [], columns = 4 }: {
   products: Product[];
   stock: Record<string, Stock>;
   wishlist?: string[];
-  /** 2 = a side panel: two across on large screens, four across on tablets. */
-  columns?: 2 | 4 | 6;
+  columns?: 4 | 6;
 }) {
-  const grid = {
-    2: "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-2",
-    4: "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4",
-    6: "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6",
-  };
   return (
-    <div className={grid[columns]}>
+    <div className={columns === 6 ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6" : "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"}>
       {products.map((p, i) => (
         <ProductCard key={p.id} product={p} stock={stock} wishlisted={wishlist.includes(p.id)} priority={i < 4} />
       ))}
     </div>
+  );
+}
+
+/** Small card for side panels such as "You May Also Like": photo, brand, name, price and a cart icon. */
+export function ProductMiniCard({ product, stock, wishlisted = false }: { product: Product; stock: Record<string, Stock>; wishlisted?: boolean }) {
+  const cheapest = product.variants[0];
+  const hasOptions = product.variants.length > 1;
+  const href = `/product/${product.slug}`;
+  return (
+    <article className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition hover:border-brand-200 hover:shadow-[0_8px_24px_-12px_rgba(208,35,122,0.25)]">
+      <div className="relative">
+        <Link href={href} aria-label={product.name} tabIndex={-1}>
+          <ProductImage category={product.category.slug} name={product.name} image={product.image} size="sm" className="rounded-none" />
+        </Link>
+        <WishlistHeart productId={product.id} slug={product.slug} initial={wishlisted} />
+      </div>
+      <div className="flex flex-1 flex-col p-3">
+        <span className="truncate text-[11px] font-bold uppercase tracking-wide text-ink-muted">{product.brand ?? product.category.name}</span>
+        <h3 className="mt-0.5 line-clamp-2 min-h-[2.5em] text-sm font-semibold leading-snug">
+          <Link href={href} className="hover:text-brand-700">{product.name}</Link>
+        </h3>
+        <div className="mt-auto flex items-center justify-between gap-1.5 pt-2">
+          <span className="whitespace-nowrap text-sm font-bold text-brand-600">{hasOptions && new Set(product.variants.map((v) => v.price)).size > 1 ? <span className="text-xs font-medium text-ink-muted">From </span> : null}{kes(cheapest.price)}</span>
+          <QuickAdd compact slug={product.slug} hasOptions={hasOptions} available={stock[cheapest.id]?.available ?? 0}
+            item={{ variantId: cheapest.id, slug: product.slug, name: product.name, variantName: hasOptions ? variantLabel(cheapest) : null,
+              category: product.category.slug, brand: product.brand, image: product.image, price: cheapest.price }} />
+        </div>
+      </div>
+    </article>
   );
 }
