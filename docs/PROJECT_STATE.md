@@ -143,7 +143,7 @@ Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded cu
 
   When the connection returns, it syncs them. `pos_complete_sale` returns an already-recorded `client_ref` instead of recording it twice, and refuses a sale that no longer fits the stock. Refused sales stay on the till as "needs attention" for a manager. They are never forced through.
 
-## Database (as of migration `20261031180000`)
+## Database (as of migration `20261031200000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -175,6 +175,7 @@ Migrations, in order:
     - redefines `place_order()` and `pos_complete_sale()`;
     - adds the realtime broadcast triggers and the staff policy on `realtime.messages`;
     - sets the wholesale threshold to 10, and `reset_demo()` keeps it at 10.
+18. `20261031200000_kids_demo_ratings.sql`: adds `demo_ratings()`, which gives the 8 Kids Collection products demo ratings (4.5–4.9) so no demo product is unrated. It never overwrites real reviews. `reset_demo()` now calls it after `demo_kids_collection()`.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -275,6 +276,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 - **Product photos:** staff upload them in Add/Edit Product. They're resized in the browser to 1600px JPEG and stored in the `product-images` bucket. Photos removed from a product are deleted from storage when it's saved. Photos uploaded and then abandoned without saving stay in the bucket. Ingredients are filled only where known (15 products): the key ingredients from the description or the product's known formula, or a perfume's notes. They are not full ingredient lists.
 - **No email password reset:** the project has no email (SMTP) service, so "forgot password" emails can't be sent. Staff use **Online access** on the customer page to set a temporary password, and the customer changes it in My Account → Change password. Adding SMTP in Supabase would allow a self-service reset.
 - **Admin colours:** the dashboard mockup uses purple for the Customers card and the "New Customer" action. These use teal instead, because purple is reserved for AI (`app/globals.css`).
+- **Products without reviews** (e.g. newly added by staff) show "New arrival" on product cards instead of empty stars, and "No reviews yet" on their page. Ratings are never invented for real products.
 - **Seeded ratings:** `products.rating` and `review_count` for the demo catalogue are demo numbers from `demo_seed()`, not real reviews. Written reviews start empty, and real ones are added on top of these counts.
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
