@@ -62,7 +62,8 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 ## Brand assets
 
 Nicholas chose the SVG files (2026-10-30). Use them unchanged.
-- **Logo:** `public/brand/sparkle-logo.svg`, a copy of `td2/Sparkle_Beauty_Logo.svg`. `components/logo.tsx` shows it in the header, footer, login and admin.
+- **Logo:** `public/brand/sparkle-logo.svg`, a clean vector redraw of the original (`td2/Sparkle_Beauty_Logo_Original_Clear.png`), made 2026-10-30 because the first SVG (`td2/Sparkle_Beauty_Logo.svg`, kept as the source file) was a rough straight-line trace that looked blurry. The mark is traced into smooth curves; the wordmark is set in Barlow ExtraBold (SIL Open Font License), each letter fitted to the original's letter box. Same design, colours and proportions. `components/logo.tsx` shows it in the header, login and admin.
+- **Footer logo:** `public/brand/sparkle-logo-footer.svg`, the same paths in rose `#E23D8F` and plum `#5B2150` (Nicholas asked for a different colourway in the footer). Use `<Logo tone="footer" />`.
 - **Favicon:** `app/icon.svg` (from `td2/Sparkle_Beauty_Favicon.svg`) and `app/favicon.ico` (from `td2/Sparkle_Beauty_Favicon.ico`, 6 sizes).
 - **Phone home-screen icon:** `app/apple-icon.png` (180×180, from `td2/Sparkle_Beauty_Favicon.png`). iPhones need a PNG here.
 - **Logo colours:** pink `#FB0982`, blue `#16AEF7`. The design token `--color-logo-blue` is `#0aa8f2`.

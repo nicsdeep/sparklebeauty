@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Clean vector logo, and a footer colourway
+- PR: (this PR, branch `claude/clean-logo`)
+- Changed:
+  - `public/brand/sparkle-logo.svg`: replaced the rough straight-line trace with a clean redraw of the original. The mark is traced from `td2/Sparkle_Beauty_Logo_Original_Clear.png` into smooth Bezier curves; the wordmark is Barlow ExtraBold converted to outlines, each letter fitted to its box in the original. Same colours (`#FB0982`, `#16AEF7`) and layout.
+  - `public/brand/sparkle-logo-footer.svg` (new): the same logo in rose `#E23D8F` and plum `#5B2150`.
+  - `components/logo.tsx`: new `tone` prop (`brand` or `footer`); the shop footer uses `tone="footer"`.
+  - Design system §2: the footer colourway is the one approved exception to "original colours".
+- Why: Nicholas said the logo looked blurry and asked for a super clean one, with the footer logo in different colours but the same design.
+- Tested:
+  - Overlaid the new wordmark on the original: letters line up.
+  - Rendered the mark at 2× zoom: smooth edges, no jagged corners.
+  - Local preview: header and footer load the new files (natural width 1313); both render sharply. `tsc --noEmit` passes.
+- Follow-ups: the favicon files were not changed.
+
 ## 2026-10-30: Claude: No unrated products in the demo catalogue
 - PR: (this PR, branch `claude/kids-ratings`)
 - Changed:

@@ -80,7 +80,7 @@ Used for:
 - Disabled controls
 - Less important text
 
-The Sparkle logo must remain unchanged and should always retain its original colors and proportions.
+The Sparkle logo must remain unchanged and should always retain its original colors and proportions. The one approved exception is the footer version (`public/brand/sparkle-logo-footer.svg`): the same design in rose `#E23D8F` and plum `#5B2150`.
 
 ---
 
