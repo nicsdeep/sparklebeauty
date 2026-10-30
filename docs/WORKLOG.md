@@ -15,6 +15,42 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Premium product page, product details and customer reviews
+- PR: (this PR, branch `claude/product-page`)
+- Changed:
+  - `app/(shop)/product/[slug]/page.tsx` is rebuilt to match Nicholas's approved mockup:
+    - breadcrumb and a Share button;
+    - a gallery with the brand/category line, a large name, rating and "100% Original Product";
+    - a large pink price with the mint stock badge, quantity, and Add to Cart (primary), with Buy Now and Wishlist (secondary);
+    - a details card (size, SKU and so on, plus the brand), three benefit cards, and a combined Delivery / Free Pickup card;
+    - tabs (Description, How to Use, Ingredients, Reviews) beside a 2×2 You May Also Like grid. Related products come from the same category, topped up from the parent department.
+  - New components:
+    - `product-gallery.tsx`: all `image_urls`, thumbnails, previous/next, swipe, dots and a full-screen view;
+    - `product-tabs.tsx`: accessible tabs with arrow-key navigation;
+    - `review-form.tsx`;
+    - `share-button.tsx`: the phone share sheet, or copies the link.
+  - `add-to-cart.tsx` is restyled. `ProductGrid` gets `columns={2}`.
+  - `lib/catalog.ts`: `Product` gets `images`, `benefits`, `how_to_use` and `ingredients`. New `getReviews()` and `reviewEligibility()`.
+  - New `submitReview` server action.
+  - Migration `20261031090000_product_details_and_reviews.sql` (see PROJECT_STATE, Database item 14).
+- Why: Nicholas asked for a premium product page with no fake, disconnected UI. Every tab and card reads real database fields and is hidden when empty. Reviews are a working feature, limited to verified buyers.
+- Tested:
+  - On the live database, inside a block that rolled back:
+    - all 74 products got details, 15 of them ingredients;
+    - a customer with a delivered order posted a review (shown as "Faith W.", count 234 → 235);
+    - a second review, and a review of an unbought product, were both rejected with clear messages;
+    - afterwards, no columns, table or functions were left behind.
+  - `tsc --noEmit` passes.
+  - Local preview at 1440px and 375px, using a temporary uncommitted stub for the new columns (the migration isn't applied before merge):
+    - the gallery's previous/next and thumbnails work, and arrows and thumbnails are hidden for single-photo products;
+    - the tabs switch;
+    - 4 related products show;
+    - nothing overflows on a phone.
+  - Not tested: posting a review through the UI, and the page with the real seeded details. Both need the migration applied; check them after merge.
+- Follow-ups:
+  - An admin product editor for the new fields.
+  - Marvel Junior still has no photo: none found online, and an AI image would misrepresent the pack.
+
 ## 2026-10-30: Claude: "Glow · Slay · Sparkle" homepage banner
 - PR: (this PR, branch `claude/glam-hero`)
 - Changed:

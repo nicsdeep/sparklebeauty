@@ -108,7 +108,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261030230000`)
+## Database (as of migration `20261031090000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -124,6 +124,11 @@ Migrations, in order:
 11. `20261030190000_hero_banners.sql`: adds the `hero_banners` table (anyone can read active banners; admins can write), seeded with the current banner.
 12. `20261030210000_kids_collection.sql`: adds `demo_kids_collection()` (idempotent, not callable from the API), which creates the Kids Braids category, the Angels brand and the 8 kids products with prices, stock and photos. `reset_demo()` now runs `demo_seed()`, `demo_images()`, then `demo_kids_collection()`.
 13. `20261030230000_glam_hero_focus.sql`: data only. Anchors the homepage banner image to its right edge for the new artwork.
+14. `20261031090000_product_details_and_reviews.sql`:
+    - adds `products.benefits` (text[]), `products.how_to_use` and `products.ingredients`;
+    - adds the `product_reviews` table: anyone can read, staff can delete, and customers write only through `submit_review()`;
+    - adds `submit_review()`, which requires a delivered or completed order containing the product, allows one review per customer, and updates `products.rating` and `review_count`;
+    - adds `demo_product_details()`, which fills the details for all 74 demo products. `reset_demo()` now also calls it.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -168,7 +173,8 @@ Business functions. All are `SECURITY DEFINER` and validate the caller and their
 | `admin_save_staff_user(email, name, phone, role, password)` | admin | Creates a work user with a temporary password, or updates an existing account's role, phone or password. Admins can't remove their own admin role |
 | `admin_set_user_active(user_id, active)` | admin | Deactivate (blocks sign-in and ends sessions) or reactivate a user. Not allowed on yourself |
 | `delivery_fee(method, delivery, amount)` | anyone | The delivery rule, read from `store_settings`. `deliveryFee()` in `lib/format.ts` mirrors it for the cart estimate |
-| `reset_demo()` | admin | Runs `demo_seed()`, `demo_images()` and `demo_kids_collection()` (none callable from the API) to restore the seeded state |
+| `reset_demo()` | admin | Runs `demo_seed()`, `demo_images()`, `demo_kids_collection()` and `demo_product_details()` (none callable from the API) to restore the seeded state |
+| `submit_review(product, rating, body)` | customer | Posts a review for a product from a delivered or completed order (one each) and updates the product's rating |
 | `get_variant_stock(uuid[])` | anyone | Storefront availability (`quantity_available`, `in_stock`, `low_stock`) |
 | `is_admin()` / `is_role_admin()` | signed-in | Staff-or-admin / admin-only checks used by policies |
 
@@ -205,7 +211,9 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 ## Known issues
 
 - **Product photos are demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list). Nicholas OK'd using the shop's Facebook photos; so far only the Kids Collection uses them.
-- **Kids Collection gaps:** Marvel Junior has no photo (it shows the category image), because no Sparkle post shows it. Sasha and Barbie use crops of the Angels brand poster that Sparkle posted, not pack shots. Extra photos are saved in `image_urls`, but the shop shows only the first. Kids products have a single variant (no colour options).
+- **Kids Collection gaps:** Marvel Junior has no photo (it shows the category image), because no Sparkle post shows it. Sasha and Barbie use crops of the Angels brand poster that Sparkle posted, not pack shots. Kids products have a single variant (no colour options). No photo of the Angels Marvel Junior pack could be found online either.
+- **Product details can't be edited in admin yet.** `benefits`, `how_to_use` and `ingredients` are seeded by `demo_product_details()`; there is no admin product editor. Ingredients are filled only where known (15 products): the key ingredients from the description or the product's known formula, or a perfume's notes. They are not full ingredient lists.
+- **Seeded ratings:** `products.rating` and `review_count` for the demo catalogue are demo numbers from `demo_seed()`, not real reviews. Written reviews start empty, and real ones are added on top of these counts.
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
 - **Work users are created directly in Supabase Auth by a database function:** this keeps the service-role key out of the app. There's no email invite or self-service password reset yet. Admins set a temporary password and share it privately.

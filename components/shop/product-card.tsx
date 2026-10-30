@@ -69,10 +69,16 @@ export function ProductGrid({ products, stock, wishlist = [], columns = 4 }: {
   products: Product[];
   stock: Record<string, Stock>;
   wishlist?: string[];
-  columns?: 4 | 6;
+  /** 2 = a side panel: two across on large screens, four across on tablets. */
+  columns?: 2 | 4 | 6;
 }) {
+  const grid = {
+    2: "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-2",
+    4: "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4",
+    6: "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6",
+  };
   return (
-    <div className={columns === 6 ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6" : "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"}>
+    <div className={grid[columns]}>
       {products.map((p, i) => (
         <ProductCard key={p.id} product={p} stock={stock} wishlisted={wishlist.includes(p.id)} priority={i < 4} />
       ))}

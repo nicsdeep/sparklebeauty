@@ -114,3 +114,12 @@ export async function updatePreferences(formData: FormData): Promise<void> {
   }).eq("id", user.id);
   revalidatePath("/account");
 }
+
+/** Saves a review; submit_review() checks the customer bought the product and updates its rating. */
+export async function submitReview(productId: string, slug: string, rating: number, body: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("submit_review", { p_product_id: productId, p_rating: rating, p_body: body });
+  if (error) return fail(error);
+  revalidatePath(`/product/${slug}`);
+  return { ok: true, data: undefined };
+}

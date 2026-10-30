@@ -29,6 +29,11 @@ export type Product = {
   created_at: string;
   /** First product photo, or null (the UI falls back to a category image). */
   image: string | null;
+  /** All product photos, in order (products.image_urls). */
+  images: string[];
+  benefits: string[];
+  how_to_use: string | null;
+  ingredients: string | null;
   category: { slug: string; name: string; parentSlug: string | null };
   brand: string | null;
   variants: Variant[];
@@ -37,6 +42,7 @@ export type Product = {
 export type Category = { id: string; name: string; slug: string; description: string | null; parent_id: string | null; sort_order: number };
 
 const PRODUCT_SELECT = `id, name, slug, description, rating, review_count, is_featured, created_at, image_urls,
+  benefits, how_to_use, ingredients,
   category:categories!inner(id, slug, name, parent:parent_id(slug)),
   brand:brands(name),
   product_variants(id, sku, name, color, shade, size, hair_length, hair_texture, hair_type, hair_style, is_active,
@@ -54,6 +60,10 @@ function toProduct(row: any): Product {
     is_featured: row.is_featured,
     created_at: row.created_at,
     image: row.image_urls?.[0] ?? null,
+    images: row.image_urls ?? [],
+    benefits: row.benefits ?? [],
+    how_to_use: row.how_to_use,
+    ingredients: row.ingredients,
     category: { slug: row.category.slug, name: row.category.name, parentSlug: row.category.parent?.slug ?? null },
     brand: row.brand?.name ?? null,
     variants: (row.product_variants ?? [])
@@ -115,6 +125,32 @@ export async function getProduct(slug: string): Promise<Product | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("products").select(PRODUCT_SELECT).eq("slug", slug).eq("is_active", true).maybeSingle();
   return data ? toProduct(data) : null;
+}
+
+export type Review = { id: string; reviewer_name: string; rating: number; body: string; created_at: string };
+
+/** Written reviews for a product, newest first. */
+export async function getReviews(productId: string): Promise<Review[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("product_reviews").select("id, reviewer_name, rating, body, created_at")
+    .eq("product_id", productId).order("created_at", { ascending: false }).limit(20);
+  return (data ?? []) as Review[];
+}
+
+/**
+ * Whether the signed-in customer may review the product: signed in, has a delivered or
+ * completed order containing it, and hasn't reviewed it yet (submit_review() enforces the same).
+ */
+export async function reviewEligibility(productId: string, userId: string | null): Promise<"signin" | "eligible" | "reviewed" | "not-bought"> {
+  if (!userId) return "signin";
+  const supabase = await createClient();
+  const [{ data: mine }, { data: bought }] = await Promise.all([
+    supabase.from("product_reviews").select("id").eq("product_id", productId).eq("customer_id", userId).maybeSingle(),
+    supabase.from("order_items").select("id, order:orders!inner(customer_id, status), variant:product_variants!inner(product_id)")
+      .eq("variant.product_id", productId).eq("order.customer_id", userId).in("order.status", ["delivered", "completed"]).limit(1),
+  ]);
+  if (mine) return "reviewed";
+  return bought?.length ? "eligible" : "not-bought";
 }
 
 /** Live availability (on hand minus reserved) for the given variants. */
