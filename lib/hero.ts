@@ -23,7 +23,7 @@ export const DEFAULT_HERO: HeroBanner = {
   id: null,
   image_url: "/brand/hero-banner.jpg",
   image_alt: "Woman with long, glossy black hair surrounded by pink flowers, lipsticks, perfume and makeup",
-  image_focus: "72% center",
+  image_focus: "100% center",
   eyebrow: "Premium Beauty Products",
   title: "Look good, feel good,",
   title_accent: "be you.",

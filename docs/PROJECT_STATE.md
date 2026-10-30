@@ -67,7 +67,7 @@ Nicholas chose the SVG files (2026-10-30). Use them unchanged.
 - **Phone home-screen icon:** `app/apple-icon.png` (180×180, from `td2/Sparkle_Beauty_Favicon.png`). iPhones need a PNG here.
 - **Logo colours:** pink `#FB0982`, blue `#16AEF7`. The design token `--color-logo-blue` is `#0aa8f2`.
 - **Homepage hero (two layers):**
-  - The background artwork is image only: no logo or text baked in. It's `public/brand/hero-banner.jpg` (2048×768) plus `hero-banner-1024.jpg` for phones, both made from `td2/banner to be used.png`.
+  - The background artwork is image only: no logo or text baked in. It's `public/brand/hero-banner.jpg` (1880×773) plus `hero-banner-1024.jpg` for phones. Both are cut from the right side of Nicholas's "Glow · Slay · Sparkle" design (`td2/Sparkle Glam Banner (full design).webp`). The baked-in text, buttons, slider arrows and dots were removed, and the left side was replaced with the design's plain pink. The image is anchored to its right edge (`image_focus` `100% center`).
   - The logo, copy, buttons and trust line are rendered on top by `components/shop/hero.tsx`.
   - Both layers come from the `hero_banners` table, edited in Admin → Settings → Homepage banner. To swap the artwork, change the image only.
   - `td2/Sparkle Beauty Pink Glamour Banner.png` is Nicholas's flattened mockup of the intended look. It's a reference only; don't use it as the background.
@@ -108,7 +108,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261030210000`)
+## Database (as of migration `20261030230000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -123,6 +123,7 @@ Migrations, in order:
 10. `20261030170000_social_links.sql`: adds `facebook_url` and `instagram_url` to `store_settings`.
 11. `20261030190000_hero_banners.sql`: adds the `hero_banners` table (anyone can read active banners; admins can write), seeded with the current banner.
 12. `20261030210000_kids_collection.sql`: adds `demo_kids_collection()` (idempotent, not callable from the API), which creates the Kids Braids category, the Angels brand and the 8 kids products with prices, stock and photos. `reset_demo()` now runs `demo_seed()`, `demo_images()`, then `demo_kids_collection()`.
+13. `20261030230000_glam_hero_focus.sql`: data only. Anchors the homepage banner image to its right edge for the new artwork.
 
 Tables in `public`, all with RLS on:
 - **People:**
