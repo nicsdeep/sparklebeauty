@@ -15,6 +15,26 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Kids Collection with real Facebook photos
+- PR: (this PR, branch `claude/kids-collection`)
+- Changed:
+  - Migration `20261030210000_kids_collection.sql`:
+    - adds `demo_kids_collection()`: Hair → Kids Braids category (`kids-braids`), the Angels brand, and 8 products (Songa Braid, Ballerina, Sasha, Shanilia, Temple Curl, Barbie, Marvel Junior, Tamasha);
+    - each product has one variant, retail and wholesale prices (equal, from Nicholas's list), 36 in stock (reorder level 12) and photos;
+    - `reset_demo()` now calls it, so the collection survives a demo reset.
+  - New `public/products/kids/`: 13 photos from Sparkle's own Facebook posts. Sasha and Barbie are cropped from the Angels poster Sparkle posted.
+  - Homepage category row gets a "Kids Braids" tile (`app/(shop)/page.tsx`, now 8 tiles), and `lib/images.ts` adds its category image.
+- Why: Nicholas gave the kids prices (retail = wholesale) and approved using Sparkle's Facebook photos.
+- Tested:
+  - On the live database, inside a block that rolled back: the migration, a second run (still 8 products and 8 variants), then `demo_seed()`, `demo_images()` and `demo_kids_collection()` again. All 8 products came back with the right prices for both tiers, stock and photo counts, under parent `hair`. Afterwards, no category, products, brand or function were left behind.
+  - `tsc --noEmit` passes.
+  - In the local preview, the homepage Kids Braids tile shows the poster and links to `/shop?category=kids-braids`.
+  - Not tested: the product pages, which need the migration applied first.
+- Follow-ups:
+  - Apply the migration after merge (`supabase db push --linked`).
+  - Marvel Junior needs a photo.
+  - Product pages could show the extra photos as a gallery.
+
 ## 2026-10-30: Claude: Two-layer homepage hero, editable in admin
 - PR: (this PR, branch `claude/hero-banner`)
 - Changed:

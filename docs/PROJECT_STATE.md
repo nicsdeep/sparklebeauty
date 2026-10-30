@@ -16,7 +16,7 @@ As of 2026-10-30:
 - **Social:** facebook.com/Sparklebeautyandcosmetics (about 85K followers, 100% recommended from 11 reviews) and instagram.com/sparkle_beautyand
 - **Map:** the contact page embeds the shop's own Google Maps listing
 - **Sells:** hair extensions, braids, weaves, crochets and general cosmetics, wholesale and retail. Supplies hair from Angels, Darling, Lush, Sista and Olivia (per Facebook).
-- **Kids Collection (wholesale prices, from Nicholas's list and Facebook posts):** Songa Braid 145, Ballerina 150, Sasha 185, Shanilia 170, Temple Curl 195. Barbie, Marvel Junior and Tamasha prices are unclear, and retail prices are unknown, so they aren't in the catalogue yet.
+- **Kids Collection (Angels "Little Angels" kids braids):** in the catalogue under Hair → Kids Braids (`kids-braids`). Prices in KES, retail = wholesale (Nicholas confirmed): Songa Braid 145, Ballerina 150, Shanilia 170, Sasha 185, Temple Curl 195, Marvel Junior 235, Barbie 250, Tamasha 305. Photos are from Sparkle's own Facebook posts, saved in `public/products/kids/`.
 - **Not the same business:** "Sparkle Kids Baby Shop" (baby clothes, 0723 554 989) shows up in Facebook searches. It is unrelated.
 - **Delivery pricing:** set in Admin → Settings. Currently Nairobi KES 300, rest of Kenya KES 500, free over KES 10,000, and **free to Nairobi CBD** (free-delivery area "CBD"), as the shop's Facebook posts state.
 
@@ -108,7 +108,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261030190000`)
+## Database (as of migration `20261030210000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -122,6 +122,7 @@ Migrations, in order:
 9. `20261030150000_store_settings_and_staff.sql`: adds the `store_settings` table (readable by everyone, editable by admins), `delivery_fee()` (now used by `place_order()`), and the admin user functions.
 10. `20261030170000_social_links.sql`: adds `facebook_url` and `instagram_url` to `store_settings`.
 11. `20261030190000_hero_banners.sql`: adds the `hero_banners` table (anyone can read active banners; admins can write), seeded with the current banner.
+12. `20261030210000_kids_collection.sql`: adds `demo_kids_collection()` (idempotent, not callable from the API), which creates the Kids Braids category, the Angels brand and the 8 kids products with prices, stock and photos. `reset_demo()` now runs `demo_seed()`, `demo_images()`, then `demo_kids_collection()`.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -166,7 +167,7 @@ Business functions. All are `SECURITY DEFINER` and validate the caller and their
 | `admin_save_staff_user(email, name, phone, role, password)` | admin | Creates a work user with a temporary password, or updates an existing account's role, phone or password. Admins can't remove their own admin role |
 | `admin_set_user_active(user_id, active)` | admin | Deactivate (blocks sign-in and ends sessions) or reactivate a user. Not allowed on yourself |
 | `delivery_fee(method, delivery, amount)` | anyone | The delivery rule, read from `store_settings`. `deliveryFee()` in `lib/format.ts` mirrors it for the cart estimate |
-| `reset_demo()` | admin | Runs `demo_seed()` (not callable from the API) to restore the seeded state |
+| `reset_demo()` | admin | Runs `demo_seed()`, `demo_images()` and `demo_kids_collection()` (none callable from the API) to restore the seeded state |
 | `get_variant_stock(uuid[])` | anyone | Storefront availability (`quantity_available`, `in_stock`, `low_stock`) |
 | `is_admin()` / `is_role_admin()` | signed-in | Staff-or-admin / admin-only checks used by policies |
 
@@ -202,7 +203,8 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 ## Known issues
 
-- **Product photos are demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list). The shop's Facebook page has real photos, but they need Nicholas's OK before use.
+- **Product photos are demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list). Nicholas OK'd using the shop's Facebook photos; so far only the Kids Collection uses them.
+- **Kids Collection gaps:** Marvel Junior has no photo (it shows the category image), because no Sparkle post shows it. Sasha and Barbie use crops of the Angels brand poster that Sparkle posted, not pack shots. Extra photos are saved in `image_urls`, but the shop shows only the first. Kids products have a single variant (no colour options).
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
 - **Work users are created directly in Supabase Auth by a database function:** this keeps the service-role key out of the app. There's no email invite or self-service password reset yet. Admins set a temporary password and share it privately.
