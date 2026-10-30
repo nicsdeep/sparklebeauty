@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { UserPlus } from "lucide-react";
+import { Badge, ButtonLink, Card, PageHeader } from "@/components/ui";
 import { listCustomers } from "@/lib/customers";
 import { formatDate, kes } from "@/lib/format";
 
@@ -16,7 +17,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   return (
     <div>
       <PageHeader title="Customers" subtitle="Contact details, purchase history and loyalty in one place."
-        action={<form action="/admin/customers"><input name="q" defaultValue={sp.q} placeholder="Search name, phone or email" className="h-10 w-72 rounded-full border border-line bg-white px-4" aria-label="Search customers" /></form>} />
+        action={<div className="flex flex-wrap gap-2"><form action="/admin/customers"><input name="q" defaultValue={sp.q} placeholder="Search name, phone or email" className="h-10 w-72 max-w-full rounded-full border border-line bg-white px-4" aria-label="Search customers" /></form>
+          <ButtonLink href="/admin/customers/new" size="sm" className="h-10"><UserPlus className="size-4" /> New Customer</ButtonLink></div>} />
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[15px]">

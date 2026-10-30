@@ -1,40 +1,37 @@
-import Link from "next/link";
-import { ExternalLink, LogOut } from "lucide-react";
-import { AdminSidebar } from "@/components/admin/sidebar";
+import { AdminShell, type AdminAlert } from "@/components/admin/shell";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/login/actions";
+import { getStoreSettings } from "@/lib/store";
+import { telHref, whatsappHref } from "@/lib/store-types";
 
 export const metadata = { title: { default: "Admin", template: "%s · Sparkle Admin" } };
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireStaff();
   const supabase = await createClient();
-  const [{ count: newOrders }, { data: levels }] = await Promise.all([
+  const [{ count: newOrders }, { data: levels }, store] = await Promise.all([
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("inventory_levels").select("quantity, reserved, reorder_level"),
+    getStoreSettings(),
   ]);
-  const lowStock = (levels ?? []).filter((l) => l.quantity - l.reserved <= l.reorder_level).length;
+  const rows = levels ?? [];
+  const out = rows.filter((l) => l.quantity - l.reserved <= 0).length;
+  const low = rows.filter((l) => l.quantity - l.reserved > 0 && l.quantity - l.reserved <= l.reorder_level).length;
+
+  // The bell lists what needs someone's attention now; each line links to the list that resolves it.
+  const alerts: AdminAlert[] = [
+    ...(newOrders ? [{ text: `${plural(newOrders, "new order", "new orders")} to confirm`, href: "/admin/orders?tab=new", tone: "brand" as const }] : []),
+    ...(out ? [{ text: `${plural(out, "item is", "items are")} out of stock`, href: "/admin/inventory?filter=low", tone: "rose" as const }] : []),
+    ...(low ? [{ text: `${plural(low, "item is", "items are")} running low`, href: "/admin/inventory?filter=low", tone: "amber" as const }] : []),
+  ];
+  const support = store.whatsapp ? whatsappHref(store.whatsapp, "Hi, I need help with the Sparkle admin.") : store.phones[0] ? telHref(store.phones[0].number) : null;
 
   return (
-    <div className="min-h-screen bg-surface">
-      <AdminSidebar newOrders={newOrders ?? 0} lowStock={lowStock} />
-      <div className="lg:pl-64">
-        <header className="no-print sticky top-0 z-20 flex items-center justify-end gap-2 border-b border-line bg-white/95 px-4 py-3 backdrop-blur lg:px-8">
-          <div className="mr-auto lg:hidden" />
-          <Link href="/" className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold hover:bg-surface">
-            <ExternalLink className="size-4" /> View Store
-          </Link>
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-semibold">{profile.full_name}</p>
-            <p className="text-xs capitalize text-ink-muted">{profile.role}</p>
-          </div>
-          <form action={signOut}>
-            <button className="rounded-full p-2.5 hover:bg-surface" aria-label="Sign out"><LogOut className="size-5" /></button>
-          </form>
-        </header>
-        <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8">{children}</main>
-      </div>
-    </div>
+    <AdminShell user={{ name: profile.full_name || "Sparkle staff", role: profile.role }} newOrders={newOrders ?? 0}
+      lowStock={out + low} alerts={alerts} supportHref={support}>
+      {children}
+    </AdminShell>
   );
 }

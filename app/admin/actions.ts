@@ -199,3 +199,65 @@ export async function saveHeroBanner(formData: FormData): Promise<ActionResult> 
   revalidatePath("/", "layout");
   return { ok: true, data: undefined };
 }
+
+// Quick-action create flows ----------------------------------------------------------------
+
+export async function createCustomer(formData: FormData): Promise<ActionResult<{ id: string }>> {
+  const wholesale = formData.get("type") === "wholesale";
+  if (wholesale && !text(formData, "business_name")) return { ok: false, error: "Enter the business name for a wholesale customer." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_create_customer", {
+    p_full_name: text(formData, "full_name"),
+    p_phone: text(formData, "phone"),
+    p_email: text(formData, "email") || null,
+    p_business_name: wholesale ? text(formData, "business_name") || null : null,
+    p_business_location: wholesale ? text(formData, "business_location") || null : null,
+  });
+  if (error) return fail(error);
+  revalidatePath("/admin", "layout");
+  return { ok: true, data: { id: data as string } };
+}
+
+export type NewProductInput = {
+  product: {
+    name: string; category_slug: string; brand: string; description: string; image_url: string; is_featured: boolean;
+    benefits: string[]; how_to_use: string; ingredients: string; option_type: string; hair_texture: string; hair_type: string;
+  };
+  variants: { option: string; sku: string; retail: string; wholesale: string; stock: string; reorder_level: string }[];
+};
+
+export async function createProduct(input: NewProductInput): Promise<ActionResult<{ slug: string }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_create_product", { p_product: input.product, p_variants: input.variants });
+  if (error) return fail(error);
+  revalidatePath("/", "layout");
+  return { ok: true, data: { slug: data as string } };
+}
+
+export async function createPromotion(formData: FormData): Promise<ActionResult> {
+  const name = text(formData, "name");
+  const code = text(formData, "code").toUpperCase().replace(/\s+/g, "");
+  const type = formData.get("discount_type") === "fixed" ? "fixed" : "percentage";
+  const value = Number(formData.get("discount_value"));
+  const minimum = Number(formData.get("minimum_order_amount") || 0);
+  const starts = text(formData, "starts_at");
+  const ends = text(formData, "ends_at");
+  if (!name) return { ok: false, error: "Enter a name for the promotion." };
+  if (!/^[A-Z0-9]{3,20}$/.test(code)) return { ok: false, error: "The code needs 3 to 20 letters or numbers, e.g. SPARKLE10." };
+  if (!(value > 0) || (type === "percentage" && value > 90)) return { ok: false, error: type === "percentage" ? "Enter a discount between 1% and 90%." : "Enter a discount amount in KES." };
+  if (!(minimum >= 0)) return { ok: false, error: "The minimum order can't be negative." };
+  // Dates are entered as Nairobi calendar days: from the start of the first day to the end of the last.
+  const startsAt = starts ? new Date(`${starts}T00:00:00+03:00`) : new Date();
+  const endsAt = ends ? new Date(`${ends}T23:59:59+03:00`) : null;
+  if (endsAt && endsAt <= startsAt) return { ok: false, error: "The end date must be after the start date." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("promotions").insert({
+    name, code, description: text(formData, "description") || null, discount_type: type, discount_value: value,
+    minimum_order_amount: minimum, starts_at: startsAt.toISOString(), ends_at: endsAt?.toISOString() ?? null,
+    is_active: formData.get("is_active") === "on",
+  });
+  if (error) return error.code === "23505" ? { ok: false, error: `The code ${code} is already used by another promotion.` } : fail(error);
+  revalidatePath("/admin/promotions");
+  return { ok: true, data: undefined };
+}

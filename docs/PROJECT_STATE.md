@@ -50,7 +50,7 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 | `design/` | Written design system |
 | `td/`, `td2/` | Reference mockups (visual only) |
 | `app/(shop)/` | Customer website:<br>• home, shop, product and cart pages<br>• `checkout/` (5-step wizard)<br>• `order/[number]` (tracking)<br>• `account/`<br>• `contact/`<br>• `actions.ts` (server actions) |
-| `app/admin/` | Admin:<br>• dashboard<br>• orders, POS (`pos/terminal.tsx`)<br>• products, categories, inventory<br>• customers (CRM)<br>• retail, wholesale, promotions, loyalty<br>• reports, insights, settings (demo reset)<br>• `actions.ts` |
+| `app/admin/` | Admin, framed by `components/admin/shell.tsx`: a collapsible sidebar with badges and a support link, plus a top bar with search, View Store, an alerts bell and the user menu:<br>• dashboard (matches Nicholas's approved mockup)<br>• orders, POS (`pos/terminal.tsx`)<br>• products (+ `products/new`), categories, inventory<br>• customers (CRM, + `customers/new`)<br>• retail, wholesale, promotions (+ `promotions/new`), loyalty<br>• reports, insights, settings (demo reset)<br>• `search/` (orders, products, customers)<br>• `actions.ts` |
 | `app/login/` | Sign-in page with one-click demo accounts; `actions.ts` (sign in/out) |
 | `components/` | Shared UI:<br>• `ui.tsx`: buttons, badges, cards, `AiCard`<br>• `shop/`, `admin/`<br>• `order-timeline.tsx` |
 | `lib/` | `supabase/server.ts` (server client), plus:<br>• `store.ts`: `getStoreSettings()` reads `store_settings`<br>• `store-types.ts`: settings type, `telHref`, `whatsappHref`, `deliverySummary` (client-safe)<br>• `images.ts`: hero, category and fallback photos, plus `sized()` for Unsplash URLs<br>• `catalog.ts`: products, prices, stock<br>• `sales-data.ts`: orders and stock for reports<br>• `insights.ts`: rule-based AI<br>• `format.ts`: KES, dates, status labels, delivery fee<br>• `cart.tsx`, `checkout-state.ts`: client state<br>• `auth.ts`, `customers.ts` |
@@ -108,7 +108,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261031090000`, all applied to the live database)
+## Database (as of migration `20261031120000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -129,6 +129,7 @@ Migrations, in order:
     - adds the `product_reviews` table: anyone can read, staff can delete, and customers write only through `submit_review()`;
     - adds `submit_review()`, which requires a delivered or completed order containing the product, allows one review per customer, and updates `products.rating` and `review_count`;
     - adds `demo_product_details()`, which fills the details for all 74 demo products. `reset_demo()` now also calls it.
+15. `20261031120000_admin_create_customer_product.sql`: adds `admin_create_customer()` and `admin_create_product()` (see the function table) for the admin "New Customer" and "Add Product" forms.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -174,6 +175,8 @@ Business functions. All are `SECURITY DEFINER` and validate the caller and their
 | `admin_set_user_active(user_id, active)` | admin | Deactivate (blocks sign-in and ends sessions) or reactivate a user. Not allowed on yourself |
 | `delivery_fee(method, delivery, amount)` | anyone | The delivery rule, read from `store_settings`. `deliveryFee()` in `lib/format.ts` mirrors it for the cart estimate |
 | `reset_demo()` | admin | Runs `demo_seed()`, `demo_images()`, `demo_kids_collection()` and `demo_product_details()` (none callable from the API) to restore the seeded state |
+| `admin_create_customer(name, phone, email, business, location)` | staff | Adds a customer without a password (they can't sign in yet). Rejects a duplicate phone (0712… and +254712… count as the same) or email. An optional business name creates a wholesale account |
+| `admin_create_product(product jsonb, variants jsonb)` | staff | Adds a product with 1–20 options, retail and wholesale prices (wholesale ≤ retail) and opening stock, recorded as a `purchase` stock movement. Makes the slug, SKUs and a new brand if needed. Returns the slug |
 | `submit_review(product, rating, body)` | customer | Posts a review for a product from a delivered or completed order (one each) and updates the product's rating |
 | `get_variant_stock(uuid[])` | anyone | Storefront availability (`quantity_available`, `in_stock`, `low_stock`) |
 | `is_admin()` / `is_role_admin()` | signed-in | Staff-or-admin / admin-only checks used by policies |
@@ -212,7 +215,9 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 - **Product photos are demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list). Nicholas OK'd using the shop's Facebook photos; so far only the Kids Collection uses them.
 - **Kids Collection gaps:** Marvel Junior has no photo (it shows the category image), because no Sparkle post shows it. Sasha and Barbie use crops of the Angels brand poster that Sparkle posted, not pack shots. Kids products have a single variant (no colour options). No photo of the Angels Marvel Junior pack could be found online either.
-- **Product details can't be edited in admin yet.** `benefits`, `how_to_use` and `ingredients` are seeded by `demo_product_details()`; there is no admin product editor. Ingredients are filled only where known (15 products): the key ingredients from the description or the product's known formula, or a perfume's notes. They are not full ingredient lists.
+- **Products can be added but not edited in admin.** "Add Product" sets every field, including `benefits`, `how_to_use` and `ingredients`, but there is no edit form yet. Photos are a site path or https link, because there is no photo upload (no storage bucket) yet. Ingredients are filled only where known (15 products): the key ingredients from the description or the product's known formula, or a perfume's notes. They are not full ingredient lists.
+- **Customers added by staff can't sign in.** `admin_create_customer()` creates the account without a password, and there's no self-service password reset yet.
+- **Admin colours:** the dashboard mockup uses purple for the Customers card and the "New Customer" action. These use teal instead, because purple is reserved for AI (`app/globals.css`).
 - **Seeded ratings:** `products.rating` and `review_count` for the demo catalogue are demo numbers from `demo_seed()`, not real reviews. Written reviews start empty, and real ones are added on top of these counts.
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.

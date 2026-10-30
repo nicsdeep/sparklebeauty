@@ -15,6 +15,54 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Admin dashboard to match the mockup, plus create forms for the quick actions
+- PR: (this PR, branch `claude/admin-dashboard`)
+- Changed:
+  - New admin shell `components/admin/shell.tsx`, which replaces `sidebar.tsx`:
+    - large nav with pink active pill, an Orders badge (new orders) and an Inventory badge (low or out of stock);
+    - the sidebar collapses to icons on desktop and is a drawer on phones;
+    - "Need help? Contact support" opens the shop WhatsApp;
+    - top bar with search, View Store, an alerts bell and an initials avatar menu (View Store, Settings, Sign out).
+    The bell lists real alerts: new orders, out-of-stock items and low items, each linking to its list.
+  - `app/admin/layout.tsx` computes the badges and alerts and passes them to the shell.
+  - Dashboard (`app/admin/page.tsx`):
+    - a header with the "Glow · Slay · Sparkle" art (`public/brand/admin-dashboard-art.jpg`, cut from Nicholas's banner);
+    - four KPI cards: today's sales with % change against yesterday, orders to process, customers, low stock;
+    - a 14-day sales trend with a KES axis, gridlines and a callout on today;
+    - recent orders with initials avatars, items count and an open link;
+    - best sellers with product photos, low-stock cards with photos, the online/in-store and retail/wholesale splits, and four quick actions.
+    - The AI suggestion cards were removed from the dashboard, as in the mockup. They're still on AI Insights.
+  - `components/admin/charts.tsx`: new `KpiCard`. `BarChart` now has an axis, gridlines, a callout and spaced-out date labels, which Reports also uses.
+  - New pages: `/admin/customers/new`, `/admin/products/new` and `/admin/promotions/new`, plus "New" buttons on their list pages, and `/admin/search`.
+  - New server actions: `createCustomer`, `createProduct` and `createPromotion`. Promotions insert under the existing staff RLS policy, with server-side validation.
+  - Migration `20261031120000_admin_create_customer_product.sql`.
+- Why: Nicholas asked for 1:1 parity with the approved admin dashboard mockup, and chose to build real create forms behind the New Customer, Add Product and Create Promotion quick actions, instead of linking to lists.
+- Tested:
+  - The migration, on the live database inside a block that rolled back (afterwards, no functions, products, customers or brands were left):
+    - walk-in customer created;
+    - duplicate phone in +254 form rejected;
+    - bad phone rejected;
+    - wholesale customer gets a wholesale account;
+    - product with two lengths gets correct prices, stock, reorder levels and one opening-stock movement;
+    - wholesale above retail rejected;
+    - several options without an option type rejected;
+    - colliding automatic SKUs get a suffix (a bug the test found and I fixed);
+    - a typed duplicate SKU rejected;
+    - a customer account refused for both functions.
+  - Local preview, as the demo admin:
+    - dashboard at 1536px (no horizontal scroll, table fits), 1024px, 768px and 375px;
+    - the bell shows 3 real alerts;
+    - the sidebar collapses (256 → 80px);
+    - the phone drawer opens;
+    - search for "grace" finds orders and the customer;
+    - promotion validation works without saving;
+    - all 17 admin pages return 200 inside the new shell.
+  - `tsc --noEmit` passes.
+  - Not tested: submitting the customer and product forms end to end in the UI. They need the migration applied, so check after merge.
+- Follow-ups:
+  - A product edit form and photo upload.
+  - Password set-up for customers added by staff.
+
 ## 2026-10-30: Claude: Correction: migrations applied, entry dates, confirmed details
 - PR: (this PR, branch `claude/docs-corrections`)
 - Changed: `docs/WORKLOG.md` (this entry) and `docs/PROJECT_STATE.md`.
