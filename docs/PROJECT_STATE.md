@@ -10,7 +10,7 @@ The shop's details live in the database table `store_settings` (one row). Admins
 
 As of 2026-10-30:
 - **Location:** Kware, Pipeline, Nairobi, near Redeemed Gospel Church and King Worship Centre
-- **Hours:** open daily, 7:00 am to 8:00 pm
+- **Hours:** open daily, 7:00 am to 8:00 pm (confirmed by Nicholas on 2026-10-30; use this, not Facebook's listing)
 - **Phones:** 0799 912 191 (Shop 1), 0797 468 963 (Shop 2), 0719 707 857 (Shop 2), 0702 388 724 (Maureen)
 - **WhatsApp:** +254 727 939 626, chosen by Nicholas. A floating chat button shows it on every shop page. The Facebook page's own WhatsApp button uses 0702 388 724.
 - **Social:** facebook.com/Sparklebeautyandcosmetics (about 85K followers, 100% recommended from 11 reviews) and instagram.com/sparkle_beautyand
@@ -108,7 +108,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261031090000`)
+## Database (as of migration `20261031090000`, all applied to the live database)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -217,6 +217,6 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
 - **Work users are created directly in Supabase Auth by a database function:** this keeps the service-role key out of the app. There's no email invite or self-service password reset yet. Admins set a temporary password and share it privately.
-- **Unconfirmed contact channels:** no email or Facebook page URL has been confirmed. An admin can add an email in Settings.
+- **Unconfirmed contact channels:** no shop email has been confirmed (`store_settings.email` is empty). An admin can add one in Settings. The Facebook and Instagram links are set.
 - **Advisor warnings are expected:** Supabase advisors flag the `SECURITY DEFINER` functions callable by signed-in users (and `get_variant_stock` by `anon`). This is intentional; each one checks the caller.
 - **Single location:** inventory assumes one location (`main_location_id()`).
