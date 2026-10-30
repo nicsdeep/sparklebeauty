@@ -15,6 +15,29 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Facebook details, free CBD delivery and social links
+- PR: (this PR, branch `claude/social-links`)
+- Changed:
+  - **Live data, no code (via Admin → Settings, signed in as Sparkle Admin):**
+    - added phone "Maureen 0702 388 724"
+    - set free-delivery area "CBD"
+  - **Code:**
+    - migration `20261030170000_social_links.sql` (`facebook_url` and `instagram_url`)
+    - Facebook and Instagram fields in Settings
+    - links in the footer and on the contact page
+- Why: details from the shop's Facebook page:
+  - "All deliveries to Nairobi CBD are free"
+  - the business numbers include Maureen 0702 388 724
+  - the Instagram handle
+- Tested:
+  - The settings save was confirmed in the database: `delivery_fee` gives 0 for a "Nairobi CBD" address and 300 for Kilimani.
+  - The migration ran in a rolled-back block and returned both URLs.
+  - `tsc` passes.
+- Follow-ups:
+  - Kids Collection: needs the Barbie, Marvel Junior and Tamasha prices, plus retail prices.
+  - Decide whether to use photos from the shop's Facebook page.
+  - Confirm the opening hours (Facebook says "Always open").
+
 ## 2026-10-30: Claude: WhatsApp, admin-editable shop settings and work users
 - PR: (this PR, branch `claude/admin-settings`)
 - Changed:

@@ -21,6 +21,8 @@ const FALLBACK: StoreSettings = {
   map_embed_url:
     "https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d510575.2266188962!2d36.8737081!3d-1.24993!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x182f12353c84667f%3A0xcf5304b1a32e7a1e!2sSparkle%20Beauty%20%26%20Cosmetics!5e0!3m2!1sen!2ske!4v1793312220120!5m2!1sen!2ske",
   directions_url: "https://www.google.com/maps/search/?api=1&query=Sparkle+Beauty+and+Cosmetics+Pipeline+Nairobi",
+  facebook_url: "https://www.facebook.com/Sparklebeautyandcosmetics",
+  instagram_url: "https://www.instagram.com/sparkle_beautyand",
   delivery_fee_nairobi: 300,
   delivery_fee_other: 500,
   free_delivery_threshold: 10000,
@@ -42,6 +44,8 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
     email: data.email,
     map_embed_url: data.map_embed_url,
     directions_url: data.directions_url,
+    facebook_url: data.facebook_url ?? null,
+    instagram_url: data.instagram_url ?? null,
     delivery_fee_nairobi: Number(data.delivery_fee_nairobi),
     delivery_fee_other: Number(data.delivery_fee_other),
     free_delivery_threshold: Number(data.free_delivery_threshold),

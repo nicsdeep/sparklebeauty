@@ -22,6 +22,12 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
             <div>
               <Logo />
               <p className="mt-3 text-ink-muted">Beauty for a brighter you. Original products, trusted brands, delivered across Kenya.</p>
+              {(store.facebook_url || store.instagram_url) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {store.facebook_url && <a href={store.facebook_url} target="_blank" rel="noopener" className="rounded-full border border-line bg-white px-3.5 py-1.5 text-sm font-semibold hover:border-brand-500 hover:text-brand-700">Facebook</a>}
+                  {store.instagram_url && <a href={store.instagram_url} target="_blank" rel="noopener" className="rounded-full border border-line bg-white px-3.5 py-1.5 text-sm font-semibold hover:border-brand-500 hover:text-brand-700">Instagram</a>}
+                </div>
+              )}
             </div>
             <div>
               <h3 className="font-semibold">Shop</h3>

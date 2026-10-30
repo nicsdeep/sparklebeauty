@@ -11,11 +11,14 @@ The shop's details live in the database table `store_settings` (one row). Admins
 As of 2026-10-30:
 - **Location:** Kware, Pipeline, Nairobi, near Redeemed Gospel Church and King Worship Centre
 - **Hours:** open daily, 7:00 am to 8:00 pm
-- **Phones:** 0799 912 191 (Shop 1), 0797 468 963 (Shop 2), 0719 707 857 (Shop 2)
-- **WhatsApp:** +254 727 939 626 (floating chat button on every shop page)
+- **Phones:** 0799 912 191 (Shop 1), 0797 468 963 (Shop 2), 0719 707 857 (Shop 2), 0702 388 724 (Maureen)
+- **WhatsApp:** +254 727 939 626, chosen by Nicholas. A floating chat button shows it on every shop page. The Facebook page's own WhatsApp button uses 0702 388 724.
+- **Social:** facebook.com/Sparklebeautyandcosmetics (about 85K followers, 100% recommended from 11 reviews) and instagram.com/sparkle_beautyand
 - **Map:** the contact page embeds the shop's own Google Maps listing
-- **Sells:** hair extensions, braids, weaves, crochets and general cosmetics
-- **Delivery pricing:** set in Admin → Settings: Nairobi fee, rest of Kenya fee, free-over threshold, and free-delivery areas (e.g. "CBD")
+- **Sells:** hair extensions, braids, weaves, crochets and general cosmetics, wholesale and retail. Supplies hair from Angels, Darling, Lush, Sista and Olivia (per Facebook).
+- **Kids Collection (wholesale prices, from Nicholas's list and Facebook posts):** Songa Braid 145, Ballerina 150, Sasha 185, Shanilia 170, Temple Curl 195. Barbie, Marvel Junior and Tamasha prices are unclear, and retail prices are unknown, so they aren't in the catalogue yet.
+- **Not the same business:** "Sparkle Kids Baby Shop" (baby clothes, 0723 554 989) shows up in Facebook searches. It is unrelated.
+- **Delivery pricing:** set in Admin → Settings. Currently Nairobi KES 300, rest of Kenya KES 500, free over KES 10,000, and **free to Nairobi CBD** (free-delivery area "CBD"), as the shop's Facebook posts state.
 
 ## Product
 
@@ -91,7 +94,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261030150000`)
+## Database (as of migration `20261030170000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -103,6 +106,7 @@ Migrations, in order:
 7. `20261030090000_store_address.sql`: redefines `demo_seed()` with the real shop address and updates the store location row.
 8. `20261030120000_product_images.sql`: adds `demo_images()`, which sets one photo per product in `products.image_urls`. `reset_demo()` now runs `demo_seed()` then `demo_images()`.
 9. `20261030150000_store_settings_and_staff.sql`: adds the `store_settings` table (readable by everyone, editable by admins), `delivery_fee()` (now used by `place_order()`), and the admin user functions.
+10. `20261030170000_social_links.sql`: adds `facebook_url` and `instagram_url` to `store_settings`.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -190,6 +194,5 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
 - **Work users are created directly in Supabase Auth by a database function:** this keeps the service-role key out of the app. There's no email invite or self-service password reset yet. Admins set a temporary password and share it privately.
 - **Unconfirmed contact channels:** no email or Facebook page URL has been confirmed. An admin can add an email in Settings.
-- **Free CBD delivery isn't switched on:** the real shop delivers free to Nairobi CBD. An admin can add "CBD" under Settings → Delivery pricing → Free delivery areas; it isn't set by default.
 - **Advisor warnings are expected:** Supabase advisors flag the `SECURITY DEFINER` functions callable by signed-in users (and `get_variant_stock` by `anon`). This is intentional; each one checks the caller.
 - **Single location:** inventory assumes one location (`main_location_id()`).

@@ -12,6 +12,8 @@ export type StoreSettings = {
   email: string | null;
   map_embed_url: string | null;
   directions_url: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
   delivery_fee_nairobi: number;
   delivery_fee_other: number;
   free_delivery_threshold: number;

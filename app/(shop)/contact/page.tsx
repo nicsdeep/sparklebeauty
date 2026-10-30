@@ -70,6 +70,8 @@ export default async function ContactPage() {
             <MapPin className="size-5" /> Get Directions
           </ButtonLink>
         )}
+        {store.facebook_url && <ButtonLink href={store.facebook_url} target="_blank" rel="noopener" size="lg" variant="ghost" className="border border-line">Facebook</ButtonLink>}
+        {store.instagram_url && <ButtonLink href={store.instagram_url} target="_blank" rel="noopener" size="lg" variant="ghost" className="border border-line">Instagram</ButtonLink>}
       </div>
       {store.map_embed_url && (
         <section className="mt-8" aria-labelledby="map-title">

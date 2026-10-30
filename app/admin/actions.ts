@@ -104,6 +104,9 @@ export async function saveStoreSettings(formData: FormData): Promise<ActionResul
   if (map && !map.startsWith("https://www.google.com/maps/embed")) return { ok: false, error: "The map must be a Google Maps embed link (Share → Embed a map)." };
   const directions = text(formData, "directions_url");
   if (directions && !directions.startsWith("https://")) return { ok: false, error: "The directions link must start with https://" };
+  const facebook = text(formData, "facebook_url");
+  const instagram = text(formData, "instagram_url");
+  if ([facebook, instagram].some((u) => u && !u.startsWith("https://"))) return { ok: false, error: "Social media links must start with https://" };
 
   const fees = { nairobi: money(formData, "delivery_fee_nairobi"), other: money(formData, "delivery_fee_other"), free: money(formData, "free_delivery_threshold") };
   if (Object.values(fees).some(Number.isNaN)) return { ok: false, error: "Delivery fees must be numbers of 0 or more." };
@@ -117,6 +120,8 @@ export async function saveStoreSettings(formData: FormData): Promise<ActionResul
     email: email || null,
     map_embed_url: map || null,
     directions_url: directions || null,
+    facebook_url: facebook || null,
+    instagram_url: instagram || null,
     delivery_fee_nairobi: fees.nairobi,
     delivery_fee_other: fees.other,
     free_delivery_threshold: fees.free,
