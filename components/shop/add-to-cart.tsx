@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { Check, Heart, Minus, Plus } from "lucide-react";
+import { Check, Heart, Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button, StockBadge, cx } from "@/components/ui";
 import { useCart } from "@/lib/cart";
 import { kes } from "@/lib/format";
@@ -64,7 +64,7 @@ export function AddToCart({ product, stock, wishlisted }: { product: Product; st
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-baseline gap-3">
-        <span className="text-3xl font-bold text-brand-700">{kes(variant.price)}</span>
+        <span className="text-4xl font-extrabold tracking-tight text-brand-600">{kes(variant.price)}</span>
         {variant.compare_at && <span className="text-lg text-ink-muted line-through">{kes(variant.compare_at)}</span>}
         <StockBadge stock={s} showCount={!!s?.low} />
       </div>
@@ -100,12 +100,12 @@ export function AddToCart({ product, stock, wishlisted }: { product: Product; st
         {inCart > 0 && <span className="text-sm text-ink-muted">{inCart} already in your cart</span>}
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <Button size="lg" className="flex-1 sm:flex-none sm:min-w-48" disabled={maxQty < 1} onClick={() => addToCart(false)}>
-          {added ? <><Check className="size-5" /> Added to Cart</> : maxQty < 1 && s?.inStock ? "All stock in your cart" : s?.inStock ? "Add to Cart" : "Out of Stock"}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <Button size="lg" className="col-span-2 sm:col-span-1" disabled={maxQty < 1} onClick={() => addToCart(false)}>
+          {added ? <><Check className="size-5" /> Added to Cart</> : maxQty < 1 && s?.inStock ? "All stock in your cart" : s?.inStock ? <><ShoppingCart className="size-5" /> Add to Cart</> : "Out of Stock"}
         </Button>
-        <Button size="lg" variant="secondary" className="flex-1 sm:flex-none sm:min-w-40" disabled={maxQty < 1} onClick={() => addToCart(true)}>Buy Now</Button>
-        <Button size="lg" variant="ghost" onClick={wishlist} disabled={pending} aria-pressed={saved} className="border border-line">
+        <Button size="lg" variant="secondary" disabled={maxQty < 1} onClick={() => addToCart(true)}>Buy Now</Button>
+        <Button size="lg" variant="secondary" onClick={wishlist} disabled={pending} aria-pressed={saved}>
           <Heart className={cx("size-5", saved && "fill-brand-600 text-brand-600")} /> {saved ? "Saved" : "Wishlist"}
         </Button>
       </div>
@@ -115,13 +115,24 @@ export function AddToCart({ product, stock, wishlisted }: { product: Product; st
         </p>
       )}
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-2xl bg-surface p-4 text-[15px]">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-2xl border border-line bg-surface/70 p-4 text-[15px] sm:grid-cols-3 sm:p-5">
         {details.map(([k, v]) => (
-          <div key={k}>
+          <div key={k} className="min-w-0">
             <dt className="text-sm text-ink-muted">{k}</dt>
-            <dd className="font-semibold">{v}</dd>
+            <dd className="truncate font-semibold">{v}</dd>
           </div>
         ))}
+        {product.brand && (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-600 text-sm font-bold text-white" aria-hidden>
+              {product.brand.charAt(0)}
+            </span>
+            <div className="min-w-0">
+              <dt className="text-sm text-ink-muted">Brand</dt>
+              <dd className="truncate font-semibold">{product.brand}</dd>
+            </div>
+          </div>
+        )}
       </dl>
     </div>
   );
