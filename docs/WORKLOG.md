@@ -15,6 +15,18 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: No unrated products in the demo catalogue
+- PR: (this PR, branch `claude/kids-ratings`)
+- Changed:
+  - Migration `20261031200000_kids_demo_ratings.sql`: `demo_ratings()` gives the 8 Kids Collection products demo ratings, the same kind as the rest of the demo catalogue. It runs once now and on every demo reset, and never overwrites real reviews.
+  - `components/shop/product-card.tsx`: a product with no reviews shows "New arrival" instead of empty stars and "(0)".
+- Why: Nicholas pointed out Ballerina (Kids) showing 0 stars and "(0)". Only the 8 kids products were unrated; the other 66 had demo ratings from `demo_seed()`.
+- Tested:
+  - On the live database, in a block that rolled back: 0 of 74 products unrated after the migration, and still 0 after a full demo reset. The live database was unchanged afterwards.
+  - `tsc --noEmit` passes.
+  - Local preview: before the migration, all 8 kids cards show "New arrival" instead of empty stars.
+- Follow-ups: none.
+
 ## 2026-10-30: Claude: One pricing engine, live POS, real-time sync and offline till
 - PR: (this PR, branch `claude/pricing-engine-live-pos`)
 - Changed:

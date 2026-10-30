@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { Sparkles, Star } from "lucide-react";
 import { ProductImage } from "@/components/shop/product-image";
 import { QuickAdd, WishlistHeart } from "@/components/shop/card-actions";
 import { StockBadge } from "@/components/ui";
@@ -38,14 +38,19 @@ export function ProductCard({ product, stock, wishlisted = false, priority = fal
         <h3 className="line-clamp-2 min-h-[2.6em] font-semibold leading-snug">
           <Link href={href} className="hover:text-brand-700">{product.name}</Link>
         </h3>
-        <div className="flex items-center gap-1 text-sm text-ink-muted">
-          <span className="flex" aria-label={`Rated ${product.rating.toFixed(1)} out of 5`}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Star key={i} className={i <= Math.round(product.rating) ? "size-3.5 fill-amber-400 text-amber-400" : "size-3.5 text-line"} aria-hidden />
-            ))}
-          </span>
-          <span>({product.review_count})</span>
-        </div>
+        {product.review_count > 0 ? (
+          <div className="flex items-center gap-1 text-sm text-ink-muted">
+            <span className="flex" aria-label={`Rated ${product.rating.toFixed(1)} out of 5`}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star key={i} className={i <= Math.round(product.rating) ? "size-3.5 fill-amber-400 text-amber-400" : "size-3.5 text-line"} aria-hidden />
+              ))}
+            </span>
+            <span>({product.review_count})</span>
+          </div>
+        ) : (
+          // A product with no reviews yet (e.g. just added) shows this instead of empty stars.
+          <p className="flex items-center gap-1 text-sm font-medium text-brand-700"><Sparkles className="size-3.5" aria-hidden /> New arrival</p>
+        )}
         <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="text-lg font-bold">{priceVaries ? <span className="text-sm font-medium text-ink-muted">From </span> : null}{kes(cheapest.price)}</span>
           {cheapest.compare_at && <span className="text-sm text-ink-muted line-through">{kes(cheapest.compare_at)}</span>}
