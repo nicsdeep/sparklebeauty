@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Gift, MapPin, MessageCircle, Phone, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Gift, MessageCircle, Phone, ShieldCheck, Truck } from "lucide-react";
 import { ProductGrid } from "@/components/shop/product-card";
-import { ButtonLink } from "@/components/ui";
+import { Hero } from "@/components/shop/hero";
 import { getStock, getWishlistIds, listProducts } from "@/lib/catalog";
-import { CATEGORY_IMAGES, HERO_IMAGE, sized } from "@/lib/images";
+import { CATEGORY_IMAGES, sized } from "@/lib/images";
+import { getHeroBanner } from "@/lib/hero";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreSettings } from "@/lib/store";
 import { kes } from "@/lib/format";
@@ -21,7 +22,7 @@ const DEPARTMENTS = [
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const store = await getStoreSettings();
+  const [store, hero] = await Promise.all([getStoreSettings(), getHeroBanner()]);
   const benefits = [
     { Icon: Truck, title: "Free Delivery", text: `On orders over ${kes(store.free_delivery_threshold)}` },
     { Icon: ShieldCheck, title: "Secure Payments", text: "M-Pesa, card or cash" },
@@ -42,38 +43,7 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-12 sm:space-y-16">
-      {/* Hero */}
-      <section className="-mx-4 -mt-6 overflow-hidden bg-brand-50 sm:mx-0 sm:mt-0 sm:rounded-3xl">
-        <div className="grid items-stretch md:grid-cols-2">
-          <div className="order-2 flex flex-col justify-center px-6 py-10 sm:px-10 md:order-1 md:py-16 lg:px-14">
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-brand-700">Premium Beauty Products</p>
-            <h1 className="mt-4 text-[2.6rem] font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-              Look good, feel good, <span className="text-brand-600">be&nbsp;you.</span>
-            </h1>
-            <p className="mt-5 max-w-md text-lg leading-relaxed text-ink-muted">
-              Original wigs, braids and beauty brands at Nairobi prices. Order online, pay with M-Pesa, and get it delivered.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="/shop" size="lg">Shop Now <ArrowRight className="size-5" /></ButtonLink>
-              <ButtonLink href="/shop?category=wigs" variant="secondary" size="lg">Browse Wigs</ButtonLink>
-            </div>
-            <p className="mt-8 flex items-center gap-2 text-sm text-ink-muted">
-              <MapPin className="size-4 text-brand-600" /> Visit us in {store.address} · {store.hours.toLowerCase()}
-            </p>
-          </div>
-          <div className="relative order-1 min-h-[320px] md:order-2 md:min-h-[520px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={sized(HERO_IMAGE, 1100, 900)}
-              srcSet={`${sized(HERO_IMAGE, 700, 600)} 700w, ${sized(HERO_IMAGE, 1100, 900)} 1100w, ${sized(HERO_IMAGE, 1600, 1300)} 1600w`}
-              sizes="(min-width: 768px) 50vw, 100vw"
-              alt="Woman with long, voluminous curly hair"
-              fetchPriority="high"
-              className="absolute inset-0 h-full w-full object-cover object-[50%_25%]"
-            />
-          </div>
-        </div>
-      </section>
+      <Hero banner={hero} locationNote={`Visit us in ${store.address} · ${store.hours.toLowerCase()}`} />
 
       {/* Categories */}
       <section aria-labelledby="cat-title">

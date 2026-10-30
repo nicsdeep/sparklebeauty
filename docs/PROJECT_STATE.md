@@ -66,6 +66,11 @@ Nicholas chose the SVG files (2026-10-30). Use them unchanged.
 - **Favicon:** `app/icon.svg` (from `td2/Sparkle_Beauty_Favicon.svg`) and `app/favicon.ico` (from `td2/Sparkle_Beauty_Favicon.ico`, 6 sizes).
 - **Phone home-screen icon:** `app/apple-icon.png` (180×180, from `td2/Sparkle_Beauty_Favicon.png`). iPhones need a PNG here.
 - **Logo colours:** pink `#FB0982`, blue `#16AEF7`. The design token `--color-logo-blue` is `#0aa8f2`.
+- **Homepage hero (two layers):**
+  - The background artwork is image only: no logo or text baked in. It's `public/brand/hero-banner.jpg` (2048×768) plus `hero-banner-1024.jpg` for phones, both made from `td2/banner to be used.png`.
+  - The logo, copy, buttons and trust line are rendered on top by `components/shop/hero.tsx`.
+  - Both layers come from the `hero_banners` table, edited in Admin → Settings → Homepage banner. To swap the artwork, change the image only.
+  - `td2/Sparkle Beauty Pink Glamour Banner.png` is Nicholas's flattened mockup of the intended look. It's a reference only; don't use it as the background.
 - **Other originals in `td2/`:** `Sparkle_Beauty_Logo_Original_Clear.png`, `Sparkle_Beauty_Favicon.png`, and the admin design reference `admin design.png`.
 
 ## Stack
@@ -103,7 +108,7 @@ The app does **not** use the Supabase service-role key.
 
 Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded customers have no password and can't sign in.
 
-## Database (as of migration `20261030170000`)
+## Database (as of migration `20261030190000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -116,6 +121,7 @@ Migrations, in order:
 8. `20261030120000_product_images.sql`: adds `demo_images()`, which sets one photo per product in `products.image_urls`. `reset_demo()` now runs `demo_seed()` then `demo_images()`.
 9. `20261030150000_store_settings_and_staff.sql`: adds the `store_settings` table (readable by everyone, editable by admins), `delivery_fee()` (now used by `place_order()`), and the admin user functions.
 10. `20261030170000_social_links.sql`: adds `facebook_url` and `instagram_url` to `store_settings`.
+11. `20261030190000_hero_banners.sql`: adds the `hero_banners` table (anyone can read active banners; admins can write), seeded with the current banner.
 
 Tables in `public`, all with RLS on:
 - **People:**

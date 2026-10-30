@@ -15,6 +15,26 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Two-layer homepage hero, editable in admin
+- PR: (this PR, branch `claude/hero-banner`)
+- Changed:
+  - New `components/shop/hero.tsx`:
+    - Layer 1 is the banner image, used as a background.
+    - Layer 2 is the logo, eyebrow, heading with pink accent, paragraph, two buttons, a trust line with stars, and the location note, rendered as UI.
+  - New `lib/hero.ts` (`getHeroBanner()`, with a fallback).
+  - Migration `20261030190000_hero_banners.sql`.
+  - Admin → Settings → Homepage banner form (`hero-form.tsx`, `saveHeroBanner`).
+  - The banner artwork from `td2/banner to be used.png` is saved as optimised JPEGs (199 KB and 70 KB, from a 2 MB PNG).
+  - The unused Unsplash hero constant was removed.
+- Why: Nicholas asked for the hero to be a reusable two-layer component: background artwork with no baked-in text, and real UI content on top, so the banner can be swapped without a redesign.
+- Tested:
+  - Migration and RLS in a rolled-back block: anon can read but not update; staff can't update; admin can update. The table didn't remain afterwards.
+  - `tsc` passes.
+  - Local browser at 1440px (text over the artwork, model on the right) and 375px (artwork on top, text below, no overflow, the 1024px image is used).
+- Follow-ups:
+  - Apply the migration after merge.
+  - The trust line uses real Facebook figures, not the mockup's "10,000+ happy customers", which is unverified.
+
 ## 2026-10-30: Claude: Switch to Nicholas's SVG logo and favicon
 - PR: (this PR, branch `claude/svg-logo`)
 - Changed:
