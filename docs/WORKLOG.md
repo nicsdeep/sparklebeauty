@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Correction: migrations applied, entry dates, confirmed details
+- PR: (this PR, branch `claude/docs-corrections`)
+- Changed: `docs/WORKLOG.md` (this entry) and `docs/PROJECT_STATE.md`.
+  - Hours are marked as confirmed.
+  - The Database heading now says all migrations are applied.
+  - The stale "no Facebook URL" known issue now covers only the missing email.
+- Why: a cloud session on Nicholas's phone read the docs and couldn't tell these things. Past entries aren't edited (see the top of this file), so this entry corrects them:
+  - **Migrations were applied.** Claude ran `supabase db push --linked` right after each merge, with a dry run first, and checked the result on the live database:
+    - `20261030210000_kids_collection` (PR #16)
+    - `20261030230000_glam_hero_focus` (PR #17)
+    - `20261031090000_product_details_and_reviews` (PR #18)
+  - **The product page was checked after merge.** On the live site, NIVEA Soft Moisturising Cream shows all four tabs with its seeded details. The review form appeared for the demo customer Grace Achieng, who has a completed order with Bright Glow Serum. No review was posted.
+  - **Wrong dates.** The two entries above dated 2026-10-31 were written on 2026-10-30 (Nairobi time). Migration `20261031090000` has a 2026-10-31 timestamp too. It's correct as a sort order, but it isn't the day it was written. Don't rename an applied migration.
+  - **Opening hours:** Nicholas confirmed "Open daily 7am–8pm". This is already the live `store_settings.hours`.
+- Tested: `store_settings` read from the live database (hours and Facebook set, email empty). Docs only; no code or schema changes.
+- Follow-ups: none.
+
 ## 2026-10-31: Claude: Balanced "You May Also Like" beside the product tabs
 - PR: (this PR, branch `claude/related-compact`)
 - Changed:
