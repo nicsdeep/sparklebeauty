@@ -15,6 +15,21 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: Official logo and favicon
+- PR: (this PR, branch `claude/brand-logo`)
+- Changed:
+  - Nicholas's logo and favicon files are added to `td2/` as source files, along with `admin design.png`.
+  - `public/brand/sparkle-logo.png` is the original PNG, trimmed to its coloured edges (dropping a faint grey line and the white margin) and resized from 518 KB to 162 KB.
+  - `app/icon.png` and `app/apple-icon.png` were made from the favicon PNG.
+  - `components/logo.tsx` now shows the image instead of the text wordmark. Sizes: header 56–76px tall, footer and login 96px, admin sidebar and mobile menu 48px.
+  - `--color-logo-blue` was changed to the logo's actual blue.
+- Why: Nicholas supplied the official logo; the site had a placeholder wordmark.
+- Tested:
+  - `tsc` passes.
+  - Local browser: the logo loads in the header (legible at 76px) and footer.
+  - `/icon.png` and `/apple-icon.png` return 200 and are linked in the page head.
+- Follow-ups: none.
+
 ## 2026-10-30: Claude: Facebook details, free CBD delivery and social links
 - PR: (this PR, branch `claude/social-links`)
 - Changed:

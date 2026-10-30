@@ -20,7 +20,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         <footer className="border-t border-line bg-surface pb-20 md:pb-0">
           <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <Logo />
+              <Logo size="lg" />
               <p className="mt-3 text-ink-muted">Beauty for a brighter you. Original products, trusted brands, delivered across Kenya.</p>
               {(store.facebook_url || store.instagram_url) && (
                 <div className="mt-4 flex flex-wrap gap-2">

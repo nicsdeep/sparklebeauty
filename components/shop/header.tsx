@@ -114,7 +114,7 @@ export function ShopHeader({ userName, isStaff }: { userName: string | null; isS
           <div className="absolute inset-0 bg-ink/40" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0 flex w-80 max-w-[85%] flex-col overflow-y-auto bg-white p-5">
             <div className="mb-5 flex items-center justify-between">
-              <Logo />
+              <Logo size="sm" />
               <button onClick={() => setOpen(false)} className="rounded-full p-2" aria-label="Close menu">
                 <X className="size-6" />
               </button>

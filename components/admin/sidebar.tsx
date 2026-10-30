@@ -54,7 +54,7 @@ export function AdminSidebar({ newOrders, lowStock }: { newOrders: number; lowSt
   return (
     <>
       <aside className="no-print fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-line bg-white p-4 lg:flex">
-        <div className="mb-6 px-2 pt-1"><Logo href="/admin" subtitle="Business Admin" /></div>
+        <div className="mb-6 px-2 pt-1"><Logo href="/admin" subtitle="Admin" size="sm" /></div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
       </aside>
       <button className="no-print fixed left-3 top-3 z-30 rounded-full bg-white p-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Open admin menu"><Menu className="size-6" /></button>
@@ -62,7 +62,7 @@ export function AdminSidebar({ newOrders, lowStock }: { newOrders: number; lowSt
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0 w-72 overflow-y-auto bg-white p-4">
-            <div className="mb-5 flex items-center justify-between px-2"><Logo href="/admin" subtitle="Business Admin" />
+            <div className="mb-5 flex items-center justify-between px-2"><Logo href="/admin" subtitle="Admin" size="sm" />
               <button onClick={() => setOpen(false)} aria-label="Close menu" className="p-2"><X className="size-6" /></button></div>
             {nav}
           </div>

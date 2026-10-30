@@ -59,6 +59,14 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 | `.env.example` | Names of the environment variables (no values) |
 | `.mcp.json` | Supabase MCP server for Claude Code, scoped to this project |
 
+## Brand assets
+
+- **Logo:** `public/brand/sparkle-logo.png` (424×360), shown by `components/logo.tsx` in the header, footer, login and admin. It is the official logo, `td2/Sparkle_Beauty_Logo_Original_Clear.png`, trimmed to its edges and resized; colours and shapes are unchanged.
+  - `td2/Sparkle_Beauty_Logo.svg` is a traced version with visibly faceted curves, so it isn't used.
+- **Favicon:** `app/icon.png` (512×512) and `app/apple-icon.png` (180×180), made from `td2/Sparkle_Beauty_Favicon.png`.
+- **Logo colours:** pink about `#FB0982`, blue about `#02ADF9`. The design token `--color-logo-blue` (`#0aa8f2`) matches the logo's blue.
+- **Admin design reference:** `td2/admin design.png`, supplied by Nicholas.
+
 ## Stack
 
 | Layer | Choice | Status |
@@ -187,9 +195,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 ## Known issues
 
-- **Brand assets missing:**
-  - No official logo file in the repo. `components/logo.tsx` shows a text wordmark until the real logo is added to `public/brand/`.
-  - Product photos are **demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list).
+- **Product photos are demo stock photography** from Unsplash (free licence), matched to each product's type, not Sparkle's own product shots. Brand-name products (e.g. CeraVe, Fenty) show generic bottles. Replace them with real photos in `products.image_urls` (and the `demo_images()` list). The shop's Facebook page has real photos, but they need Nicholas's OK before use.
 - **Loyalty points can't be redeemed yet.** They are only earned and displayed.
 - **Wholesale prices are public:** `product_prices` is readable by everyone, including wholesale tiers.
 - **Work users are created directly in Supabase Auth by a database function:** this keeps the service-role key out of the app. There's no email invite or self-service password reset yet. Admins set a temporary password and share it privately.

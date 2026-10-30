@@ -18,7 +18,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <div className="min-h-screen bg-surface px-4 py-10">
       <div className="mx-auto max-w-md">
-        <div className="mb-8 flex justify-center"><Logo /></div>
+        <div className="mb-8 flex justify-center"><Logo size="lg" /></div>
         <Card className="p-6">
           <h1 className="text-2xl font-bold">Welcome</h1>
           <p className="mt-1 text-ink-muted">Choose a demo account to continue.</p>
