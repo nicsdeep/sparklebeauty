@@ -1,4 +1,5 @@
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { Plus } from "lucide-react";
+import { Badge, ButtonLink, Card, PageHeader } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, kes } from "@/lib/format";
 
@@ -20,7 +21,8 @@ export default async function PromotionsPage() {
 
   return (
     <div>
-      <PageHeader title="Promotions" subtitle="Codes customers can use at checkout." />
+      <PageHeader title="Promotions" subtitle="Codes customers can use at checkout."
+        action={<ButtonLink href="/admin/promotions/new" size="sm" className="h-10"><Plus className="size-4" /> Create Promotion</ButtonLink>} />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {(promos ?? []).map((p) => {
           const live = p.is_active && p.starts_at <= now && (!p.ends_at || p.ends_at > now);

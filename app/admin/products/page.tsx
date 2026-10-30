@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { Plus } from "lucide-react";
+import { Badge, ButtonLink, Card, PageHeader } from "@/components/ui";
 import { getStock, listProducts, productStock } from "@/lib/catalog";
 import { kes } from "@/lib/format";
 
@@ -13,7 +14,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   return (
     <div>
       <PageHeader title="Products" subtitle={`${products.length} products · retail and wholesale prices in KES`}
-        action={<form action="/admin/products"><input name="q" defaultValue={sp.q} placeholder="Search products" className="h-10 w-64 rounded-full border border-line bg-white px-4" aria-label="Search products" /></form>} />
+        action={<div className="flex flex-wrap gap-2"><form action="/admin/products"><input name="q" defaultValue={sp.q} placeholder="Search products" className="h-10 w-64 max-w-full rounded-full border border-line bg-white px-4" aria-label="Search products" /></form>
+          <ButtonLink href="/admin/products/new" size="sm" className="h-10"><Plus className="size-4" /> Add Product</ButtonLink></div>} />
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[15px]">
