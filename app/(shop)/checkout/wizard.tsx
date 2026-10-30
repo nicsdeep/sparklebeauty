@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SubmitButton } from "@/components/submit-button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, Banknote, Check, CheckCircle2, CreditCard, Smartphone, Store, Truck } from "lucide-react";
@@ -176,7 +177,7 @@ function SignInStep({ onBack }: { onBack: () => void }) {
       <form action={demoSignIn}>
         <input type="hidden" name="account" value="customer" />
         <input type="hidden" name="next" value="/checkout?step=details" />
-        <Button size="lg" className="w-full">Continue as Grace Achieng (demo)</Button>
+        <SubmitButton size="lg" className="w-full">Continue as Grace Achieng (demo)</SubmitButton>
       </form>
       <p className="text-center text-sm">or <Link href="/login?next=/checkout?step=details" className="font-semibold text-brand-700">sign in with email</Link></p>
     </StepCard>

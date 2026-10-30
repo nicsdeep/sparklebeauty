@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { LiveSearch } from "@/components/live-search";
 import { ProductGrid } from "@/components/shop/product-card";
+import { SortSelect } from "@/components/shop/sort-select";
 import { EmptyState, cx } from "@/components/ui";
 import { getCategories, getStock, listProducts } from "@/lib/catalog";
 
@@ -47,14 +49,10 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
           <p className="mt-1 text-ink-muted">{products.length} products{current?.description ? ` · ${current.description}` : ""}</p>
         </div>
-        <form className="flex items-center gap-2" action="/shop">
-          {Object.entries(sp).filter(([k, v]) => k !== "sort" && v).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
-          <label htmlFor="sort" className="text-sm font-semibold">Sort</label>
-          <select id="sort" name="sort" defaultValue={sp.sort ?? ""} className="h-10 rounded-full border border-line bg-white px-3">
-            {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-          <button className="h-10 rounded-full border border-line px-4 text-sm font-semibold hover:bg-surface">Apply</button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <LiveSearch placeholder="Search in the shop" className="w-56 max-w-full" />
+          <SortSelect options={SORTS} />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[230px_1fr]">

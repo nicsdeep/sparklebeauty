@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveSearch } from "@/components/live-search";
 import { Badge, Card, PageHeader, cx } from "@/components/ui";
 import { Stat } from "@/components/admin/charts";
 import { RestockButton } from "@/components/admin/restock-button";
@@ -38,10 +39,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/admin/inventory" className={cx("rounded-full px-4 py-2 text-sm font-semibold", sp.filter !== "low" ? "bg-brand-600 text-white" : "border border-line bg-white")}>All items</Link>
         <Link href="/admin/inventory?filter=low" className={cx("rounded-full px-4 py-2 text-sm font-semibold", sp.filter === "low" ? "bg-brand-600 text-white" : "border border-line bg-white")}>Low &amp; out of stock</Link>
-        <form className="ml-auto" action="/admin/inventory">
-          {sp.filter && <input type="hidden" name="filter" value={sp.filter} />}
-          <input name="q" defaultValue={sp.q} placeholder="Search product or SKU" className="h-10 w-64 rounded-full border border-line bg-white px-4" aria-label="Search inventory" />
-        </form>
+        <LiveSearch placeholder="Search product or SKU" className="ml-auto w-64 max-w-full" />
       </div>
       <Card>
         <div className="overflow-x-auto">

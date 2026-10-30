@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Search as you type, faster pages, one-click buttons
+- PR: (this PR, branch `claude/fast-search`)
+- Changed:
+  - `components/search-suggest.tsx` (new): suggestions while typing in the shop header (desktop and phone menu) and the admin top bar. Keyboard arrows and Enter work; "See all results" opens the results page.
+  - `components/live-search.tsx` (new): list pages filter as you type (admin orders, products, customers, inventory, search; shop page).
+  - `components/shop/sort-select.tsx` (new): the shop sort applies on pick, replacing the separate Apply button.
+  - `components/submit-button.tsx` (new): server-action buttons (sign-in, demo sign-in, sign-out, save preferences, mark notifications read, checkout sign-in) disable themselves and show a spinner, so one click is enough.
+  - `app/(shop)/loading.tsx`, `app/admin/loading.tsx` (new): skeleton shown at once on navigation.
+  - `vercel.json`: `regions: ["dub1"]`, next to the database.
+  - `lib/auth.ts`, `lib/catalog.ts`: `getUser`, `getProfile`, `getCategories` cached per request; shop search matches name, brand and category; the product page loads the product and the user in parallel.
+- Why: Nicholas asked for autocomplete in every search bar, buttons that work on the first click, and faster pages. Live timing showed the server running in Washington (`iad1`) while the database is in Ireland, and pages taking 1–4 s.
+- Tested:
+  - Local preview: typing "bra" in the shop header lists Braids and Kids Braids categories and matching products; "gra" in the admin bar lists Grace's orders and her customer record; typing in the Orders filter narrows the table on each key and keeps focus; the shop sort applies on pick; phone layout checked.
+  - `next build` and `tsc --noEmit` pass.
+  - Not tested: live page timings after the region change, until this is deployed.
+- Follow-ups: measure live timings after deploy.
+
 ## 2026-10-31: Claude: Split payments at the POS
 - PR: (this PR, branch `claude/split-payments`)
 - Changed:

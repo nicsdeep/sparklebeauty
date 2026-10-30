@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveSearch } from "@/components/live-search";
 import { UserPlus } from "lucide-react";
 import { Badge, ButtonLink, Card, PageHeader } from "@/components/ui";
 import { listCustomers } from "@/lib/customers";
@@ -17,7 +18,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   return (
     <div>
       <PageHeader title="Customers" subtitle="Contact details, purchase history and loyalty in one place."
-        action={<div className="flex flex-wrap gap-2"><form action="/admin/customers"><input name="q" defaultValue={sp.q} placeholder="Search name, phone or email" className="h-10 w-72 max-w-full rounded-full border border-line bg-white px-4" aria-label="Search customers" /></form>
+        action={<div className="flex flex-wrap gap-2"><LiveSearch placeholder="Search name, phone or email" className="w-72 max-w-full" />
           <ButtonLink href="/admin/customers/new" size="sm" className="h-10"><UserPlus className="size-4" /> New Customer</ButtonLink></div>} />
       <Card>
         <div className="overflow-x-auto">

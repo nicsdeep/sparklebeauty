@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/submit-button";
 import type { Metadata } from "next";
 import { LayoutDashboard, ShoppingBag, Store } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { Button, Card, Field, inputClass } from "@/components/ui";
+import { Card, Field, inputClass } from "@/components/ui";
 import { demoSignIn, signIn } from "./actions";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -33,13 +34,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 <input type="hidden" name="account" value={account} />
                 {next && account === "customer" && <input type="hidden" name="next" value={next} />}
                 {next?.startsWith("/admin") && account !== "customer" && <input type="hidden" name="next" value={next} />}
-                <button className="flex w-full items-center gap-4 rounded-2xl border border-line p-4 text-left transition hover:border-brand-500 hover:bg-brand-50">
+                <SubmitButton unstyled className="flex w-full items-center gap-4 rounded-2xl border border-line p-4 text-left transition hover:border-brand-500 hover:bg-brand-50">
                   <span className="rounded-full bg-brand-50 p-3 text-brand-600"><Icon className="size-5" /></span>
                   <span>
                     <span className="block font-semibold">{title}</span>
                     <span className="block text-sm text-ink-muted">{text}</span>
                   </span>
-                </button>
+                </SubmitButton>
               </form>
             ))}
           </div>
@@ -49,7 +50,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               {next && <input type="hidden" name="next" value={next} />}
               <Field label="Email"><input name="email" type="email" required className={inputClass} autoComplete="email" /></Field>
               <Field label="Password"><input name="password" type="password" required className={inputClass} autoComplete="current-password" /></Field>
-              <Button className="w-full">Sign In</Button>
+              <SubmitButton className="w-full">Sign In</SubmitButton>
             </form>
           </details>
         </Card>

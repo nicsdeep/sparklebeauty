@@ -14,7 +14,7 @@ const BUTTON = {
 };
 const SIZE = { sm: "h-9 px-3 text-sm", md: "h-11 px-5 text-[15px]", lg: "h-13 px-6 text-base" };
 
-type ButtonStyle = { variant?: keyof typeof BUTTON; size?: keyof typeof SIZE };
+export type ButtonStyle = { variant?: keyof typeof BUTTON; size?: keyof typeof SIZE };
 
 export function buttonClass({ variant = "primary", size = "md" }: ButtonStyle = {}) {
   return cx("inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors disabled:cursor-not-allowed", BUTTON[variant], SIZE[size]);
