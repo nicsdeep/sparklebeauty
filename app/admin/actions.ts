@@ -156,3 +156,46 @@ export async function setUserActive(userId: string, active: boolean): Promise<Ac
   revalidatePath("/admin/settings");
   return { ok: true, data: undefined };
 }
+
+// Homepage hero (admins only: enforced by RLS on hero_banners) ------------------------------
+
+const safeHref = (v: string) => (v.startsWith("/") || v.startsWith("https://") ? v : "");
+
+export async function saveHeroBanner(formData: FormData): Promise<ActionResult> {
+  const title = text(formData, "title");
+  const imageUrl = text(formData, "image_url");
+  if (!title) return { ok: false, error: "The heading is required." };
+  if (!imageUrl || !(imageUrl.startsWith("/") || imageUrl.startsWith("https://"))) {
+    return { ok: false, error: "The banner image must be a site path (e.g. /brand/hero-banner.jpg) or an https:// link." };
+  }
+  const primaryHref = safeHref(text(formData, "primary_href"));
+  const secondaryHref = safeHref(text(formData, "secondary_href"));
+  if (!primaryHref) return { ok: false, error: "Button links must start with / or https://" };
+
+  const row = {
+    image_url: imageUrl,
+    image_alt: text(formData, "image_alt"),
+    image_focus: ["25% center", "50% center", "72% center", "90% center"].includes(text(formData, "image_focus")) ? text(formData, "image_focus") : "72% center",
+    eyebrow: text(formData, "eyebrow") || null,
+    title,
+    title_accent: text(formData, "title_accent") || null,
+    body: text(formData, "body") || null,
+    primary_label: text(formData, "primary_label") || "Shop Now",
+    primary_href: primaryHref,
+    secondary_label: text(formData, "secondary_label") || null,
+    secondary_href: secondaryHref || null,
+    trust_text: text(formData, "trust_text") || null,
+    show_logo: formData.get("show_logo") === "on",
+    updated_at: new Date().toISOString(),
+  };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const id = text(formData, "id");
+  const res = id
+    ? await supabase.from("hero_banners").update({ ...row, updated_by: user?.id ?? null }).eq("id", id).select("id")
+    : await supabase.from("hero_banners").insert({ ...row, updated_by: user?.id ?? null }).select("id");
+  if (res.error) return fail(res.error);
+  if (!res.data?.length) return { ok: false, error: "Only an admin can change the homepage banner." };
+  revalidatePath("/", "layout");
+  return { ok: true, data: undefined };
+}

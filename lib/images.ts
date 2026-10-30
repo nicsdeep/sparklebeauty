@@ -1,10 +1,8 @@
 // Demo photography from Unsplash (free licence: https://unsplash.com/license).
-// Product photos live in products.image_urls; these are the hero, category tiles and the
+// Product photos live in products.image_urls; these are the category tiles and the
 // fallback used when a product has no photo yet.
 
 const U = "https://images.unsplash.com/photo-";
-
-export const HERO_IMAGE = `${U}1637463675679-d86b8f934b59`;
 
 export const CATEGORY_IMAGES: Record<string, string> = {
   hair: `${U}1645736279976-59f8fd22720c`,
