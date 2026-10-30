@@ -7,6 +7,7 @@ import { formatDate, formatDateTime, kes } from "@/lib/format";
 import { whatsappHref } from "@/lib/store";
 import { loadSales } from "@/lib/sales-data";
 import { customerSentence } from "@/lib/insights";
+import { OnlineAccess } from "./online-access";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -52,14 +53,14 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             </div>
             <div className="mt-3 grid gap-x-8 gap-y-2 text-lg sm:grid-cols-2">
               <a href={`tel:${c.phone?.replace(/\s/g, "")}`} className="flex items-center gap-2 font-semibold"><Phone className="size-5 text-brand-600" />{c.phone}</a>
-              <a href={`mailto:${c.email}`} className="flex items-center gap-2 font-semibold"><Mail className="size-5 text-brand-600" />{c.email}</a>
+              {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-2 font-semibold"><Mail className="size-5 text-brand-600" />{c.email}</a>}
             </div>
             {address && <p className="mt-2 text-ink-muted">{address.address_line1}, {address.city}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
             <a href={`tel:${c.phone?.replace(/\s/g, "")}`} className={buttonClass({ size: "md" })}><Phone className="size-4" /> Call</a>
             {wa("") && <a href={wa(`Hi ${first}, this is Sparkle Beauty & Cosmetics.`)!} target="_blank" rel="noopener" className={buttonClass({ variant: "secondary" })}><MessageCircle className="size-4" /> WhatsApp</a>}
-            <a href={`mailto:${c.email}`} className={buttonClass({ variant: "secondary" })}><Mail className="size-4" /> Email</a>
+            {c.email && <a href={`mailto:${c.email}`} className={buttonClass({ variant: "secondary" })}><Mail className="size-4" /> Email</a>}
           </div>
         </div>
         <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-line pt-5 sm:grid-cols-3 lg:grid-cols-6">
@@ -114,6 +115,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
               ))}
             </div>
           </Card>
+          {c.role === "customer" && <OnlineAccess customerId={c.id} email={c.email} firstName={first} />}
           <Card>
             <CardHeader title="Loyalty" subtitle={`${c.loyalty_points} points`} />
             <ul className="divide-y divide-line">
