@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-10-30: Claude: "Glow · Slay · Sparkle" homepage banner
+- PR: (this PR, branch `claude/glam-hero`)
+- Changed:
+  - `public/brand/hero-banner.jpg` and `hero-banner-1024.jpg` now hold the new artwork. It's the right side of Nicholas's banner design: the woman, the products and the "Glow · Slay · Sparkle" script. The baked-in heading, buttons, trust row, slider arrows and dots were removed, and the left side is the design's plain pink.
+  - The original design is saved as `td2/Sparkle Glam Banner (full design).webp`.
+  - `image_focus` is now `100% center`: in `lib/hero.ts` (the fallback), and on the live row via migration `20261030230000_glam_hero_focus.sql`.
+- Why: Nicholas chose this banner. It's used as layer 1 only, so the heading and buttons stay live UI (clickable, readable on phones, editable in admin), as the two-layer hero requires.
+- Tested: in the local preview at 1440px and on a 375px phone width.
+  - Desktop shows the full slogan and products.
+  - Phone shows the face, slogan and products above the copy.
+- Follow-ups:
+  - The design's serif heading font and "Trusted by 10,000+ happy customers" row with avatars were not copied. The site keeps the design-system font (Plus Jakarta Sans) and the factual "Loved by 85K followers on Facebook" line. Nicholas to decide.
+  - Apply the migration after merge.
+
 ## 2026-10-30: Claude: Kids Collection with real Facebook photos
 - PR: (this PR, branch `claude/kids-collection`)
 - Changed:
