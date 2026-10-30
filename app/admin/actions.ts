@@ -38,18 +38,21 @@ export type PosSaleInput = {
   customerId: string | null;
   items: { variant_id: string; quantity: number }[];
   discount: number;
-  paymentMethod: PaymentMethod;
-  amountTendered?: number;
-  mpesaPhone?: string;
+  /** One or more payments that together cover the total (split payment). */
+  payments: PosPayment[];
   /** Unique per sale, so a retried or offline-synced sale is never recorded twice. */
   clientRef: string;
   /** Set when the sale was taken while the till was offline. */
   offlineAt?: string;
 };
 
+/** cash: amount received (change comes out of it); other methods: amount charged to them. */
+export type PosPayment = { method: PosPaymentMethod; amount: number; phone?: string; reference?: string };
+export type PosPaymentMethod = Exclude<PaymentMethod, "other">;
+export type PosRecordedPayment = { method: PosPaymentMethod; amount: number; reference: string };
 export type PosReceiptLine = { name: string; sku: string; quantity: number; unitPrice: number; lineTotal: number; rule: PriceRule };
 export type PosSaleResult = {
-  orderId: string; orderNumber: string; total: number; change: number; reference: string; duplicate: boolean; lines: PosReceiptLine[];
+  orderId: string; orderNumber: string; total: number; change: number; payments: PosRecordedPayment[]; duplicate: boolean; lines: PosReceiptLine[];
 };
 
 /** Completes a till sale; the database prices every line with the shared engine and deducts stock atomically. */
@@ -59,21 +62,19 @@ export async function completeSale(input: PosSaleInput): Promise<ActionResult<Po
     p_customer_id: input.customerId,
     p_items: input.items,
     p_discount: input.discount || 0,
-    p_payment_method: input.paymentMethod,
-    p_amount_tendered: input.amountTendered ?? null,
-    p_mpesa_phone: input.mpesaPhone || null,
+    p_payments: input.payments.map((p) => ({ method: p.method, amount: p.amount, phone: p.phone || null, reference: p.reference || null })),
     p_client_ref: input.clientRef,
     p_offline_at: input.offlineAt ?? null,
   });
   if (error) return fail(error);
-  const row = (data as { order_id: string; order_number: string; total_amount: number; change_due: number; payment_reference: string; duplicate: boolean }[])[0];
+  const row = (data as { order_id: string; order_number: string; total_amount: number; change_due: number; payments: PosRecordedPayment[]; duplicate: boolean }[])[0];
   const { data: lines } = await supabase.from("order_items").select("product_name, sku, quantity, unit_price, line_total, price_rule").eq("order_id", row.order_id);
   revalidatePath("/admin", "layout");
   return {
     ok: true,
     data: {
       orderId: row.order_id, orderNumber: row.order_number, total: Number(row.total_amount), change: Number(row.change_due),
-      reference: row.payment_reference, duplicate: row.duplicate,
+      payments: row.payments.map((p) => ({ ...p, amount: Number(p.amount) })), duplicate: row.duplicate,
       lines: (lines ?? []).map((l) => ({ name: l.product_name, sku: l.sku ?? "", quantity: l.quantity, unitPrice: Number(l.unit_price),
         lineTotal: Number(l.line_total), rule: (l.price_rule ?? "retail") as PriceRule })),
     },

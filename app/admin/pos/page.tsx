@@ -56,7 +56,7 @@ export default async function PosPage() {
   }));
   const recentSales: PosRecentSale[] = (recent ?? []).map((o) => ({
     id: o.id, number: o.order_number, customer: o.customer_name ?? "Walk-in customer", channel: o.channel, total: Number(o.total_amount),
-    at: o.created_at, method: (o.payments as { method: string }[] | null)?.[0]?.method ?? null,
+    at: o.created_at, methods: [...new Set(((o.payments as { method: string }[] | null) ?? []).map((p) => p.method))],
   }));
 
   return (

@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Split payments at the POS
+- PR: (this PR, branch `claude/split-payments`)
+- Changed:
+  - Migration `20261101090000_pos_split_payments.sql`: `pos_complete_sale()` takes `p_payments` (list of `{method, amount, phone?, reference?}`) instead of one method, tendered amount and phone. Validates the total, change (cash only), M-Pesa code format and reuse, and offline cash-only. Records one `payments` row per method and returns them.
+  - `app/admin/actions.ts`: `completeSale` takes `payments`; new types `PosPayment`, `PosPaymentMethod`, `PosRecordedPayment`.
+  - `app/admin/pos/terminal.tsx`: payment panel with up to 5 payments (M-Pesa, cash, card, bank), balance and change, one-tap "pay the balance by" buttons, M-Pesa code entry, receipt listing every payment. The sale panel now scrolls inside itself on short screens so the Complete button is always reachable.
+  - Order pages (`app/admin/orders/[id]`, `app/(shop)/order/[number]`) and POS recent sales list all payments of a split sale.
+- Why: Nicholas asked that a customer can pay part in cash and the rest by M-Pesa or bank at the till, instead of being sent away to deposit the balance.
+- Tested:
+  - Live database, in a block that rolled back: cash + M-Pesa code, card + over-tendered cash (change from cash only), cash + bank + M-Pesa, retry returns the same payments, and the errors for short payment, over-charged M-Pesa, reused or malformed M-Pesa code, and offline card. Nothing was left behind.
+  - Local preview as the demo cashier: 350 cash on a KES 18,500 sale shows a KES 18,150 balance; one tap on Bank fills it and the button becomes "Complete Sale". `tsc --noEmit` passes.
+  - Not tested: completing a split sale from the browser, because the migration is applied only after merge.
+- Follow-ups: apply the migration after merge.
+
 ## 2026-10-30: Claude: Clean vector logo, and a footer colourway
 - PR: (this PR, branch `claude/clean-logo`)
 - Changed:

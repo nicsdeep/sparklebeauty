@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Mail, MessageCircle, Phone } from "lucide-react";
-import { Badge, Card, CardHeader, PaymentBadge, StatusBadge, buttonClass } from "@/components/ui";
+import { Badge, Card, CardHeader, PaymentBadge, StatusBadge, buttonClass, cx } from "@/components/ui";
 import { OrderTimeline, type OrderEvent } from "@/components/order-timeline";
 import { OrderActions } from "./order-actions";
 import { createClient } from "@/lib/supabase/server";
@@ -21,7 +21,8 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
   const { data: levels } = await supabase.from("inventory_levels").select("variant_id, quantity, reserved").in("variant_id", variantIds);
   const stockBy = new Map((levels ?? []).map((l) => [l.variant_id, l]));
   const events = ([...order.order_events] as (OrderEvent & { by: { full_name: string } | null })[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
-  const payment = order.payments[0] as { method: PaymentMethod; status: string; amount: number; provider_reference: string | null; paid_at: string | null } | undefined;
+  // A till sale can be split across methods (e.g. cash and M-Pesa): one payments row each.
+  const payments = order.payments as { method: PaymentMethod; status: string; amount: number; provider_reference: string | null; paid_at: string | null }[];
   const address = order.shipping_address as { address_line1?: string; address_line2?: string; city?: string; county?: string } | null;
   const status = order.status as OrderStatus;
   const reserved = ["pending", "confirmed", "paid", "processing", "packed"].includes(status);
@@ -105,10 +106,14 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
           <Card>
             <CardHeader title="Payment" />
             <div className="space-y-1.5 p-5 text-[15px]">
-              <div className="flex items-center justify-between"><span className="font-semibold">{payment ? PAYMENT_LABEL[payment.method] : "-"}</span><PaymentBadge status={order.payment_status} /></div>
-              <p>{kes(payment?.amount ?? order.total_amount)}</p>
-              {payment?.provider_reference && <p className="text-ink-muted">Ref <span className="font-mono font-semibold text-ink">{payment.provider_reference}</span></p>}
-              {payment?.paid_at && <p className="text-sm text-ink-muted">Paid {formatDateTime(payment.paid_at)}</p>}
+              <div className="flex items-center justify-between"><span className="font-semibold">{payments.length > 1 ? "Split payment" : payments[0] ? PAYMENT_LABEL[payments[0].method] : "-"}</span><PaymentBadge status={order.payment_status} /></div>
+              {payments.length ? payments.map((p, i) => (
+                <div key={i} className={cx(payments.length > 1 && "border-t border-line pt-1.5")}>
+                  <p className="flex justify-between gap-3">{payments.length > 1 && <span>{PAYMENT_LABEL[p.method]}</span>}<span>{kes(p.amount)}</span></p>
+                  {p.provider_reference && <p className="text-ink-muted">Ref <span className="font-mono font-semibold text-ink">{p.provider_reference}</span></p>}
+                  {p.paid_at && <p className="text-sm text-ink-muted">Paid {formatDateTime(p.paid_at)}</p>}
+                </div>
+              )) : <p>{kes(order.total_amount)}</p>}
             </div>
           </Card>
           <Card>
