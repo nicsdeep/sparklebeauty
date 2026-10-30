@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Heart, Home, LayoutDashboard, Menu, Package, Search, ShoppingBag, User, X } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { SearchSuggest } from "@/components/search-suggest";
 import { cx } from "@/components/ui";
 import { useCart } from "@/lib/cart";
 
@@ -31,21 +32,14 @@ export function ShopHeader({ userName, isStaff }: { userName: string | null; isS
   useEffect(() => setMounted(true), []);
   const ready = mounted && cart.ready;
   const count = ready ? cart.count : 0;
-  const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState(params.get("q") ?? "");
 
   const current = pathname + (params.toString() ? `?${params}` : "");
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : href === "/shop" ? pathname === "/shop" && !params.get("category") && !params.get("offers") : current === href;
 
-  function search(e: FormEvent) {
-    e.preventDefault();
-    setOpen(false);
-    router.push(q.trim() ? `/shop?q=${encodeURIComponent(q.trim())}` : "/shop");
-  }
 
   return (
     <>
@@ -58,18 +52,8 @@ export function ShopHeader({ userName, isStaff }: { userName: string | null; isS
             <Menu className="size-6" />
           </button>
           <Logo />
-          <form onSubmit={search} className="hidden flex-1 md:block" role="search">
-            <div className="relative max-w-xl">
-              <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-ink-muted" aria-hidden />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search wigs, braids, serums, perfumes…"
-                aria-label="Search products"
-                className="h-11 w-full rounded-full border border-line bg-surface pl-11 pr-4 outline-none focus:border-brand-500 focus:bg-white"
-              />
-            </div>
-          </form>
+          <SearchSuggest scope="shop" placeholder="Search wigs, braids, serums, perfumes…" defaultValue={params.get("q") ?? ""} className="hidden max-w-xl flex-1 md:block"
+            inputClassName="h-11 rounded-full border border-line bg-surface focus:border-brand-500 focus:bg-white" />
           <nav className="ml-auto flex items-center gap-1" aria-label="Account">
             {isStaff && (
               <Link href="/admin" className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-ink hover:bg-surface sm:flex">
@@ -119,10 +103,8 @@ export function ShopHeader({ userName, isStaff }: { userName: string | null; isS
                 <X className="size-6" />
               </button>
             </div>
-            <form onSubmit={search} role="search" className="mb-4">
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products" aria-label="Search products"
-                className="h-11 w-full rounded-full border border-line bg-surface px-4 outline-none focus:border-brand-500" />
-            </form>
+            <SearchSuggest scope="shop" placeholder="Search products" defaultValue={params.get("q") ?? ""} className="mb-4" onNavigate={() => setOpen(false)}
+              inputClassName="h-11 rounded-full border border-line bg-surface focus:border-brand-500" />
             {NAV.map((n) => (
               <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
                 className={cx("rounded-xl px-3 py-3 text-base font-medium", isActive(n.href) ? "bg-brand-50 text-brand-700" : "")}>

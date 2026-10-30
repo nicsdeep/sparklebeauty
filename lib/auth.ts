@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type Profile = {
@@ -15,14 +16,21 @@ export type Profile = {
   created_at: string;
 };
 
-/** The signed-in user's profile, or null when signed out. */
-export async function getProfile(): Promise<Profile | null> {
+/** The signed-in auth user, checked once per request however many layouts and pages ask. */
+export const getUser = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  return user;
+});
+
+/** The signed-in user's profile, or null when signed out (once per request). */
+export const getProfile = cache(async (): Promise<Profile | null> => {
+  const user = await getUser();
   if (!user) return null;
+  const supabase = await createClient();
   const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
   return (data as Profile) ?? null;
-}
+});
 
 export async function requireUser(next: string) {
   const profile = await getProfile();

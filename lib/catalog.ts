@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export type Variant = {
@@ -90,11 +92,11 @@ function toProduct(row: any): Product {
   };
 }
 
-export async function getCategories(): Promise<Category[]> {
+export const getCategories = cache(async (): Promise<Category[]> => {
   const supabase = await createClient();
   const { data } = await supabase.from("categories").select("id, name, slug, description, parent_id, sort_order").order("sort_order");
   return (data ?? []) as Category[];
-}
+});
 
 export type ProductFilters = { category?: string; q?: string; offers?: boolean; brand?: string; sort?: string; featured?: boolean; limit?: number; includeHidden?: boolean };
 
@@ -110,12 +112,15 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
     const ids = [parent.id, ...cats.filter((c) => c.parent_id === parent.id).map((c) => c.id)];
     query = query.in("category_id", ids);
   }
-  if (filters.q) query = query.ilike("name", `%${filters.q.replace(/[%_,()]/g, " ").trim()}%`);
   if (filters.featured) query = query.eq("is_featured", true);
 
   const { data } = await query.order("is_featured", { ascending: false }).order("name");
   let products = (data ?? []).map(toProduct).filter((p) => p.variants.length > 0);
 
+  if (filters.q) {
+    const words = filters.q.toLowerCase().split(/\s+/).filter(Boolean);
+    products = products.filter((p) => { const text = `${p.name} ${p.brand ?? ""} ${p.category.name}`.toLowerCase(); return words.every((w) => text.includes(w)); });
+  }
   if (filters.brand) products = products.filter((p) => p.brand === filters.brand);
   if (filters.offers) products = products.filter((p) => p.variants.some((v) => v.compare_at));
   if (filters.sort === "price-asc") products.sort((a, b) => a.variants[0].price - b.variants[0].price);
@@ -179,9 +184,9 @@ export function productStock(product: Product, stock: Record<string, Stock>): St
 
 /** Product IDs on the signed-in customer's wishlist (empty when signed out). */
 export async function getWishlistIds(): Promise<string[]> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) return [];
+  const supabase = await createClient();
   const { data } = await supabase.from("wishlist_items").select("product_id, wishlist:wishlists!inner(user_id)").eq("wishlist.user_id", user.id);
   return (data ?? []).map((r) => r.product_id);
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveSearch } from "@/components/live-search";
 import { Badge, Card, EmptyState, PageHeader, PaymentBadge, StatusBadge, cx } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime, kes, channelMeta } from "@/lib/format";
@@ -43,10 +44,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           <Link key={c} href={link({ channel: c || undefined })}
             className={cx("rounded-full px-4 py-2 text-sm font-semibold", (sp.channel ?? "") === c ? "bg-ink text-white" : "border border-line bg-white hover:bg-surface")}>{label}</Link>
         ))}
-        <form className="ml-auto" action="/admin/orders">
-          {sp.tab && <input type="hidden" name="tab" value={sp.tab} />}
-          <input name="q" defaultValue={sp.q} placeholder="Search order or customer" className="h-10 w-64 rounded-full border border-line bg-white px-4" aria-label="Search orders" />
-        </form>
+        <LiveSearch placeholder="Search order or customer" className="ml-auto w-64 max-w-full" />
       </div>
       <Card>
         {orders?.length ? (

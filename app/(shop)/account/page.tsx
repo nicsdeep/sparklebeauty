@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/submit-button";
 import type { Metadata } from "next";
 import { Bell, Gift, Heart, MapPin, Package } from "lucide-react";
-import { Button, Card, CardHeader, EmptyState, Field, StatusBadge, inputClass } from "@/components/ui";
+import { Card, CardHeader, EmptyState, Field, StatusBadge, inputClass } from "@/components/ui";
 import { ProductImage } from "@/components/shop/product-image";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -36,7 +37,7 @@ export default async function AccountPage() {
           <p className="text-ink-muted">My account</p>
           <h1 className="text-3xl font-bold tracking-tight">Hello, {profile.full_name?.split(" ")[0] ?? "there"}</h1>
         </div>
-        <form action={signOut}><Button variant="ghost" className="border border-line">Sign Out</Button></form>
+        <form action={signOut}><SubmitButton variant="ghost" className="border border-line">Sign Out</SubmitButton></form>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -77,7 +78,7 @@ export default async function AccountPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Notifications" action={unread > 0 ? <form action={markNotificationsRead}><button className="text-sm font-semibold text-brand-700">Mark all read</button></form> : undefined} />
+            <CardHeader title="Notifications" action={unread > 0 ? <form action={markNotificationsRead}><SubmitButton unstyled className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">Mark all read</SubmitButton></form> : undefined} />
             <ul className="divide-y divide-line">
               {(notifications.data ?? []).map((n) => (
                 <li key={n.id} className="px-5 py-3">
@@ -142,7 +143,7 @@ export default async function AccountPage() {
               <label className="flex items-center gap-2"><input type="checkbox" name="notify_email" defaultChecked={profile.notify_email} className="size-4 accent-brand-600" /> Email</label>
               <label className="flex items-center gap-2 pt-2"><input type="checkbox" name="marketing_consent" defaultChecked={profile.marketing_consent} className="size-4 accent-brand-600" /> Send me offers and new arrivals</label>
             </fieldset>
-            <Button className="w-full">Save Preferences</Button>
+            <SubmitButton className="w-full">Save Preferences</SubmitButton>
           </form>
         </Card>
         <ChangePassword />

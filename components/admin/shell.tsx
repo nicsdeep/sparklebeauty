@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SubmitButton } from "@/components/submit-button";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Logo } from "@/components/logo";
+import { SearchSuggest } from "@/components/search-suggest";
 import { cx } from "@/components/ui";
 import { signOut } from "@/app/login/actions";
 
@@ -137,11 +139,8 @@ export function AdminShell({ user, newOrders, lowStock, alerts, supportHref, chi
       <div className={cx("transition-[padding]", collapsed ? "lg:pl-20" : "lg:pl-64")}>
         <header className="no-print sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-white/95 px-4 py-3 backdrop-blur lg:px-8">
           <button onClick={toggleMenu} className="rounded-full p-2 hover:bg-surface" aria-label={collapsed ? "Expand menu" : "Menu"}><Menu className="size-6" /></button>
-          <form action="/admin/search" className="relative hidden max-w-md flex-1 sm:block" role="search">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-ink-muted" />
-            <input name="q" placeholder="Search orders, products, customers…" aria-label="Search orders, products and customers"
-              className="h-11 w-full rounded-xl border border-line bg-surface pl-10 pr-4 text-[15px] outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100" />
-          </form>
+          <SearchSuggest scope="admin" placeholder="Search orders, products, customers…" className="hidden max-w-md flex-1 sm:block"
+            inputClassName="h-11 rounded-xl border border-line bg-surface text-[15px] focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100" />
           <Link href="/admin/search" className="rounded-full p-2 hover:bg-surface sm:hidden" aria-label="Search"><Search className="size-5" /></Link>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -181,7 +180,7 @@ export function AdminShell({ user, newOrders, lowStock, alerts, supportHref, chi
                 <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-line bg-white py-1 shadow-lg">
                   <Link href="/" className="flex items-center gap-2.5 px-4 py-2.5 text-[15px] hover:bg-surface"><ExternalLink className="size-4" /> View Store</Link>
                   <Link href="/admin/settings" className="flex items-center gap-2.5 px-4 py-2.5 text-[15px] hover:bg-surface"><Settings className="size-4" /> Settings</Link>
-                  <form action={signOut}><button className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[15px] text-rose-fg hover:bg-surface"><LogOut className="size-4" /> Sign out</button></form>
+                  <form action={signOut}><SubmitButton unstyled className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[15px] text-rose-fg hover:bg-surface"><LogOut className="size-4" /> Sign out</SubmitButton></form>
                 </div>
               )}
             </div>

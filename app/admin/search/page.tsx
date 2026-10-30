@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Card, CardHeader, EmptyState, PageHeader, StatusBadge, inputClass } from "@/components/ui";
+import { LiveSearch } from "@/components/live-search";
+import { Card, CardHeader, EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { listProducts } from "@/lib/catalog";
 import { listCustomers } from "@/lib/customers";
 import { formatDateTime, kes } from "@/lib/format";
@@ -25,9 +26,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-6">
       <PageHeader title="Search" subtitle={q ? `${total} result${total === 1 ? "" : "s"} for “${q}”` : "Find orders, products and customers."} />
-      <form action="/admin/search" className="max-w-xl" role="search">
-        <input name="q" defaultValue={q} autoFocus={!q} placeholder="Order number, product, customer name or phone" className={inputClass} aria-label="Search" />
-      </form>
+      <LiveSearch placeholder="Order number, product, customer name or phone" className="max-w-xl" autoFocus={!q} />
       {q && total === 0 && <EmptyState title="Nothing found">Try an order number like SPK-1034, a product name or a phone number.</EmptyState>}
       {orders.length > 0 && (
         <Card>

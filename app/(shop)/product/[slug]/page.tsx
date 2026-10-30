@@ -9,8 +9,8 @@ import { ProductTabs, type ProductTab } from "@/components/shop/product-tabs";
 import { ReviewForm } from "@/components/shop/review-form";
 import { ShareButton } from "@/components/shop/share-button";
 import { getProduct, getReviews, getStock, getWishlistIds, listProducts, reviewEligibility, type Review } from "@/lib/catalog";
+import { getUser } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
 import { quoteCart } from "../../actions";
 import { getStoreSettings } from "@/lib/store";
 import { deliverySummary } from "@/lib/store-types";
@@ -34,11 +34,9 @@ function Stars({ rating, size = "size-4" }: { rating: number; size?: string }) {
 
 export default async function ProductPage({ params }: Params) {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const [product, user] = await Promise.all([getProduct(slug), getUser()]);
   if (!product) notFound();
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
   const [store, wishlist, reviews, eligibility, sameCategory] = await Promise.all([
     getStoreSettings(),
     getWishlistIds(),
