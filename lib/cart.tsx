@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { quoteCart } from "@/app/(shop)/actions";
 import { useLiveTopic } from "@/lib/live";
 import { breakFor, type PriceRule, type QuoteLine } from "@/lib/pricing";
+import { orderTax, STANDARD_VAT, type OrderTax } from "@/lib/tax";
 
 export type CartItem = {
   variantId: string;
@@ -19,7 +20,8 @@ export type CartItem = {
 };
 
 /** What the pricing engine says about a cart line. */
-export type LinePrice = { unit: number; retail: number; rule: PriceRule; minQty: number; available: number | null; confirmed: boolean };
+/** taxRate: VAT % for the line from the server quote (16, the standard rate, until the quote arrives). */
+export type LinePrice = { unit: number; retail: number; rule: PriceRule; minQty: number; available: number | null; confirmed: boolean; taxRate: number };
 
 type CartContextValue = {
   items: CartItem[];
@@ -30,6 +32,8 @@ type CartContextValue = {
   /** True while the server is confirming the latest prices and stock. */
   pricing: boolean;
   priceOf: (item: CartItem) => LinePrice;
+  /** VAT and total for this cart with a discount and delivery fee (same rule as the order). */
+  taxFor: (discount: number, delivery: number, vatRegistered: boolean) => OrderTax;
   add: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   setQuantity: (variantId: string, quantity: number) => void;
   remove: (variantId: string) => void;
@@ -99,7 +103,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const priceOf = useCallback((item: CartItem): LinePrice => {
     const q = quotes[item.variantId];
-    if (!q) return { unit: item.price, retail: item.price, rule: "retail", minQty: 1, available: null, confirmed: false };
+    if (!q) return { unit: item.price, retail: item.price, rule: "retail", minQty: 1, available: null, confirmed: false, taxRate: 16 };
     const b = breakFor(q.breaks, item.quantity);
     const confirmed = q.quantity === item.quantity;
     return {
@@ -109,6 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       minQty: (confirmed ? breakFor(q.breaks, q.quantity) : b)?.min_qty ?? 1,
       available: q.available,
       confirmed,
+      taxRate: q.tax_rate,
     };
   }, [quotes]);
 
@@ -135,6 +140,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       subtotal: items.reduce((s, i) => s + priceOf(i).unit * i.quantity, 0),
       pricing,
       priceOf,
+      taxFor: (discount: number, delivery: number, vatRegistered: boolean) =>
+        orderTax(items.map((i) => ({ amount: priceOf(i).unit * i.quantity, rate: priceOf(i).taxRate })), discount, delivery, vatRegistered ? STANDARD_VAT : 0),
       add,
       setQuantity,
       remove,

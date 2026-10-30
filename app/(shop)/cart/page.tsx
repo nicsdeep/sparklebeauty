@@ -14,7 +14,7 @@ import { ruleLabel } from "@/lib/pricing";
 import { useCheckoutState } from "@/lib/checkout-state";
 
 export default function CartPage() {
-  const { items, ready, setQuantity, remove, subtotal, priceOf, pricing } = useCart();
+  const { items, ready, setQuantity, remove, subtotal, priceOf, pricing, taxFor } = useCart();
   const [checkout, update] = useCheckoutState();
   const store = useStore();
   const freeOver = store.free_delivery_threshold;
@@ -24,6 +24,7 @@ export default function CartPage() {
 
   const discount = checkout.promoCode && checkout.discount && subtotal > 0 ? Math.min(checkout.discount, subtotal) : 0;
   const fee = deliveryFee("delivery", { city: "Nairobi" }, subtotal - discount, store);
+  const vat = taxFor(discount, fee, store.vat_registered);
   const problems = items.filter((i) => { const a = priceOf(i).available; return a !== null && i.quantity > a; });
 
   function applyPromo() {
@@ -121,7 +122,8 @@ export default function CartPage() {
             <div className="flex justify-between"><dt>Subtotal</dt><dd className={pricing ? "opacity-60" : ""}>{kes(subtotal)}</dd></div>
             {discount > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount</dt><dd>-{kes(discount)}</dd></div>}
             <div className="flex justify-between"><dt>Delivery <span className="text-ink-muted">(Nairobi)</span></dt><dd>{fee ? kes(fee) : "Free"}</dd></div>
-            <div className="flex justify-between border-t border-line pt-3 text-lg font-bold"><dt>Total</dt><dd>{kes(subtotal - discount + fee)}</dd></div>
+            {store.vat_registered && <div className="flex justify-between"><dt>VAT</dt><dd className={pricing ? "opacity-60" : ""}>{kes(vat.tax)}</dd></div>}
+            <div className="flex justify-between border-t border-line pt-3 text-lg font-bold"><dt>Total</dt><dd>{kes(vat.total)}</dd></div>
           </dl>
           <p className="text-sm text-ink-muted">
             {subtotal - discount >= freeOver ? "You qualify for free delivery." : `Add ${kes(freeOver - (subtotal - discount))} more for free delivery. Outside Nairobi ${kes(store.delivery_fee_other)}. Pickup is free.`}

@@ -7,6 +7,7 @@ import { formatDate, formatDateTime, kes, channelMeta } from "@/lib/format";
 import { whatsappHref } from "@/lib/store";
 import { loadSales } from "@/lib/sales-data";
 import { customerSentence } from "@/lib/insights";
+import { KraPin } from "./kra-pin";
 import { OnlineAccess } from "./online-access";
 import { SpecialPrices, type SpecialPrice } from "./special-prices";
 
@@ -119,6 +120,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             </div>
           </Card>
           {c.role === "customer" && <OnlineAccess customerId={c.id} email={c.email} firstName={first} />}
+          {c.role === "customer" && <KraPin customerId={c.id} pin={c.kra_pin ?? null} />}
           {c.role === "customer" && <SpecialPrices customerId={c.id} prices={(special ?? []).map((sp) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const v = sp.variant as any;

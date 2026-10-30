@@ -20,7 +20,7 @@ export default async function EditProductPage({ params, searchParams }: { params
   const created = (await searchParams).created === "1";
   const supabase = await createClient();
   const [{ data: p }, { categories, brands }] = await Promise.all([
-    supabase.from("products").select(`id, name, slug, description, image_urls, is_featured, is_active, benefits, how_to_use, ingredients,
+    supabase.from("products").select(`id, name, slug, description, image_urls, is_featured, is_active, benefits, how_to_use, ingredients, tax_type,
       category:categories(slug), brand:brands(name),
       product_variants(id, sku, name, color, shade, size, hair_length, hair_texture, hair_type, is_active,
         product_prices(amount, tier:pricing_tiers(code)), inventory_levels(quantity, reorder_level))`).eq("id", id).maybeSingle(),
@@ -36,6 +36,7 @@ export default async function EditProductPage({ params, searchParams }: { params
     description: p.description ?? "", images: p.image_urls ?? [], is_featured: p.is_featured, is_active: p.is_active,
     benefits: p.benefits ?? [], how_to_use: p.how_to_use ?? "", ingredients: p.ingredients ?? "",
     option_type: first ? optionType(first) : "none", hair_texture: first?.hair_texture ?? "", hair_type: first?.hair_type ?? "",
+    tax_type: p.tax_type ?? "B",
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: ProductRow[] = variants.map((v: any) => {

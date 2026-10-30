@@ -1,6 +1,7 @@
 import { listProducts, getStock } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreSettings } from "@/lib/store";
+import type { TaxType } from "@/lib/tax";
 import { posPriceSheet } from "../actions";
 import { PosTerminal, type PosCategory, type PosCustomer, type PosItem, type PosRecentSale } from "./terminal";
 
@@ -13,7 +14,7 @@ export const metadata = { title: "POS" };
  */
 export default async function PosPage() {
   const supabase = await createClient();
-  const [products, { data: customers }, { data: wholesale }, { data: tier }, { data: cats }, { data: recent }, sheet, store] = await Promise.all([
+  const [products, { data: customers }, { data: wholesale }, { data: tier }, { data: cats }, { data: recent }, sheet, store, { data: rates }] = await Promise.all([
     listProducts(),
     supabase.from("profiles").select("id, full_name, phone, email, loyalty_points").eq("role", "customer").order("full_name"),
     supabase.from("wholesale_accounts").select("profile_id, business_name"),
@@ -23,7 +24,9 @@ export default async function PosPage() {
       .not("created_by", "is", null).neq("channel", "online").order("created_at", { ascending: false }).limit(10),
     posPriceSheet(null),
     getStoreSettings(),
+    supabase.rpc("variant_tax_rates"),
   ]);
+  const rateBy = new Map(((rates ?? []) as { variant_id: string; tax_type: TaxType; tax_rate: number }[]).map((r) => [r.variant_id, r]));
   const stock = await getStock(products.flatMap((p) => p.variants.map((v) => v.id)));
   const wholesaleBy = new Map((wholesale ?? []).map((w) => [w.profile_id, w.business_name]));
 
@@ -39,6 +42,8 @@ export default async function PosPage() {
       retail: v.price,
       available: stock[v.id]?.available ?? 0,
       low: stock[v.id]?.low ?? false,
+      taxType: rateBy.get(v.id)?.tax_type ?? "B",
+      taxRate: Number(rateBy.get(v.id)?.tax_rate ?? 0),
     })),
   );
   // Top-level groups first, then hair's sub-categories (Wigs, Braids…), as on the shop.

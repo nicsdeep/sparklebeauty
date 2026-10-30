@@ -27,6 +27,8 @@ const FALLBACK: StoreSettings = {
   delivery_fee_other: 500,
   free_delivery_threshold: 10000,
   free_delivery_areas: [],
+  kra_pin: null,
+  vat_registered: true,
 };
 
 /** Shop details and delivery pricing from public.store_settings (edited in Admin → Settings). */
@@ -50,5 +52,7 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
     delivery_fee_other: Number(data.delivery_fee_other),
     free_delivery_threshold: Number(data.free_delivery_threshold),
     free_delivery_areas: data.free_delivery_areas ?? [],
+    kra_pin: data.kra_pin ?? null,
+    vat_registered: data.vat_registered ?? true,
   };
 });

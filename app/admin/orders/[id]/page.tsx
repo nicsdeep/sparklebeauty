@@ -6,6 +6,7 @@ import { OrderTimeline, type OrderEvent } from "@/components/order-timeline";
 import { OrderActions } from "./order-actions";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime, kes, PAYMENT_LABEL, type OrderStatus, type PaymentMethod, channelMeta } from "@/lib/format";
+import { ETIMS_META, type EtimsStatus } from "@/lib/invoices";
 import { getStoreSettings, whatsappHref } from "@/lib/store";
 
 export default async function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +14,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
   const store = await getStoreSettings();
   const supabase = await createClient();
   const { data: order } = await supabase.from("orders")
-    .select("*, tier:pricing_tiers(name, code), order_items(*), payments(method, status, amount, provider_reference, paid_at), order_events(status, note, created_at, by:profiles(full_name))")
+    .select("*, tier:pricing_tiers(name, code), order_items(*), payments(method, status, amount, provider_reference, paid_at), order_events(status, note, created_at, by:profiles(full_name)), invoices(id, kind, invoice_number, etims_status)")
     .eq("id", id).maybeSingle();
   if (!order) notFound();
 
@@ -91,6 +92,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(order.subtotal)}</dd></div>
               {Number(order.discount_amount) > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount</dt><dd>-{kes(order.discount_amount)}</dd></div>}
               <div className="flex justify-between"><dt>Delivery</dt><dd>{Number(order.delivery_amount) ? kes(order.delivery_amount) : "Free"}</dd></div>
+              {Number(order.tax_amount) > 0 && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(order.tax_amount)}</dd></div>}
               <div className="flex justify-between pt-1 text-lg font-bold"><dt>Total</dt><dd>{kes(order.total_amount)}</dd></div>
             </dl>
           </Card>
@@ -114,6 +116,12 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                   {p.paid_at && <p className="text-sm text-ink-muted">Paid {formatDateTime(p.paid_at)}</p>}
                 </div>
               )) : <p>{kes(order.total_amount)}</p>}
+              {(order.invoices as { id: string; kind: string; invoice_number: string; etims_status: EtimsStatus }[]).map((inv) => (
+                <p key={inv.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-1.5">
+                  <Link href={`/admin/invoices/${inv.id}`} className="font-semibold text-brand-700">{inv.kind === "credit_note" ? "Credit note" : "Tax invoice"} {inv.invoice_number}</Link>
+                  <Badge tone={ETIMS_META[inv.etims_status].tone}>{ETIMS_META[inv.etims_status].label}</Badge>
+                </p>
+              ))}
             </div>
           </Card>
           <Card>

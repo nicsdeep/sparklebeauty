@@ -11,14 +11,17 @@ import { Badge, Button, cx, inputClass } from "@/components/ui";
 import { ProductImage } from "@/components/shop/product-image";
 import { channelMeta, formatDateTime, kes, maskPhone, PAYMENT_LABEL } from "@/lib/format";
 import { useLiveTopic } from "@/lib/live";
+import { orderTax, type TaxType } from "@/lib/tax";
 import { breakFor, nextBreak, ruleLabel, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
 import { whatsappHref, type StoreSettings } from "@/lib/store-types";
-import { completeSale, posPriceSheet, posQuote, type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment } from "../actions";
+import { completeSale, posPriceSheet, posQuote, type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment, type PosSaleResult } from "../actions";
 import { loadParked, loadQueue, newClientRef, saveParked, saveQueue, type ParkedSale, type QueuedSale } from "./offline-queue";
 
 export type PosItem = {
   variantId: string; sku: string; name: string; variantName: string | null; image: string | null;
   category: string; group: string; retail: number; available: number; low: boolean;
+  /** eTIMS tax type and VAT % (prices are VAT-exclusive; VAT is added on top). */
+  taxType: TaxType; taxRate: number;
 };
 export type PosCustomer = { id: string; name: string; phone: string; email: string; points: number; business: string | null };
 export type PosCategory = { slug: string; name: string };
@@ -29,7 +32,8 @@ type Line = { variantId: string; qty: number };
 type Tender = { id: string; method: PosPaymentMethod; amount: string; phone: string; reference: string };
 type Receipt = {
   number: string; offline: boolean; at: string; customer: PosCustomer | null; lines: PosReceiptLine[];
-  subtotal: number; discount: number; total: number; payments: PosRecordedPayment[]; cashReceived: number; change: number;
+  subtotal: number; discount: number; tax: number; total: number; payments: PosRecordedPayment[]; cashReceived: number; change: number;
+  invoiceNumber: string | null;
 };
 type Sheet = Record<string, PriceBreak[]>;
 
@@ -162,7 +166,9 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const subtotal = priced.reduce((s, l) => s + l.price.unit * l.qty, 0);
   const pct = Math.min(100, Math.max(0, Number(discountPct) || 0));
   const discount = Math.round((subtotal * pct) / 100);
-  const total = subtotal - discount;
+  // VAT on top of the (VAT-exclusive) prices, to the cent as the server will record it.
+  const vat = orderTax(priced.map((l) => ({ amount: l.price.unit * l.qty, rate: l.item.taxRate })), discount);
+  const total = vat.total;
   const units = priced.reduce((s, l) => s + l.qty, 0);
   const pay = settle(tenders, total);
   const allConfirmed = !online || priced.every((l) => confirmed?.key.startsWith(cartKey) && confirmed.lines[l.variantId]?.quantity === l.qty);
@@ -245,12 +251,12 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     setTimeout(() => searchRef.current?.focus(), 50);
   }
 
-  function receiptFromCart(number: string, offline: boolean, payments: PosRecordedPayment[], serverLines?: PosReceiptLine[], serverTotal?: number, serverChange?: number): Receipt {
-    const ls = serverLines ?? priced.map((l) => ({ name: l.item.name + (l.item.variantName ? ` – ${l.item.variantName}` : ""), sku: l.item.sku, quantity: l.qty, unitPrice: l.price.unit, lineTotal: l.price.unit * l.qty, rule: l.price.rule }));
+  function receiptFromCart(number: string, offline: boolean, payments: PosRecordedPayment[], server?: PosSaleResult): Receipt {
+    const ls = server?.lines ?? priced.map((l) => ({ name: l.item.name + (l.item.variantName ? ` – ${l.item.variantName}` : ""), sku: l.item.sku, quantity: l.qty, unitPrice: l.price.unit, lineTotal: l.price.unit * l.qty, rule: l.price.rule }));
     return {
       number, offline, at: new Date().toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "medium", timeStyle: "short" }),
-      customer, lines: ls, subtotal: ls.reduce((s, l) => s + l.lineTotal, 0), discount, total: serverTotal ?? total, payments,
-      cashReceived: pay.cash, change: serverChange ?? pay.change,
+      customer, lines: ls, subtotal: ls.reduce((s, l) => s + l.lineTotal, 0), discount: vat.discount, tax: server?.tax ?? vat.tax,
+      total: server?.total ?? total, payments, cashReceived: pay.cash, change: server?.change ?? pay.change, invoiceNumber: server?.invoiceNumber ?? null,
     };
   }
 
@@ -286,7 +292,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
       });
       setMpesaSent(false);
       if (!res.ok) { setError(res.error); return; }
-      setReceipt(receiptFromCart(res.data.orderNumber, false, res.data.payments, res.data.lines, res.data.total, res.data.change));
+      setReceipt(receiptFromCart(res.data.orderNumber, false, res.data.payments, res.data));
     } catch (e) {
       if (!isNetworkError(e)) { setError("Something went wrong. Please try again."); return; }
       setServerOk(false);
@@ -578,6 +584,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
           <dl className="space-y-1.5 text-[15px]">
             <div className="flex justify-between"><dt>Subtotal ({units} item{units === 1 ? "" : "s"})</dt><dd>{kes(subtotal)}</dd></div>
             <div className="flex justify-between"><dt>Discount</dt><dd>{kes(discount)}</dd></div>
+            {store.vat_registered && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(vat.tax)}</dd></div>}
             <div className="flex items-end justify-between pt-1"><dt className="text-xl font-bold">Total</dt>
               <dd className={cx("text-3xl font-extrabold text-brand-600 transition-opacity", allConfirmed ? "" : "opacity-60")}>{kes(total)}</dd></div>
           </dl>
@@ -776,7 +783,8 @@ function ReceiptDialog({ receipt, store, threshold, onNewSale, onClose }: { rece
   const [to, setTo] = useState(receipt.customer?.phone ?? "");
   const text = [`${store.name} – Receipt ${receipt.number}`, receipt.at,
     ...receipt.lines.map((l) => `${l.quantity} x ${l.name} @ ${kes(l.unitPrice)} = ${kes(l.lineTotal)}`),
-    receipt.discount ? `Discount: -${kes(receipt.discount)}` : "", `Total: ${kes(receipt.total)}`,
+    receipt.discount ? `Discount: -${kes(receipt.discount)}` : "", receipt.tax ? `VAT: ${kes(receipt.tax)}` : "", `Total: ${kes(receipt.total)}`,
+    receipt.invoiceNumber ? `Tax invoice ${receipt.invoiceNumber}${store.kra_pin ? ` · KRA PIN ${store.kra_pin}` : ""}` : "",
     `Paid: ${receipt.payments.map((p) => `${PAYMENT_LABEL[p.method]} ${kes(p.amount)}`).join(" + ")}`,
     receipt.change > 0 ? `Cash ${kes(receipt.cashReceived)}, change ${kes(receipt.change)}` : "", "Thank you for shopping with Sparkle!"]
     .filter(Boolean).join("\n");
@@ -790,6 +798,9 @@ function ReceiptDialog({ receipt, store, threshold, onNewSale, onClose }: { rece
           <p className="mt-3 font-semibold">Receipt {receipt.number}</p>
           <p className="text-sm text-ink-muted">{receipt.at}</p>
           {receipt.customer && <p className="text-sm">{receipt.customer.business ?? receipt.customer.name}</p>}
+          {receipt.invoiceNumber && (
+            <p className="mt-1 text-xs text-ink-muted">Tax invoice <strong className="text-ink">{receipt.invoiceNumber}</strong>{store.kra_pin ? ` · KRA PIN ${store.kra_pin}` : ""} · eTIMS: waiting to send</p>
+          )}
           {receipt.offline && <p className="no-print mt-2 rounded-lg bg-amber-bg px-3 py-1.5 text-xs text-amber-fg">Taken offline. It will be recorded when the till reconnects.</p>}
         </div>
         <ul className="mt-4 space-y-1.5 border-y border-dashed border-line py-3 text-sm">
@@ -803,6 +814,7 @@ function ReceiptDialog({ receipt, store, threshold, onNewSale, onClose }: { rece
         <dl className="mt-3 space-y-1 text-sm">
           <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(receipt.subtotal)}</dd></div>
           {receipt.discount > 0 && <div className="flex justify-between"><dt>Discount</dt><dd>-{kes(receipt.discount)}</dd></div>}
+          {receipt.tax > 0 && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(receipt.tax)}</dd></div>}
           <div className="flex justify-between text-base font-bold"><dt>Total</dt><dd>{kes(receipt.total)}</dd></div>
           {receipt.payments.map((p, i) => (
             <div key={i} className="flex justify-between gap-3"><dt>{PAYMENT_LABEL[p.method]} <span className="font-mono text-xs text-ink-muted">{p.reference}</span></dt><dd>{kes(p.amount)}</dd></div>
