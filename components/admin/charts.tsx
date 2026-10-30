@@ -61,19 +61,21 @@ export function BarChart({ data, height = 190 }: { data: { label: string; value:
   );
 }
 
-/** Two-part split bar, e.g. Online vs POS. */
-export function SplitBar({ a, b }: { a: { label: string; value: number }; b: { label: string; value: number } }) {
-  const total = a.value + b.value || 1;
-  const pa = Math.round((a.value / total) * 100);
+const SPLIT_COLOURS = ["bg-brand-600", "bg-logo-blue/70", "bg-teal-fg"];
+
+/** Share of a total split into 2–3 parts, e.g. Online / POS / Wholesale. */
+export function SplitBar({ parts }: { parts: { label: string; value: number }[] }) {
+  const total = parts.reduce((t, p) => t + p.value, 0) || 1;
+  const pct = parts.map((p) => Math.round((p.value / total) * 100));
   return (
     <div>
       <div className="flex h-3 overflow-hidden rounded-full bg-surface">
-        <div className="bg-brand-600" style={{ width: `${pa}%` }} />
-        <div className="bg-logo-blue/70" style={{ width: `${100 - pa}%` }} />
+        {parts.map((p, i) => <div key={p.label} className={SPLIT_COLOURS[i]} style={{ width: `${(p.value / total) * 100}%` }} />)}
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-        <div><span className="mr-1.5 inline-block size-2.5 rounded-full bg-brand-600" />{a.label}<p className="font-semibold">{kes(a.value)} · {pa}%</p></div>
-        <div><span className="mr-1.5 inline-block size-2.5 rounded-full bg-logo-blue/70" />{b.label}<p className="font-semibold">{kes(b.value)} · {100 - pa}%</p></div>
+      <div className={cx("mt-3 grid gap-3 text-sm", parts.length > 2 ? "grid-cols-3" : "grid-cols-2")}>
+        {parts.map((p, i) => (
+          <div key={p.label}><span className={cx("mr-1.5 inline-block size-2.5 rounded-full", SPLIT_COLOURS[i])} />{p.label}<p className="font-semibold">{kes(p.value)} · {pct[i]}%</p></div>
+        ))}
       </div>
     </div>
   );

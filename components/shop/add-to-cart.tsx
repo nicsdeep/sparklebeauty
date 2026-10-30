@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Check, Heart, Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button, StockBadge, cx } from "@/components/ui";
-import { useCart } from "@/lib/cart";
+import { MAX_LINE_QTY, useCart } from "@/lib/cart";
+import { breakFor, nextBreak, ruleLabel, type PriceBreak } from "@/lib/pricing";
 import { kes } from "@/lib/format";
 import type { Product, Stock } from "@/lib/catalog";
 import { variantLabel } from "@/lib/variant";
 import { toggleWishlist } from "@/app/(shop)/actions";
 
-export function AddToCart({ product, stock, wishlisted }: { product: Product; stock: Record<string, Stock>; wishlisted: boolean }) {
+export function AddToCart({ product, stock, breaks = {}, wishlisted }: { product: Product; stock: Record<string, Stock>; breaks?: Record<string, PriceBreak[]>; wishlisted: boolean }) {
   const router = useRouter();
   const { add, items } = useCart();
   const firstInStock = product.variants.find((v) => stock[v.id]?.inStock) ?? product.variants[0];
@@ -23,7 +24,12 @@ export function AddToCart({ product, stock, wishlisted }: { product: Product; st
   const variant = product.variants.find((v) => v.id === variantId)!;
   const s = stock[variant.id];
   const inCart = items.find((i) => i.variantId === variant.id)?.quantity ?? 0;
-  const maxQty = Math.max(0, (s?.available ?? 0) - inCart);
+  const maxQty = Math.min(MAX_LINE_QTY - inCart, Math.max(0, (s?.available ?? 0) - inCart));
+  // Price for this quantity from the server's breaks (the cart and checkout confirm it).
+  const current = breakFor(breaks[variant.id], inCart + qty);
+  const unit = current?.unit_price ?? variant.price;
+  const upcoming = nextBreak(breaks[variant.id], inCart + qty);
+  const label = current ? ruleLabel(current.rule, current.min_qty) : null;
   const optionKind = useMemo(() => {
     const v = product.variants[0];
     if (product.variants.length < 2) return null;
@@ -64,10 +70,16 @@ export function AddToCart({ product, stock, wishlisted }: { product: Product; st
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-baseline gap-3">
-        <span className="text-4xl font-extrabold tracking-tight text-brand-600">{kes(variant.price)}</span>
-        {variant.compare_at && <span className="text-lg text-ink-muted line-through">{kes(variant.compare_at)}</span>}
+        <span className="text-4xl font-extrabold tracking-tight text-brand-600">{kes(unit)}</span>
+        {unit < variant.price ? <span className="text-lg text-ink-muted line-through">{kes(variant.price)}</span>
+          : variant.compare_at && <span className="text-lg text-ink-muted line-through">{kes(variant.compare_at)}</span>}
         <StockBadge stock={s} showCount={!!s?.low} />
       </div>
+      {label ? (
+        <p className="-mt-2 inline-flex rounded-full bg-teal-bg px-3 py-1 text-sm font-semibold text-teal-fg" role="status">{label}</p>
+      ) : upcoming && (
+        <p className="-mt-2 text-sm text-ink-muted">Buy <strong className="text-ink">{upcoming.min_qty}+</strong> and pay <strong className="text-teal-fg">{kes(upcoming.unit_price)}</strong> each (wholesale price).</p>
+      )}
 
       {optionKind && (
         <fieldset>

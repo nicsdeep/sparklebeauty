@@ -4,9 +4,12 @@ import { formatDateTime, ORDER_FLOW, STATUS_META, type OrderStatus } from "@/lib
 
 export type OrderEvent = { status: OrderStatus; note: string | null; created_at: string };
 
-/** Lifecycle tracker shared by the customer tracking page and the admin order page. */
-export function OrderTimeline({ status, events, channel }: { status: OrderStatus; events: OrderEvent[]; channel: string }) {
-  if (status === "cancelled" || channel === "pos") {
+/**
+ * Lifecycle tracker shared by the customer tracking page and the admin order page. Till sales
+ * start out completed, so they (and cancelled orders) show a plain list of what happened.
+ */
+export function OrderTimeline({ status, events }: { status: OrderStatus; events: OrderEvent[] }) {
+  if (status === "cancelled" || events[0]?.status === "completed") {
     return (
       <ol className="space-y-3">
         {events.map((e, i) => (

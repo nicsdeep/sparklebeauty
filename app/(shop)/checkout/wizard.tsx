@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Banknote, Check, CheckCircle2, CreditCard, Smart
 import { ProductImage } from "@/components/shop/product-image";
 import { Button, ButtonLink, Field, cx, inputClass } from "@/components/ui";
 import { useCart } from "@/lib/cart";
+import { ruleLabel } from "@/lib/pricing";
 import { useCheckoutState, type CheckoutState } from "@/lib/checkout-state";
 import { deliverySummary } from "@/lib/store-types";
 import { deliveryFee, kes, maskPhone, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
@@ -116,7 +117,7 @@ export function CheckoutWizard({ profile, addresses }: {
               {cart.items.map((i) => (
                 <li key={i.variantId} className="flex justify-between gap-3">
                   <span>{i.quantity} × {i.name}{i.variantName ? ` (${i.variantName})` : ""}</span>
-                  <span className="font-semibold">{kes(i.price * i.quantity)}</span>
+                  <span className="font-semibold">{kes(cart.priceOf(i).unit * i.quantity)}</span>
                 </li>
               ))}
             </ul>
@@ -148,7 +149,7 @@ const BackButton = ({ onClick, label = "Back" }: { onClick: () => void; label?: 
 );
 
 function CartStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
-  const { items } = useCart();
+  const { items, priceOf } = useCart();
   return (
     <StepCard title="Review your cart" footer={<><BackButton onClick={onBack} label="Back to Cart" /><Button onClick={onNext}>Next: Your Details <ArrowRight className="size-4" /></Button></>}>
       <ul className="divide-y divide-line">
@@ -157,9 +158,10 @@ function CartStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }
             <div className="w-16"><ProductImage category={i.category} name={i.name} image={i.image} size="sm" /></div>
             <div className="flex-1">
               <p className="font-semibold">{i.name}</p>
-              <p className="text-sm text-ink-muted">{i.variantName ? `${i.variantName} · ` : ""}Qty {i.quantity}</p>
+              <p className="text-sm text-ink-muted">{i.variantName ? `${i.variantName} · ` : ""}Qty {i.quantity} · {kes(priceOf(i).unit)} each</p>
+              {ruleLabel(priceOf(i).rule, priceOf(i).minQty) && <p className="mt-1 inline-flex rounded-full bg-teal-bg px-2.5 py-0.5 text-xs font-semibold text-teal-fg">{ruleLabel(priceOf(i).rule, priceOf(i).minQty)}</p>}
             </div>
-            <p className="font-semibold">{kes(i.price * i.quantity)}</p>
+            <p className="font-semibold">{kes(priceOf(i).unit * i.quantity)}</p>
           </li>
         ))}
       </ul>

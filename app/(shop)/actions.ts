@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentMethod } from "@/lib/format";
+import { toQuoteLine, type QuoteLine } from "@/lib/pricing";
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -11,22 +12,16 @@ const fail = (error: unknown): { ok: false; error: string } => ({
   error: (error as { message?: string })?.message ?? "Something went wrong. Please try again.",
 });
 
-/** Current price and availability for cart lines (prices are always re-read from the database). */
-export async function quoteCart(variantIds: string[]): Promise<Record<string, { price: number; available: number; low: boolean }>> {
-  if (!variantIds.length) return {};
+/**
+ * Prices and live availability for cart lines from the database pricing engine (quote_cart),
+ * for the signed-in customer: negotiated price, wholesale account, 10+ units, then retail.
+ */
+export async function quoteCart(items: { variant_id: string; quantity: number }[]): Promise<QuoteLine[]> {
+  if (!items.length) return [];
   const supabase = await createClient();
-  const [{ data: prices }, { data: stock }] = await Promise.all([
-    supabase.from("product_prices").select("variant_id, amount, tier:pricing_tiers!inner(code)").in("variant_id", variantIds).eq("tier.code", "retail"),
-    supabase.rpc("get_variant_stock", { p_variant_ids: variantIds }),
-  ]);
-  const out: Record<string, { price: number; available: number; low: boolean }> = {};
-  for (const id of variantIds) out[id] = { price: 0, available: 0, low: false };
-  for (const p of prices ?? []) out[p.variant_id].price = Number(p.amount);
-  for (const s of (stock ?? []) as { variant_id: string; quantity_available: number; low_stock: boolean }[]) {
-    out[s.variant_id].available = s.quantity_available;
-    out[s.variant_id].low = s.low_stock;
-  }
-  return out;
+  const { data, error } = await supabase.rpc("quote_cart", { p_items: items });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map(toQuoteLine);
 }
 
 /** Checks a promo code against the subtotal; the database re-checks it when the order is placed. */

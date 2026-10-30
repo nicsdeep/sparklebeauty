@@ -5,7 +5,7 @@ import { Badge, Card, CardHeader, PaymentBadge, StatusBadge, buttonClass } from 
 import { OrderTimeline, type OrderEvent } from "@/components/order-timeline";
 import { OrderActions } from "./order-actions";
 import { createClient } from "@/lib/supabase/server";
-import { formatDateTime, kes, PAYMENT_LABEL, type OrderStatus, type PaymentMethod } from "@/lib/format";
+import { formatDateTime, kes, PAYMENT_LABEL, type OrderStatus, type PaymentMethod, channelMeta } from "@/lib/format";
 import { getStoreSettings, whatsappHref } from "@/lib/store";
 
 export default async function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,7 +33,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
       <div className="mb-6 mt-2 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">Order {order.order_number}</h1>
         <StatusBadge status={status} />
-        <Badge tone={order.channel === "pos" ? "neutral" : "brand"}>{order.channel === "pos" ? "POS" : "Online"}</Badge>
+        <Badge tone={channelMeta(order.channel).tone}>{channelMeta(order.channel).label}</Badge>
         {order.tier?.code === "wholesale" && <Badge tone="info">Wholesale</Badge>}
         <span className="text-ink-muted">{formatDateTime(order.created_at)}</span>
       </div>
@@ -113,7 +113,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
           </Card>
           <Card>
             <CardHeader title="Timeline" />
-            <div className="p-5"><OrderTimeline status={status} events={events} channel={order.channel} /></div>
+            <div className="p-5"><OrderTimeline status={status} events={events} /></div>
           </Card>
         </div>
       </div>

@@ -116,10 +116,11 @@ export function salesInsights(sales: Sale[]): SalesInsight[] {
   }
 
   // Channel mix.
-  const online = sales.filter((s) => s.channel === "online").reduce((t, s) => t + s.total, 0);
+  const by = (c: string) => sales.filter((s) => s.channel === c).reduce((t, s) => t + s.total, 0);
   const total = sales.reduce((t, s) => t + s.total, 0);
   if (total > 0) {
-    out.push({ title: "Channel mix", sentence: `Online orders bring in ${Math.round((online / total) * 100)}% of revenue; the shop brings in ${Math.round(((total - online) / total) * 100)}%.` });
+    const pct = (v: number) => Math.round((v / total) * 100);
+    out.push({ title: "Channel mix", sentence: `Online orders bring in ${pct(by("online"))}% of revenue, the shop till ${pct(by("pos"))}% and wholesale accounts ${pct(by("wholesale"))}%.` });
   }
   return out;
 }
