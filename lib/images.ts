@@ -1,4 +1,5 @@
-// Demo photography from Unsplash (free licence: https://unsplash.com/license).
+// Demo photography from Unsplash (free licence: https://unsplash.com/license), plus Sparkle's
+// own photos under /public.
 // Product photos live in products.image_urls; these are the category tiles and the
 // fallback used when a product has no photo yet.
 
@@ -9,6 +10,8 @@ export const CATEGORY_IMAGES: Record<string, string> = {
   wigs: `${U}1645736279976-59f8fd22720c`,
   "hair-pieces": `${U}1707162740897-cf2f057d2a41`,
   braids: `${U}1606416132922-22ab37c1231e`,
+  // Brand poster Sparkle posted on Facebook (public/products/kids/).
+  "kids-braids": "/products/kids/little-angels-poster.jpg",
   extensions: `${U}1560869713-bf165a9cfac1`,
   "hair-care": `${U}1643123158858-eac2aabaa1ec`,
   cosmetics: `${U}1657563920440-0ac6d8932f20`,

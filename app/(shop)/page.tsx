@@ -12,6 +12,7 @@ import { kes } from "@/lib/format";
 const DEPARTMENTS = [
   { slug: "wigs", name: "Wigs" },
   { slug: "braids", name: "Braids" },
+  { slug: "kids-braids", name: "Kids Braids" },
   { slug: "extensions", name: "Extensions" },
   { slug: "cosmetics", name: "Cosmetics" },
   { slug: "skincare", name: "Skincare" },
@@ -48,7 +49,7 @@ export default async function HomePage() {
       {/* Categories */}
       <section aria-labelledby="cat-title">
         <h2 id="cat-title" className="sr-only">Shop by category</h2>
-        <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-7">
+        <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-8">
           {DEPARTMENTS.map((d) => (
             <Link key={d.slug} href={`/shop?category=${d.slug}`}
               className="group w-36 shrink-0 snap-start overflow-hidden rounded-2xl border border-line bg-white transition hover:border-brand-200 hover:shadow-sm sm:w-auto">
