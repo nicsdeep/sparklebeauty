@@ -63,6 +63,7 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 
 Nicholas chose the SVG files (2026-10-30). Use them unchanged.
 - **Logo:** `public/brand/sparkle-logo.svg`, a clean vector redraw of the original (`td2/Sparkle_Beauty_Logo_Original_Clear.png`), made 2026-10-30 because the first SVG (`td2/Sparkle_Beauty_Logo.svg`, kept as the source file) was a rough straight-line trace that looked blurry. The mark is traced into smooth curves; the wordmark is set in Barlow ExtraBold (SIL Open Font License), each letter fitted to the original's letter box. Same design, colours and proportions. `components/logo.tsx` shows it in the header, login and admin.
+- **Invoice assets:** `public/brand/sparkle-logo-invoice.png` (700 px PNG of the logo, for PDFs, which can't use SVG) and `public/fonts/plus-jakarta-sans-{400,600,700,800}.woff` (the site font, SIL OFL, from Fontsource) for the invoice PDF.
 - **Footer logo:** `public/brand/sparkle-logo-footer.svg`, the same paths in rose `#E23D8F` and plum `#5B2150` (Nicholas asked for a different colourway in the footer). Use `<Logo tone="footer" />`.
 - **Favicon:** `app/icon.svg` (from `td2/Sparkle_Beauty_Favicon.svg`) and `app/favicon.ico` (from `td2/Sparkle_Beauty_Favicon.ico`, 6 sizes).
 - **Phone home-screen icon:** `app/apple-icon.png` (180×180, from `td2/Sparkle_Beauty_Favicon.png`). iPhones need a PNG here.
@@ -86,6 +87,12 @@ Nicholas chose the SVG files (2026-10-30). Use them unchanged.
 | Node | 24 LTS locally | |
 
 No chart library: charts are simple components in `components/admin/charts.tsx`.
+
+### Tax invoice documents
+
+- On screen: `components/invoice-document.tsx` (admin `/admin/invoices/[id]`, customer `/order/[number]/invoice`).
+- PDF: `lib/invoice-pdf.tsx`, served by `/admin/invoices/[id]/pdf` and `/order/[number]/invoice/pdf` (inline to view or print; `?download=1` saves it). Same layout as the screen. Data comes from `lib/invoice-data.ts`; RLS decides who can open which invoice.
+- **Dependency:** `@react-pdf/renderer` 4.9.0, added 2026-10-31 to generate real A4 PDFs on the server (the browser's print-to-PDF depends on the user's browser and printer settings).
 
 ## Environment variables
 
