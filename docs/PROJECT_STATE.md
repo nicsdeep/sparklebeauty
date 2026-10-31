@@ -154,7 +154,7 @@ Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded cu
 
   When the connection returns, it syncs them. `pos_complete_sale` returns an already-recorded `client_ref` instead of recording it twice, and refuses a sale that no longer fits the stock. Refused sales stay on the till as "needs attention" for a manager. They are never forced through.
 
-## Database (as of migration `20261101120000`)
+## Database (as of migration `20261101150000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -189,6 +189,7 @@ Migrations, in order:
 18. `20261031200000_kids_demo_ratings.sql`: adds `demo_ratings()`, which gives the 8 Kids Collection products demo ratings (4.5–4.9) so no demo product is unrated. It never overwrites real reviews. `reset_demo()` now calls it after `demo_kids_collection()`.
 19. `20261101090000_pos_split_payments.sql`: `pos_complete_sale()` takes a list of payments instead of one method, so a till sale can be split (e.g. part cash, the balance by M-Pesa, card or bank transfer). One `payments` row per method.
 20. `20261101120000_vat_and_etims_invoices.sql`: VAT and KRA tax invoices. Adds `products.tax_type` (eTIMS A/B/C/D/E, default B = 16%), `store_settings.kra_pin` and `vat_registered`, `profiles.kra_pin`, `orders.tax_amount`, and `order_items.tax_type`/`tax_rate`/`tax_amount`. New `invoices` table (tax invoices and credit notes, with eTIMS status), issued by the trigger `orders_issue_tax_documents`. `apply_order_tax()` adds VAT in `place_order()` and `pos_complete_sale()`; `price_cart`/`quote_cart`/`pos_quote` return each line's `tax_rate`; `variant_tax_rates()` gives the till every rate.
+21. `20261101150000_invoice_seller_kra_pin.sql`: invoices without the shop KRA PIN (issued before it was saved) take it from Settings, if not yet sent to eTIMS; the trigger `store_settings_fill_invoice_pin` does the same whenever the PIN is saved. Invoices that already have a PIN never change.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -282,7 +283,6 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 ## Known issues
 
 - **KRA eTIMS isn't connected yet.** Tax invoices and credit notes are issued and kept in order with `etims_status = 'pending'`; nothing is sent to KRA. Connecting needs Sparkle's eTIMS (OSCU) registration from KRA: the shop's KRA PIN, branch ID, device serial and communication key (server-only secret). Then a server job sends pending invoices and stores KRA's reply (`etims_receipt_number`, `etims_signature`, `etims_internal_data`, `etims_sent_at`). Admin → Invoices shows how many are waiting.
-- **Shop KRA PIN not set:** add it in Admin → Settings → Tax and KRA; until then invoices print "not set".
 - **Orders from before VAT** (including the demo seed) have no VAT lines and no tax invoice. Reports and dashboard revenue use order totals, which now include VAT for new orders.
 - **Offline POS limits:**
   - the till must already be open when the connection drops (there's no offline page caching);

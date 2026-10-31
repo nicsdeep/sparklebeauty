@@ -15,6 +15,15 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Invoices show the shop KRA PIN from Settings
+- PR: (this PR, branch `claude/invoice-kra-pin`)
+- Changed:
+  - Migration `20261101150000_invoice_seller_kra_pin.sql`: fills the shop PIN on invoices issued before it was saved (INV-1001), unless sent to eTIMS; trigger `store_settings_fill_invoice_pin` does the same on future saves.
+  - `components/invoice-document.tsx`, `lib/invoice-pdf.tsx`: use the PIN in Settings if the invoice has none, and never print "Not set" (the line is hidden if there is no PIN at all).
+- Why: Nicholas saw "KRA PIN: Not set" on INV-1001 although the PIN is in Settings.
+- Tested: live database in a block that rolled back: INV-1001 gets P050948567T; a later PIN change in Settings doesn't rewrite it; nothing kept. `tsc --noEmit` and `next build` pass.
+- Follow-ups: apply the migration after merge.
+
 ## 2026-10-31: Claude: Invoice footer from Nicholas's second template
 - PR: (this PR, branch `claude/invoice-footer`)
 - Changed: `components/invoice-document.tsx`, `lib/invoice-pdf.tsx`: no colour band at the top; the eTIMS notice has the QR area beside it; new footer with thanks, hours and WhatsApp, "Glow · Slay · Sparkle" in a handwriting font with a heart flourish, the shop's categories (`INVOICE_FOOTER_CATEGORIES`), and a soft pink wave and leaf. In the PDF the footer sits at the bottom of every page. Added `great-vibes-400.woff`; removed the unused serif italic.

@@ -18,6 +18,8 @@ export function InvoiceDocument({ bundle: { invoice: inv, payments, paymentStatu
   const status = credit ? { label: "Credited", tone: "rose" } : PAYMENT_STATUS_META[paymentStatus] ?? { label: paymentStatus, tone: "neutral" };
   const paid = status.tone === "teal" || status.tone === "mint";
   const etims = ETIMS_META[inv.etims_status];
+  // The PIN on the invoice; one issued before the PIN was saved shows the one in Settings.
+  const sellerPin = inv.seller_kra_pin ?? store.kra_pin;
 
   return (
     <article className="overflow-hidden rounded-3xl border border-line bg-white text-[15px] shadow-[0_12px_40px_-24px_rgba(31,26,29,0.35)]">
@@ -31,7 +33,7 @@ export function InvoiceDocument({ bundle: { invoice: inv, payments, paymentStatu
               <p className={cx(serif.className, NAVY, "text-2xl leading-tight sm:text-[28px]")}>{inv.seller_name}</p>
               <p>{store.address}</p>
               {store.landmark && <p>{store.landmark}</p>}
-              <p className="pt-3 font-bold text-ink">KRA PIN: {inv.seller_kra_pin ?? "Not set"}</p>
+              {sellerPin && <p className="pt-3 font-bold text-ink">KRA PIN: {sellerPin}</p>}
             </div>
           </div>
           <div className="sm:border-l sm:border-line sm:pl-8">
