@@ -17,7 +17,7 @@ Entry format:
 
 ## 2026-10-31: Claude: Sparkle-styled WhatsApp button
 - PR: (this PR, branch `claude/whatsapp-sparkle`)
-- Changed: `components/shop/whatsapp-chat.tsx`: the WhatsApp logo button uses Sparkle's pink-to-blue gradient, with three small four-point sparkles that twinkle in turn and a soft pink glow; the contact list has a matching gradient header and icons. `app/globals.css`: `sparkle-twinkle` and `sparkle-glow` animations, switched off for people who ask their device to reduce motion.
+- Changed: `components/shop/whatsapp-chat.tsx`: the WhatsApp logo button uses a light Sparkle pink-to-blue gradient (#f074b2 → #ea5ea3 → #5ac7f7, lightened at Nicholas's request; the white logo sits on the ~3:1 mid pink), with three small four-point sparkles that twinkle in turn and a soft pink glow; the contact list has a matching gradient header and icons. `app/globals.css`: `sparkle-twinkle` and `sparkle-glow` animations, switched off for people who ask their device to reduce motion.
 - Why: Nicholas asked for the WhatsApp button to be Sparkle inspired. (WhatsApp's brand guidelines prefer their green; noted to Nicholas.)
 - Tested: local preview: button and twinkling sparkles show; the list shows Support, Admin and Sales with gradient icons. `tsc --noEmit` passes.
 - Follow-ups: none.
