@@ -9,6 +9,7 @@ import { saveStoreSettings } from "../actions";
 /** Shop details, phone numbers and delivery pricing. Saved to public.store_settings. */
 export function StoreSettingsForm({ settings, canEdit }: { settings: StoreSettings; canEdit: boolean }) {
   const [phones, setPhones] = useState<StorePhone[]>(settings.phones.length ? settings.phones : [{ label: "Shop", number: "" }]);
+  const [whatsapp, setWhatsapp] = useState<StorePhone[]>(settings.whatsapp_contacts.length ? settings.whatsapp_contacts : [{ label: "Support", number: "" }]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
 
@@ -30,7 +31,6 @@ export function StoreSettingsForm({ settings, canEdit }: { settings: StoreSettin
             <Field label="Opening hours"><input name="hours" defaultValue={settings.hours} className={inputClass} required /></Field>
             <Field label="Address"><input name="address" defaultValue={settings.address} className={inputClass} required /></Field>
             <Field label="Landmark"><input name="landmark" defaultValue={settings.landmark ?? ""} className={inputClass} /></Field>
-            <Field label="WhatsApp number" hint="Used for the WhatsApp button on every page."><input name="whatsapp" defaultValue={settings.whatsapp ?? ""} className={inputClass} inputMode="tel" placeholder="+254 7xx xxx xxx" /></Field>
             <Field label="Email (optional)"><input name="email" type="email" defaultValue={settings.email ?? ""} className={inputClass} /></Field>
             <Field label="Google Maps embed" hint="Paste the link or the whole <iframe> from Google Maps → Share → Embed a map.">
               <input name="map_embed_url" defaultValue={settings.map_embed_url ?? ""} className={inputClass} />
@@ -43,18 +43,12 @@ export function StoreSettingsForm({ settings, canEdit }: { settings: StoreSettin
 
         <Card>
           <CardHeader title="Phone numbers" subtitle="Each number gets a tap-to-call link. The first is the main number." />
-          <div className="space-y-3 p-5">
-            {phones.map((p, i) => (
-              <div key={i} className="flex flex-wrap items-end gap-3">
-                <div className="w-36"><Field label={i === 0 ? "Label" : ""}><input name="phone_label" value={p.label} onChange={(e) => setPhones(phones.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} className={inputClass} placeholder="Shop 1" aria-label={`Label for phone ${i + 1}`} /></Field></div>
-                <div className="min-w-48 flex-1"><Field label={i === 0 ? "Number" : ""}><input name="phone_number" value={p.number} onChange={(e) => setPhones(phones.map((x, j) => (j === i ? { ...x, number: e.target.value } : x)))} className={inputClass} inputMode="tel" placeholder="07xx xxx xxx" aria-label={`Phone ${i + 1}`} /></Field></div>
-                {canEdit && phones.length > 1 && (
-                  <Button type="button" variant="ghost" className="border border-line" onClick={() => setPhones(phones.filter((_, j) => j !== i))} aria-label={`Remove phone ${i + 1}`}><Trash2 className="size-4" /></Button>
-                )}
-              </div>
-            ))}
-            {canEdit && <Button type="button" variant="secondary" size="sm" onClick={() => setPhones([...phones, { label: "", number: "" }])}><Plus className="size-4" /> Add Phone Number</Button>}
-          </div>
+          <ContactList name="phone" items={phones} onChange={setPhones} canEdit={canEdit} placeholder="Shop 1" addLabel="Add Phone Number" />
+        </Card>
+
+        <Card>
+          <CardHeader title="WhatsApp contacts" subtitle="Customers choose who to message from the WhatsApp button. The first is the main contact, shown on invoices and the contact page." />
+          <ContactList name="wa" items={whatsapp} onChange={setWhatsapp} canEdit={canEdit} placeholder="Support, Sales, Admin…" addLabel="Add WhatsApp Contact" max={8} />
         </Card>
 
         <Card>
@@ -91,5 +85,26 @@ export function StoreSettingsForm({ settings, canEdit }: { settings: StoreSettin
         <p className="text-ink-muted">Only an admin can change these settings.</p>
       )}
     </form>
+  );
+}
+
+/** Editable list of labelled numbers (phone numbers, WhatsApp contacts). Posts `<name>_label` and `<name>_number`. */
+function ContactList({ name, items, onChange, canEdit, placeholder, addLabel, max = 10 }: {
+  name: string; items: StorePhone[]; onChange: (items: StorePhone[]) => void; canEdit: boolean; placeholder: string; addLabel: string; max?: number;
+}) {
+  const set = (i: number, patch: Partial<StorePhone>) => onChange(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  return (
+    <div className="space-y-3 p-5">
+      {items.map((p, i) => (
+        <div key={i} className="flex flex-wrap items-end gap-3">
+          <div className="w-44"><Field label={i === 0 ? "Label" : ""}><input name={`${name}_label`} value={p.label} onChange={(e) => set(i, { label: e.target.value })} className={inputClass} placeholder={placeholder} aria-label={`Label ${i + 1}`} /></Field></div>
+          <div className="min-w-48 flex-1"><Field label={i === 0 ? "Number" : ""}><input name={`${name}_number`} value={p.number} onChange={(e) => set(i, { number: e.target.value })} className={inputClass} inputMode="tel" placeholder="07xx xxx xxx" aria-label={`Number ${i + 1}`} /></Field></div>
+          {canEdit && items.length > 1 && (
+            <Button type="button" variant="ghost" className="border border-line" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label={`Remove ${i + 1}`}><Trash2 className="size-4" /></Button>
+          )}
+        </div>
+      ))}
+      {canEdit && items.length < max && <Button type="button" variant="secondary" size="sm" onClick={() => onChange([...items, { label: "", number: "" }])}><Plus className="size-4" /> {addLabel}</Button>}
+    </div>
   );
 }

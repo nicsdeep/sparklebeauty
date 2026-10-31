@@ -3,6 +3,7 @@ import { CheckCircle2, Info, QrCode } from "lucide-react";
 import { formatDateTimeFull, kes, PAYMENT_LABEL, PAYMENT_STATUS_META } from "@/lib/format";
 import { ETIMS_META, INVOICE_FOOTER_CATEGORIES, vatHeading, type InvoiceBundle } from "@/lib/invoices";
 import { TAX_TYPES, type TaxType } from "@/lib/tax";
+import { mainWhatsapp } from "@/lib/store-types";
 import { cx } from "@/components/ui";
 
 // Nicholas's invoice template (2026-10-31, second version). The PDF (lib/invoice-pdf.tsx) follows the same layout.
@@ -178,7 +179,7 @@ export function InvoiceDocument({ bundle: { invoice: inv, payments, paymentStatu
           ))}
         </svg>
         <div className="relative">
-          <p className="text-sm text-ink-muted">Thank you for shopping with {inv.seller_name} · {store.hours}{store.whatsapp ? ` · WhatsApp ${store.whatsapp}` : ""}</p>
+          <p className="text-sm text-ink-muted">Thank you for shopping with {inv.seller_name} · {store.hours}{mainWhatsapp(store) ? ` · WhatsApp ${mainWhatsapp(store)}` : ""}</p>
           <p className={cx(script.className, "mt-3 text-5xl leading-tight text-brand-600")}>Glow · Slay · Sparkle</p>
           <svg aria-hidden viewBox="0 0 240 20" className="mx-auto -mt-1 h-5 w-60 text-brand-600">
             <path d="M5 10 C 70 16, 100 14, 112 11 M128 11 C 140 14, 170 16, 235 10" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />

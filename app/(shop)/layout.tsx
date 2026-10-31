@@ -8,6 +8,8 @@ import { StoreProvider } from "@/components/store-provider";
 import { CartProvider } from "@/lib/cart";
 import { getProfile } from "@/lib/auth";
 import { getStoreSettings, telHref, whatsappHref } from "@/lib/store";
+import { mainWhatsapp } from "@/lib/store-types";
+import { WhatsAppChat } from "@/components/shop/whatsapp-chat";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
   const [profile, store] = await Promise.all([getProfile(), getStoreSettings()]);
@@ -53,8 +55,8 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
               <ul className="mt-3 space-y-2 text-ink-muted">
                 <li className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0" /> <span>{store.address}{store.landmark && <><br />{store.landmark}</>}</span></li>
                 <li className="flex gap-2"><Clock className="mt-0.5 size-4 shrink-0" /> {store.hours}</li>
-                {store.whatsapp && (
-                  <li className="flex gap-2"><MessageCircle className="mt-0.5 size-4 shrink-0" /> <a href={whatsappHref(store.whatsapp)} target="_blank" rel="noopener" className="hover:text-brand-700">WhatsApp {store.whatsapp}</a></li>
+                {mainWhatsapp(store) && (
+                  <li className="flex gap-2"><MessageCircle className="mt-0.5 size-4 shrink-0" /> <a href={whatsappHref(mainWhatsapp(store)!)} target="_blank" rel="noopener" className="hover:text-brand-700">WhatsApp {mainWhatsapp(store)}</a></li>
                 )}
                 {store.phones.map((p) => (
                   <li key={p.number} className="flex gap-2"><Phone className="mt-0.5 size-4 shrink-0" /> <span><a href={telHref(p.number)} className="hover:text-brand-700">{p.number}</a> ({p.label})</span></li>
@@ -67,13 +69,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
           </div>
           <p className="border-t border-line px-4 py-4 text-center text-sm text-ink-muted">© {new Date().getFullYear()} {store.name} · Demo environment</p>
         </footer>
-        {store.whatsapp && (
-          <a href={whatsappHref(store.whatsapp, `Hi ${store.name}, I'd like help with…`)} target="_blank" rel="noopener"
-            className="fixed bottom-20 right-4 z-30 flex items-center gap-2 rounded-full bg-brand-600 px-4 py-3 font-semibold text-white shadow-lg transition hover:bg-brand-700 md:bottom-6"
-            aria-label="Chat with us on WhatsApp">
-            <MessageCircle className="size-5" /> <span className="hidden sm:inline">Chat on WhatsApp</span>
-          </a>
-        )}
+        <WhatsAppChat contacts={store.whatsapp_contacts} storeName={store.name} />
       </CartProvider>
     </StoreProvider>
   );

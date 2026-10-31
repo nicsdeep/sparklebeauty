@@ -16,7 +16,7 @@ const FALLBACK: StoreSettings = {
     { label: "Shop 2", number: "0797 468 963" },
     { label: "Shop 2", number: "0719 707 857" },
   ],
-  whatsapp: "+254 727 939 626",
+  whatsapp_contacts: [{ label: "Support", number: "0702 388 724" }],
   email: null,
   map_embed_url:
     "https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d510575.2266188962!2d36.8737081!3d-1.24993!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x182f12353c84667f%3A0xcf5304b1a32e7a1e!2sSparkle%20Beauty%20%26%20Cosmetics!5e0!3m2!1sen!2ske!4v1793312220120!5m2!1sen!2ske",
@@ -42,7 +42,7 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
     landmark: data.landmark,
     hours: data.hours,
     phones: Array.isArray(data.phones) ? data.phones : [],
-    whatsapp: data.whatsapp,
+    whatsapp_contacts: Array.isArray(data.whatsapp_contacts) ? data.whatsapp_contacts : [],
     email: data.email,
     map_embed_url: data.map_embed_url,
     directions_url: data.directions_url,

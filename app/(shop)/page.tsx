@@ -7,6 +7,7 @@ import { CATEGORY_IMAGES, sized } from "@/lib/images";
 import { getHeroBanner } from "@/lib/hero";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreSettings } from "@/lib/store";
+import { mainWhatsapp } from "@/lib/store-types";
 import { kes } from "@/lib/format";
 
 const DEPARTMENTS = [
@@ -27,8 +28,8 @@ export default async function HomePage() {
   const benefits = [
     { Icon: Truck, title: "Free Delivery", text: `On orders over ${kes(store.free_delivery_threshold)}` },
     { Icon: ShieldCheck, title: "Secure Payments", text: "M-Pesa, card or cash" },
-    store.whatsapp
-      ? { Icon: MessageCircle, title: "WhatsApp Support", text: store.whatsapp }
+    mainWhatsapp(store)
+      ? { Icon: MessageCircle, title: "WhatsApp Support", text: mainWhatsapp(store)! }
       : { Icon: Phone, title: "Customer Support", text: `Call ${store.phones[0]?.number ?? "us"}` },
     { Icon: BadgeCheck, title: "Authentic Products", text: "Trusted global brands" },
     { Icon: Gift, title: "Loyalty Points", text: "Earn on every order" },

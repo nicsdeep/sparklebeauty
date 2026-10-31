@@ -141,8 +141,12 @@ export async function saveStoreSettings(formData: FormData): Promise<ActionResul
     .filter((p) => p.number);
   if (phones.some((p) => p.number.replace(/\D/g, "").length < 9)) return { ok: false, error: "Each phone number needs at least 9 digits." };
 
-  const whatsapp = text(formData, "whatsapp");
-  if (whatsapp && whatsapp.replace(/\D/g, "").length < 9) return { ok: false, error: "The WhatsApp number needs at least 9 digits." };
+  const waLabels = formData.getAll("wa_label").map(String);
+  const whatsappContacts = formData.getAll("wa_number").map(String)
+    .map((number, i) => ({ label: (waLabels[i] ?? "").trim() || `WhatsApp ${i + 1}`, number: number.trim() }))
+    .filter((p) => p.number);
+  if (whatsappContacts.some((p) => p.number.replace(/\D/g, "").length < 9)) return { ok: false, error: "Each WhatsApp number needs at least 9 digits." };
+  if (whatsappContacts.length > 8) return { ok: false, error: "Up to 8 WhatsApp contacts." };
   const email = text(formData, "email");
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: "Enter a valid email address." };
 
@@ -167,7 +171,7 @@ export async function saveStoreSettings(formData: FormData): Promise<ActionResul
   const { data, error } = await supabase.from("store_settings").update({
     name, address, hours, phones,
     landmark: text(formData, "landmark") || null,
-    whatsapp: whatsapp || null,
+    whatsapp_contacts: whatsappContacts,
     email: email || null,
     map_embed_url: map || null,
     directions_url: directions || null,

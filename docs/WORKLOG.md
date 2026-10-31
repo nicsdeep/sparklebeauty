@@ -15,6 +15,17 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: WhatsApp contacts with a chooser; Maureen is the main contact
+- PR: (this PR, branch `claude/whatsapp-contacts`)
+- Changed:
+  - Migration `20261101180000_whatsapp_contacts.sql`: `store_settings.whatsapp_contacts` (labelled list) replaces `whatsapp`; Maureen (Support, 0702 388 724) is the main contact.
+  - `components/shop/whatsapp-chat.tsx` (new): the floating button opens the chat directly with one contact, or lets the customer choose (label and number) when there are several.
+  - Settings: "WhatsApp contacts" list (label + number, add/remove); phone numbers use the same editor (`ContactList`).
+  - Main contact (`mainWhatsapp()`) used on invoices (page and PDF), the shop footer, the homepage support card and the admin help link. Contact page shows only the main number, for WhatsApp and calls.
+- Why: Nicholas asked for Maureen's number instead of his on invoices and the contact page, and for the chat button to offer several labelled numbers (support, sales, admin).
+- Tested: live database in a block that rolled back: contacts set to Maureen, old column gone, a non-list refused; nothing kept. `tsc --noEmit` and `next build` pass. The chooser and pages can only be checked live after the migration is applied.
+- Follow-ups: add Sales/Admin numbers in Settings when known.
+
 ## 2026-10-31: Claude: Invoices show the shop KRA PIN from Settings
 - PR: (this PR, branch `claude/invoice-kra-pin`)
 - Changed:

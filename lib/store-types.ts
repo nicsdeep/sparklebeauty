@@ -8,7 +8,8 @@ export type StoreSettings = {
   landmark: string | null;
   hours: string;
   phones: StorePhone[];
-  whatsapp: string | null;
+  /** WhatsApp contacts customers can message (e.g. Support, Sales); the first is the main one. */
+  whatsapp_contacts: StorePhone[];
   email: string | null;
   map_embed_url: string | null;
   directions_url: string | null;
@@ -41,6 +42,9 @@ export function deliverySummary(s: Pick<StoreSettings, "delivery_fee_nairobi" | 
 export const telHref =(phone: string) => `tel:${phone.replace(/[^\d+]/g, "")}`;
 
 /** wa.me link; accepts 07xx…, 2547xx… or +2547xx… */
+/** The main WhatsApp number: the first contact, shown on invoices, the contact page and the footer. */
+export const mainWhatsapp = (s: Pick<StoreSettings, "whatsapp_contacts">) => s.whatsapp_contacts[0]?.number ?? null;
+
 export function whatsappHref(phone: string, text?: string) {
   const digits = phone.replace(/\D/g, "");
   const intl = digits.startsWith("0") ? `254${digits.slice(1)}` : digits;
