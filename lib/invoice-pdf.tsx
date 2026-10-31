@@ -1,9 +1,9 @@
-import { Circle, Document, Font, Image, Page, Path, Rect, StyleSheet, Svg, Text, View, pdf } from "@react-pdf/renderer";
+import { Circle, Document, Ellipse, Font, Image, Page, Path, Rect, StyleSheet, Svg, Text, View, pdf } from "@react-pdf/renderer";
 import { formatDateTimeFull, kes, PAYMENT_LABEL, PAYMENT_STATUS_META } from "@/lib/format";
-import { ETIMS_META, vatHeading, type InvoiceBundle } from "@/lib/invoices";
+import { ETIMS_META, INVOICE_FOOTER_CATEGORIES, vatHeading, type InvoiceBundle } from "@/lib/invoices";
 import { TAX_TYPES, type TaxType } from "@/lib/tax";
 
-// A4 PDF of a tax invoice or credit note: Nicholas's invoice template (2026-10-31), laid out like
+// A4 PDF of a tax invoice or credit note: Nicholas's invoice template (2026-10-31, second version), laid out like
 // components/invoice-document.tsx. Made in the browser when someone clicks View or Download
 // (components/invoice-actions.tsx loads this module only then). Fonts and logo are the site's own
 // files in public/.
@@ -15,17 +15,15 @@ let fontsFor: string | null = null;
 function registerFonts(origin: string) {
   if (fontsFor === origin) return;
   Font.register({ family: "Jakarta", fonts: [400, 600, 700, 800].map((w) => ({ src: `${origin}/fonts/plus-jakarta-sans-${w}.woff`, fontWeight: w })) });
-  Font.register({ family: "Serif", fonts: [
-    { src: `${origin}/fonts/dm-serif-display-400-normal.woff` },
-    { src: `${origin}/fonts/dm-serif-display-400-italic.woff`, fontStyle: "italic" },
-  ] });
+  Font.register({ family: "Serif", src: `${origin}/fonts/dm-serif-display-400-normal.woff` });
+  Font.register({ family: "Script", src: `${origin}/fonts/great-vibes-400.woff` });
   Font.registerHyphenationCallback((word) => [word]);
   fontsFor = origin;
 }
 
 const s = StyleSheet.create({
-  page: { fontFamily: "Jakarta", fontSize: 9, color: C.ink, paddingBottom: 30 },
-  body: { paddingHorizontal: 36, paddingTop: 26 },
+  page: { fontFamily: "Jakarta", fontSize: 9, color: C.ink, paddingBottom: 150 },
+  body: { paddingHorizontal: 36, paddingTop: 32 },
   row: { flexDirection: "row" },
   between: { flexDirection: "row", justifyContent: "space-between" },
   muted: { color: C.muted },
@@ -52,7 +50,6 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
 
   return (
     <Page size="A4" style={s.page}>
-      <View style={[s.row, { height: 5 }]} fixed><View style={{ width: "53%", backgroundColor: C.brand }} /><View style={{ flex: 1, backgroundColor: C.blue }} /></View>
       <View style={s.body}>
         {/* Shop and document */}
         <View style={[s.row, s.rule, { paddingBottom: 16 }]}>
@@ -178,7 +175,7 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
         </View>
 
         {/* eTIMS */}
-        <View wrap={false} style={[s.row, { gap: 8, marginTop: 16, padding: 12, borderRadius: 8, backgroundColor: inv.etims_status === "sent" ? C.mintSoft : C.amberSoft }]}>
+        <View wrap={false} style={[s.row, { gap: 8, marginTop: 16, padding: 12, borderRadius: 8, alignItems: "center", backgroundColor: inv.etims_status === "sent" ? C.mintSoft : C.amberSoft }]}>
           <Svg width={13} height={13} viewBox="0 0 24 24"><Circle cx={12} cy={12} r={12} fill={inv.etims_status === "sent" ? C.mint : C.amber} /><Rect x={10.8} y={10} width={2.4} height={8} fill="#fff" /><Circle cx={12} cy={6.6} r={1.5} fill="#fff" /></Svg>
           <View style={{ flex: 1 }}>
             <Text style={{ fontWeight: 700, color: C.amberText, fontSize: 10 }}>KRA eTIMS – {etims.label}</Text>
@@ -188,25 +185,40 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
                 : `${inv.etims_status === "failed" && inv.etims_error ? `${inv.etims_error} ` : ""}Not yet transmitted to KRA. The control unit number, signature and QR code are added once eTIMS accepts it.`}
             </Text>
           </View>
-        </View>
-
-        {/* Footer */}
-        <View wrap={false} style={[s.row, { alignItems: "center", marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: C.line }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontWeight: 700, color: C.navy }}>Thank you for shopping with {inv.seller_name}!</Text>
-            <Text style={[s.muted, { marginTop: 2 }]}>{store.hours}</Text>
-            <Text style={{ fontFamily: "Serif", fontStyle: "italic", fontSize: 19, color: C.brand, marginTop: 6 }}>Glow · Slay · Sparkle</Text>
-          </View>
-          <View style={[s.row, { alignItems: "center", gap: 10, borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 16 }]}>
+          <View style={[s.row, { alignItems: "center", gap: 8, borderLeftWidth: 1, borderLeftColor: "#ead7b8", paddingLeft: 12 }]}>
             {/* KRA's QR code exists only once eTIMS accepts the invoice, so none is shown before that. */}
-            <Svg width={48} height={48} viewBox="0 0 48 48"><Rect x={1} y={1} width={46} height={46} rx={4} stroke={C.line} strokeWidth={1.5} strokeDasharray="3 3" fill="none" />
+            <Svg width={42} height={42} viewBox="0 0 48 48"><Rect x={1} y={1} width={46} height={46} rx={4} stroke="#d9c39c" strokeWidth={1.5} strokeDasharray="3 3" fill="#fffaf2" />
               <Rect x={14} y={14} width={8} height={8} stroke={C.muted} strokeWidth={1.4} fill="none" /><Rect x={26} y={14} width={8} height={8} stroke={C.muted} strokeWidth={1.4} fill="none" />
               <Rect x={14} y={26} width={8} height={8} stroke={C.muted} strokeWidth={1.4} fill="none" /><Rect x={27} y={27} width={3} height={3} fill={C.muted} /><Rect x={31} y={31} width={3} height={3} fill={C.muted} /></Svg>
-            <View style={{ width: 100 }}>
+            <View style={{ width: 92 }}>
               <Text style={{ fontWeight: 600 }}>Scan for eTIMS verification</Text>
               <Text style={[s.muted, { marginTop: 1 }]}>(Available after transmission)</Text>
             </View>
           </View>
+        </View>
+
+      </View>
+
+      {/* Footer: thanks and contacts, the script slogan with a heart flourish, what we sell, soft wave and leaf */}
+      <View fixed style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 140 }}>
+        <Svg width="100%" height={140} viewBox="0 0 800 140" preserveAspectRatio="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
+          <Path d="M0 50 C 180 0, 330 100, 520 50 S 760 10, 800 30 L 800 140 L 0 140 Z" fill={C.brandSoft} />
+          <Path d="M0 85 C 200 45, 360 130, 560 85 S 760 60, 800 75 L 800 140 L 0 140 Z" fill="#fbe1ee" opacity={0.6} />
+        </Svg>
+        <Svg width={80} height={94} viewBox="0 0 120 140" style={{ position: "absolute", right: 4, bottom: 6, opacity: 0.7 }}>
+          <Path d="M100 135 C 90 95, 70 60, 30 20" stroke={C.brandLine} strokeWidth={2} fill="none" />
+          {[[78, 95, -30], [62, 70, -40], [46, 48, -55], [88, 78, 25], [70, 52, 15], [54, 32, 5]].map(([x, y, r], i) => (
+            <Ellipse key={i} cx={x} cy={y} rx={16} ry={6.5} transform={`rotate(${r} ${x} ${y})`} fill={C.brandLine} opacity={0.55 + (i % 3) * 0.12} />
+          ))}
+        </Svg>
+        <View style={{ marginHorizontal: 36, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10, alignItems: "center" }}>
+          <Text style={[s.muted, { fontSize: 8 }]}>Thank you for shopping with {inv.seller_name} · {store.hours}{store.whatsapp ? ` · WhatsApp ${store.whatsapp}` : ""}</Text>
+          <Text style={{ fontFamily: "Script", fontSize: 30, color: C.brand, marginTop: 6 }}>Glow · Slay · Sparkle</Text>
+          <Svg width={150} height={13} viewBox="0 0 240 20">
+            <Path d="M5 10 C 70 16, 100 14, 112 11 M128 11 C 140 14, 170 16, 235 10" stroke={C.brand} strokeWidth={1.4} fill="none" />
+            <Path d="M120 16 C 112 10, 112 5, 116 4.5 C 118.5 4.2, 120 6, 120 7.5 C 120 6, 121.5 4.2, 124 4.5 C 128 5, 128 10, 120 16 Z" stroke={C.brand} strokeWidth={1.3} fill="none" />
+          </Svg>
+          <Text style={{ marginTop: 8, fontSize: 7, fontWeight: 600, letterSpacing: 1.6, textTransform: "uppercase" }}>{INVOICE_FOOTER_CATEGORIES.join("   |   ")}</Text>
         </View>
       </View>
     </Page>

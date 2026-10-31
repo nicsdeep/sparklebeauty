@@ -1,12 +1,13 @@
-import { DM_Serif_Display } from "next/font/google";
+import { DM_Serif_Display, Great_Vibes } from "next/font/google";
 import { CheckCircle2, Info, QrCode } from "lucide-react";
 import { formatDateTimeFull, kes, PAYMENT_LABEL, PAYMENT_STATUS_META } from "@/lib/format";
-import { ETIMS_META, vatHeading, type InvoiceBundle } from "@/lib/invoices";
+import { ETIMS_META, INVOICE_FOOTER_CATEGORIES, vatHeading, type InvoiceBundle } from "@/lib/invoices";
 import { TAX_TYPES, type TaxType } from "@/lib/tax";
 import { cx } from "@/components/ui";
 
-// Nicholas's invoice template (2026-10-31). The PDF (lib/invoice-pdf.tsx) follows the same layout.
-const serif = DM_Serif_Display({ weight: "400", style: ["normal", "italic"], subsets: ["latin"] });
+// Nicholas's invoice template (2026-10-31, second version). The PDF (lib/invoice-pdf.tsx) follows the same layout.
+const serif = DM_Serif_Display({ weight: "400", subsets: ["latin"] });
+const script = Great_Vibes({ weight: "400", subsets: ["latin"] });
 const NAVY = "text-[#1c2150]";
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted";
 
@@ -20,7 +21,6 @@ export function InvoiceDocument({ bundle: { invoice: inv, payments, paymentStatu
 
   return (
     <article className="overflow-hidden rounded-3xl border border-line bg-white text-[15px] shadow-[0_12px_40px_-24px_rgba(31,26,29,0.35)]">
-      <div className="flex h-2"><div className="w-[53%] bg-brand-600" /><div className="flex-1 bg-logo-blue" /></div>
       <div className="space-y-7 p-6 sm:p-10">
         {/* Shop and document */}
         <header className="flex flex-col gap-6 border-b border-line pb-7 sm:flex-row sm:items-start">
@@ -146,30 +146,47 @@ export function InvoiceDocument({ bundle: { invoice: inv, payments, paymentStatu
         </section>
 
         {/* eTIMS */}
-        <section className={cx("flex gap-3 rounded-2xl p-5", inv.etims_status === "sent" ? "bg-mint-bg" : "bg-amber-bg")}>
-          <Info className={cx("mt-0.5 size-6 shrink-0 text-white", inv.etims_status === "sent" ? "fill-mint-fg" : "fill-amber-500")} />
-          <div>
+        <section className={cx("flex flex-col gap-4 rounded-2xl p-5 sm:flex-row sm:items-center", inv.etims_status === "sent" ? "bg-mint-bg" : "bg-amber-bg")}>
+          <Info className={cx("size-6 shrink-0 text-white sm:self-start", inv.etims_status === "sent" ? "fill-mint-fg" : "fill-amber-500")} />
+          <div className="flex-1">
             <p className="font-bold text-amber-fg">KRA eTIMS – {etims.label}</p>
             {inv.etims_status === "sent"
               ? <p>CU invoice no. {inv.etims_receipt_number} · Signature {inv.etims_signature}</p>
               : <p>{inv.etims_status === "failed" && inv.etims_error ? `${inv.etims_error} ` : ""}Not yet transmitted to KRA. The control unit number, signature and QR code are added once eTIMS accepts it.</p>}
           </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="flex flex-col gap-5 border-t border-line pt-7 sm:flex-row sm:items-center">
-          <div className="flex-1">
-            <p className={cx(NAVY, "text-lg font-bold")}>Thank you for shopping with {inv.seller_name}!</p>
-            <p className="text-ink-muted">{store.hours}</p>
-            <p className={cx(serif.className, "mt-2 text-3xl italic text-brand-600")}>Glow · Slay · Sparkle</p>
-          </div>
-          <div className="flex items-center gap-4 sm:border-l sm:border-line sm:pl-8">
+          <div className="flex items-center gap-3 sm:border-l sm:border-amber-fg/20 sm:pl-5">
             {/* KRA's QR code exists only once eTIMS accepts the invoice, so none is shown before that. */}
-            <span className="grid size-20 shrink-0 place-items-center rounded-lg border-2 border-dashed border-line text-ink-muted"><QrCode className="size-9 opacity-50" /></span>
+            <span className="grid size-16 shrink-0 place-items-center rounded-lg border-2 border-dashed border-amber-fg/30 bg-white/60 text-ink-muted"><QrCode className="size-8 opacity-50" /></span>
             <p className="text-sm"><span className="font-semibold">Scan for eTIMS verification</span><span className="block text-ink-muted">(Available after transmission)</span></p>
           </div>
-        </footer>
+        </section>
+
       </div>
+
+      {/* Footer */}
+      <footer className="relative overflow-hidden border-t border-line px-6 pb-8 pt-7 text-center sm:px-10">
+        <svg aria-hidden viewBox="0 0 800 160" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-32 w-full">
+          <path d="M0 60 C 180 10, 330 110, 520 60 S 760 20, 800 40 L 800 160 L 0 160 Z" fill="#fdf0f6" />
+          <path d="M0 95 C 200 55, 360 140, 560 95 S 760 70, 800 85 L 800 160 L 0 160 Z" fill="#fbe1ee" opacity="0.6" />
+        </svg>
+        <svg aria-hidden viewBox="0 0 120 140" className="absolute -right-2 bottom-2 h-36 w-auto opacity-70">
+          <path d="M100 135 C 90 95, 70 60, 30 20" stroke="#f6c3dd" strokeWidth="2" fill="none" />
+          {[[78, 95, -30], [62, 70, -40], [46, 48, -55], [88, 78, 25], [70, 52, 15], [54, 32, 5]].map(([x, y, r], i) => (
+            <ellipse key={i} cx={x} cy={y} rx="16" ry="6.5" transform={`rotate(${r} ${x} ${y})`} fill="#f6c3dd" opacity={0.55 + (i % 3) * 0.12} />
+          ))}
+        </svg>
+        <div className="relative">
+          <p className="text-sm text-ink-muted">Thank you for shopping with {inv.seller_name} · {store.hours}{store.whatsapp ? ` · WhatsApp ${store.whatsapp}` : ""}</p>
+          <p className={cx(script.className, "mt-3 text-5xl leading-tight text-brand-600")}>Glow · Slay · Sparkle</p>
+          <svg aria-hidden viewBox="0 0 240 20" className="mx-auto -mt-1 h-5 w-60 text-brand-600">
+            <path d="M5 10 C 70 16, 100 14, 112 11 M128 11 C 140 14, 170 16, 235 10" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+            <path d="M120 16 C 112 10, 112 5, 116 4.5 C 118.5 4.2, 120 6, 120 7.5 C 120 6, 121.5 4.2, 124 4.5 C 128 5, 128 10, 120 16 Z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+          </svg>
+          <p className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink">
+            {INVOICE_FOOTER_CATEGORIES.map((c, i) => <span key={c}>{i > 0 && <span className="mr-3 text-ink-muted">|</span>}{c}</span>)}
+          </p>
+        </div>
+      </footer>
     </article>
   );
 }

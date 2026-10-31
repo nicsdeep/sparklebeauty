@@ -46,6 +46,9 @@ export type InvoiceBundle = {
   store: StoreSettings;
 };
 
+/** What Sparkle sells, printed along the bottom of every invoice. */
+export const INVOICE_FOOTER_CATEGORIES = ["Hair & Wigs", "Cosmetics", "Skincare", "Perfumes", "Accessories"];
+
 export const INVOICE_SELECT = "*, order:orders(order_number), original:original_invoice_id(invoice_number)";
 /** Same, filterable by order number (inner join). */
 export const INVOICE_SELECT_BY_ORDER = "*, order:orders!inner(order_number), original:original_invoice_id(invoice_number)";
