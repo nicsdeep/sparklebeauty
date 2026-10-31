@@ -1,6 +1,5 @@
 import { formatDateTimeFull, kes, PAYMENT_LABEL, PAYMENT_STATUS_META } from "@/lib/format";
-import type { InvoiceBundle } from "@/lib/invoice-data";
-import { ETIMS_META } from "@/lib/invoices";
+import { ETIMS_META, type InvoiceBundle } from "@/lib/invoices";
 import { TAX_TYPES, type TaxType } from "@/lib/tax";
 import { Badge, cx } from "@/components/ui";
 

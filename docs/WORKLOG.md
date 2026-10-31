@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Make the invoice PDF in the browser
+- PR: (this PR, branch `claude/invoice-pdf-browser`)
+- Changed:
+  - `components/invoice-actions.tsx`: View PDF and Download PDF make the PDF in the browser (the PDF module loads on click), open it in a new tab or save it as `INV-…_Sparkle.pdf`.
+  - `lib/invoice-pdf.tsx`: `invoicePdf()` returns a Blob; fonts and logo come from the site's `public/` files.
+  - Removed the server PDF routes, `lib/invoice-response.ts` and the `next.config.ts` PDF settings from #31. `InvoiceBundle` moved to `lib/invoices.ts`.
+- Why: after #31 the live PDF still failed (500, now caught) while working locally. Vercel's logs and protected previews need Nicholas's Vercel login, so the cause couldn't be read; making the PDF in the browser removes the server step.
+- Tested: local production build: View PDF on INV-1001 gives a 72 KB PDF with all four Plus Jakarta Sans weights and the logo image. `tsc --noEmit` and `next build` pass. Live check after deploy still to do.
+- Follow-ups: none.
+
 ## 2026-10-31: Claude: Fix the invoice PDF on Vercel
 - PR: (this PR, branch `claude/invoice-pdf-vercel`)
 - Changed:

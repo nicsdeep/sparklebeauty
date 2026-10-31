@@ -1,4 +1,5 @@
-import type { Tone } from "@/lib/format";
+import type { PaymentMethod, Tone } from "@/lib/format";
+import type { StoreSettings } from "@/lib/store-types";
 import type { TaxType } from "@/lib/tax";
 
 // Tax invoices and credit notes (public.invoices). They are issued by the database when an order
@@ -35,6 +36,14 @@ export type Invoice = {
   etims_error: string | null;
   order?: { order_number: string } | null;
   original?: { invoice_number: string } | null;
+};
+
+/** Everything an invoice page or PDF shows: the invoice, how the order was paid, and the shop details. */
+export type InvoiceBundle = {
+  invoice: Invoice;
+  payments: { method: PaymentMethod; amount: number; provider_reference: string | null }[];
+  paymentStatus: string;
+  store: StoreSettings;
 };
 
 export const INVOICE_SELECT = "*, order:orders(order_number), original:original_invoice_id(invoice_number)";

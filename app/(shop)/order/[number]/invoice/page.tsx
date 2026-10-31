@@ -22,7 +22,7 @@ export default async function OrderInvoicePage({ params }: Params) {
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={`/order/${number}`} className="font-semibold text-brand-700">← Order {number}</Link>
-        <InvoiceActions pdfHref={`/order/${number}/invoice/pdf`} />
+        <InvoiceActions bundles={bundles} />
       </div>
       {bundles.map((b) => <InvoiceDocument key={b.invoice.id} bundle={b} />)}
     </div>

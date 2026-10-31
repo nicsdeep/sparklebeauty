@@ -91,8 +91,8 @@ No chart library: charts are simple components in `components/admin/charts.tsx`.
 ### Tax invoice documents
 
 - On screen: `components/invoice-document.tsx` (admin `/admin/invoices/[id]`, customer `/order/[number]/invoice`).
-- PDF: `lib/invoice-pdf.tsx` (fonts and logo read from `public/` on disk; `next.config.ts` traces them into the PDF routes and keeps `@react-pdf/renderer` external), served by `/admin/invoices/[id]/pdf` and `/order/[number]/invoice/pdf` (inline to view or print; `?download=1` saves it). Same layout as the screen. Data comes from `lib/invoice-data.ts`; RLS decides who can open which invoice.
-- **Dependency:** `@react-pdf/renderer` 4.9.0, added 2026-10-31 to generate real A4 PDFs on the server (the browser's print-to-PDF depends on the user's browser and printer settings).
+- PDF: `lib/invoice-pdf.tsx`, made in the browser when someone clicks View PDF (opens in a new tab, where it can be printed) or Download PDF (`INV-…_Sparkle.pdf`), by `components/invoice-actions.tsx`. Same layout as the screen. The page loads the data through `lib/invoice-data.ts`; RLS decides who can open which invoice. Server-side generation was tried first and failed on Vercel (500) while working locally; making it in the browser avoids that.
+- **Dependency:** `@react-pdf/renderer` 4.9.0, added 2026-10-31 to make real A4 PDFs (the browser's print-to-PDF depends on the user's browser and printer settings). It is loaded only when a PDF is requested.
 
 ## Environment variables
 

@@ -1,28 +1,22 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Font, Image, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
 import { formatDateTimeFull, kes, PAYMENT_LABEL, PAYMENT_STATUS_META } from "@/lib/format";
-import type { InvoiceBundle } from "@/lib/invoice-data";
-import { ETIMS_META } from "@/lib/invoices";
+import { ETIMS_META, type InvoiceBundle } from "@/lib/invoices";
 import { TAX_TYPES, type TaxType } from "@/lib/tax";
 
 // A4 PDF of a tax invoice or credit note, laid out like components/invoice-document.tsx.
-// Fonts and logo are the site's own files (public/fonts, public/brand), read from disk; next.config.ts
-// includes them in the PDF routes' serverless bundle.
+// Made in the browser when someone clicks View or Download (components/invoice-actions.tsx loads
+// this module only then). Fonts and logo are the site's own files in public/.
 
 const C = { brand: "#d0237a", brandDark: "#b01b66", brandSoft: "#fdf0f6", blue: "#0aa8f2", ink: "#1f1a1d", muted: "#645c61", line: "#e9e4e7", surface: "#f7f5f6" };
 
-const asset = (...p: string[]) => path.join(process.cwd(), "public", ...p);
-// Passed as data: a Windows path would be mistaken for a URL.
-let logo: Buffer | null = null;
-const LOGO = () => (logo ??= readFileSync(asset("brand", "sparkle-logo-invoice.png")));
+const asset = (p: string) => `${window.location.origin}/${p}`;
 
 let fontsReady = false;
 function registerFonts() {
   if (fontsReady) return;
   Font.register({
     family: "Jakarta",
-    fonts: [400, 600, 700, 800].map((w) => ({ src: asset("fonts", `plus-jakarta-sans-${w}.woff`), fontWeight: w })),
+    fonts: [400, 600, 700, 800].map((w) => ({ src: asset(`fonts/plus-jakarta-sans-${w}.woff`), fontWeight: w })),
   });
   Font.registerHyphenationCallback((word) => [word]);
   fontsReady = true;
@@ -61,7 +55,7 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store } 
           <View style={s.between}>
             <View style={[s.row, { gap: 12 }]}>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image src={{ data: LOGO(), format: "png" }} style={{ width: 70, height: 59.5 }} />
+              <Image src={asset("brand/sparkle-logo-invoice.png")} style={{ width: 70, height: 59.5 }} />
               <View style={{ gap: 1.5 }}>
                 <Text style={{ fontSize: 11, fontWeight: 700 }}>{inv.seller_name}</Text>
                 <Text style={s.muted}>{store.address}</Text>
@@ -164,13 +158,14 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store } 
   );
 }
 
-export async function renderInvoicePdf(bundles: InvoiceBundle[]): Promise<Buffer> {
+/** The PDF and its file name. An order's invoice and credit note go in one document, a page each. */
+export async function invoicePdf(bundles: InvoiceBundle[]): Promise<{ blob: Blob; fileName: string }> {
   registerFonts();
   const first = bundles[0].invoice;
-  // An order's invoice and credit note go in one document, a page each.
-  return renderToBuffer(
+  const blob = await pdf(
     <Document title={bundles.map((b) => b.invoice.invoice_number).join(" + ")} author={first.seller_name} subject={`Order ${first.order?.order_number ?? ""}`}>
       {bundles.map((b) => <InvoicePage key={b.invoice.id} bundle={b} />)}
     </Document>,
-  );
+  ).toBlob();
+  return { blob, fileName: `${bundles.map((b) => b.invoice.invoice_number).join("_")}_Sparkle.pdf` };
 }
