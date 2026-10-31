@@ -15,6 +15,13 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: WhatsApp logo button
+- PR: (this PR, branch `claude/whatsapp-icon`)
+- Changed: `components/shop/whatsapp-chat.tsx`: the floating "Chat on WhatsApp" pill is now a round button with the official WhatsApp logo in WhatsApp green (glyph from Simple Icons, CC0); the contact list uses the same logo. It still asks who to message when there are several contacts.
+- Why: Nicholas asked for just the official WhatsApp icon.
+- Tested: local preview (live data, 3 contacts): the green logo button shows bottom right; tapping it lists Support, Admin and Sales with the logo; Escape closes it. `tsc --noEmit` passes.
+- Follow-ups: none.
+
 ## 2026-10-31: Claude: WhatsApp contacts with a chooser; Maureen is the main contact
 - PR: (this PR, branch `claude/whatsapp-contacts`)
 - Changed:
