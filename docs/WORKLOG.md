@@ -15,6 +15,13 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Invoice footer from Nicholas's second template
+- PR: (this PR, branch `claude/invoice-footer`)
+- Changed: `components/invoice-document.tsx`, `lib/invoice-pdf.tsx`: no colour band at the top; the eTIMS notice has the QR area beside it; new footer with thanks, hours and WhatsApp, "Glow · Slay · Sparkle" in a handwriting font with a heart flourish, the shop's categories (`INVOICE_FOOTER_CATEGORIES`), and a soft pink wave and leaf. In the PDF the footer sits at the bottom of every page. Added `great-vibes-400.woff`; removed the unused serif italic.
+- Why: Nicholas preferred a second template. Agreed changes from it: keep the official logo (the image had another one), show the slogan once (in the footer), keep the thank-you, hours and contact line, keep the QR as a placeholder until KRA issues one, and use the real KRA PIN.
+- Tested: PDF for INV-1001 rendered and checked visually; the on-screen invoice checked at desktop width. `tsc --noEmit` and `next build` pass.
+- Follow-ups: none.
+
 ## 2026-10-31: Claude: Invoice to Nicholas's template
 - PR: (this PR, branch `claude/invoice-template`)
 - Changed: `components/invoice-document.tsx` and `lib/invoice-pdf.tsx` rebuilt to Nicholas's invoice image: pink/blue band, serif shop name, invoice number with a green Paid badge, facts row with the total in pink, Billed to and Payment details cards, pink table header with #, VAT column titled "VAT (16%)" when all lines share one rate (else per-line rates), tax summary with a total row, pink totals box, amber eTIMS notice, footer with hours and "Glow · Slay · Sparkle". `vatHeading()` added to `lib/invoices.ts`. Serif font files added.
