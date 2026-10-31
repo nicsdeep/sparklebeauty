@@ -55,3 +55,19 @@ body {
     display: none !important;
   }
 }
+
+/* WhatsApp button: twinkling sparkles and a soft pink glow (components/shop/whatsapp-chat.tsx). */
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(20deg); }
+}
+@keyframes sparkle-glow {
+  0%, 100% { box-shadow: 0 8px 24px -6px rgb(208 35 122 / 0.55), 0 0 0 0 rgb(226 61 143 / 0.35); }
+  50% { box-shadow: 0 8px 24px -6px rgb(208 35 122 / 0.55), 0 0 0 10px rgb(226 61 143 / 0); }
+}
+.sparkle-twinkle { animation: sparkle-twinkle 2.4s ease-in-out infinite; }
+.sparkle-glow { animation: sparkle-glow 2.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .sparkle-twinkle { animation: none; opacity: 0.9; }
+  .sparkle-glow { animation: none; }
+}
