@@ -68,3 +68,9 @@ export function toInvoice(r: Record<string, unknown>): Invoice {
     tax_amount: n(row.tax_amount), total_amount: n(row.total_amount),
   };
 }
+
+/** VAT column title: "VAT (16%)" when every line has the same rate, else "VAT" (rates shown per line). */
+export function vatHeading(rates: number[]) {
+  const unique = [...new Set(rates)];
+  return unique.length === 1 && unique[0] > 0 ? `VAT (${unique[0]}%)` : "VAT";
+}
