@@ -2,6 +2,7 @@ import { Circle, Document, Ellipse, Font, Image, Page, Path, Rect, StyleSheet, S
 import { formatDateTimeFull, kes, PAYMENT_LABEL, PAYMENT_STATUS_META } from "@/lib/format";
 import { ETIMS_META, INVOICE_FOOTER_CATEGORIES, vatHeading, type InvoiceBundle } from "@/lib/invoices";
 import { TAX_TYPES, type TaxType } from "@/lib/tax";
+import { mainWhatsapp } from "@/lib/store-types";
 
 // A4 PDF of a tax invoice or credit note: Nicholas's invoice template (2026-10-31, second version), laid out like
 // components/invoice-document.tsx. Made in the browser when someone clicks View or Download
@@ -214,7 +215,7 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
           ))}
         </Svg>
         <View style={{ marginHorizontal: 36, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10, alignItems: "center" }}>
-          <Text style={[s.muted, { fontSize: 8 }]}>Thank you for shopping with {inv.seller_name} · {store.hours}{store.whatsapp ? ` · WhatsApp ${store.whatsapp}` : ""}</Text>
+          <Text style={[s.muted, { fontSize: 8 }]}>Thank you for shopping with {inv.seller_name} · {store.hours}{mainWhatsapp(store) ? ` · WhatsApp ${mainWhatsapp(store)}` : ""}</Text>
           <Text style={{ fontFamily: "Script", fontSize: 30, color: C.brand, marginTop: 6 }}>Glow · Slay · Sparkle</Text>
           <Svg width={150} height={13} viewBox="0 0 240 20">
             <Path d="M5 10 C 70 16, 100 14, 112 11 M128 11 C 140 14, 170 16, 235 10" stroke={C.brand} strokeWidth={1.4} fill="none" />

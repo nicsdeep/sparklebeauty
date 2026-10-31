@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { Clock, Mail, MapPin, MessageCircle, Phone, Truck } from "lucide-react";
 import { ButtonLink, Card } from "@/components/ui";
-import { deliverySummary } from "@/lib/store-types";
+import { deliverySummary, mainWhatsapp } from "@/lib/store-types";
 import { getStoreSettings, telHref, whatsappHref } from "@/lib/store";
 
 export const metadata: Metadata = { title: "Contact & delivery" };
 
 export default async function ContactPage() {
   const store = await getStoreSettings();
-  const mainPhone = store.phones[0]?.number;
+  // One number on this page: the main WhatsApp contact, for WhatsApp and calls.
+  const mainPhone = mainWhatsapp(store);
   return (
     <div className="mx-auto max-w-4xl">
       <h1 className="text-3xl font-bold tracking-tight">Contact us</h1>
@@ -22,27 +23,22 @@ export default async function ContactPage() {
           <span className="h-fit rounded-full bg-brand-50 p-3 text-brand-600"><Clock className="size-5" /></span>
           <div><p className="font-semibold">Opening hours</p><p className="text-ink-muted">{store.hours}</p></div>
         </Card>
-        {store.whatsapp && (
+        {mainPhone && (
           <Card className="flex gap-4 p-5">
             <span className="h-fit rounded-full bg-brand-50 p-3 text-brand-600"><MessageCircle className="size-5" /></span>
             <div>
               <p className="font-semibold">WhatsApp</p>
-              <a href={whatsappHref(store.whatsapp)} target="_blank" rel="noopener" className="font-semibold text-ink hover:text-brand-700">{store.whatsapp}</a>
+              <a href={whatsappHref(mainPhone)} target="_blank" rel="noopener" className="font-semibold text-ink hover:text-brand-700">{mainPhone}</a>
               <p className="text-sm text-ink-muted">Orders, prices and product advice</p>
             </div>
           </Card>
         )}
-        <Card className="flex gap-4 p-5">
-          <span className="h-fit rounded-full bg-brand-50 p-3 text-brand-600"><Phone className="size-5" /></span>
-          <div>
-            <p className="font-semibold">Call us</p>
-            <ul className="text-ink-muted">
-              {store.phones.map((p) => (
-                <li key={p.number}><a href={telHref(p.number)} className="font-semibold text-ink hover:text-brand-700">{p.number}</a> · {p.label}</li>
-              ))}
-            </ul>
-          </div>
-        </Card>
+        {mainPhone && (
+          <Card className="flex gap-4 p-5">
+            <span className="h-fit rounded-full bg-brand-50 p-3 text-brand-600"><Phone className="size-5" /></span>
+            <div><p className="font-semibold">Call us</p><a href={telHref(mainPhone)} className="font-semibold text-ink hover:text-brand-700">{mainPhone}</a></div>
+          </Card>
+        )}
         {store.email && (
           <Card className="flex gap-4 p-5">
             <span className="h-fit rounded-full bg-brand-50 p-3 text-brand-600"><Mail className="size-5" /></span>
@@ -55,13 +51,13 @@ export default async function ContactPage() {
         </Card>
       </div>
       <div className="mt-6 flex flex-wrap gap-3">
-        {store.whatsapp && (
-          <ButtonLink href={whatsappHref(store.whatsapp, `Hi ${store.name}, I'd like help with…`)} target="_blank" rel="noopener" size="lg">
+        {mainPhone && (
+          <ButtonLink href={whatsappHref(mainPhone, `Hi ${store.name}, I'd like help with…`)} target="_blank" rel="noopener" size="lg">
             <MessageCircle className="size-5" /> Chat on WhatsApp
           </ButtonLink>
         )}
         {mainPhone && (
-          <ButtonLink href={telHref(mainPhone)} size="lg" variant={store.whatsapp ? "secondary" : "primary"}>
+          <ButtonLink href={telHref(mainPhone)} size="lg" variant="secondary">
             <Phone className="size-5" /> Call {mainPhone}
           </ButtonLink>
         )}
