@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import { formatDateTimeFull, kes, PAYMENT_LABEL, PAYMENT_STATUS_META } from "@/lib/format";
 import type { InvoiceBundle } from "@/lib/invoice-data";
@@ -5,19 +7,25 @@ import { ETIMS_META } from "@/lib/invoices";
 import { TAX_TYPES, type TaxType } from "@/lib/tax";
 
 // A4 PDF of a tax invoice or credit note, laid out like components/invoice-document.tsx.
-// Fonts and logo are the site's own files (public/fonts, public/brand), fetched from `origin`.
+// Fonts and logo are the site's own files (public/fonts, public/brand), read from disk; next.config.ts
+// includes them in the PDF routes' serverless bundle.
 
 const C = { brand: "#d0237a", brandDark: "#b01b66", brandSoft: "#fdf0f6", blue: "#0aa8f2", ink: "#1f1a1d", muted: "#645c61", line: "#e9e4e7", surface: "#f7f5f6" };
 
-let fontsFor: string | null = null;
-function registerFonts(origin: string) {
-  if (fontsFor === origin) return;
+const asset = (...p: string[]) => path.join(process.cwd(), "public", ...p);
+// Passed as data: a Windows path would be mistaken for a URL.
+let logo: Buffer | null = null;
+const LOGO = () => (logo ??= readFileSync(asset("brand", "sparkle-logo-invoice.png")));
+
+let fontsReady = false;
+function registerFonts() {
+  if (fontsReady) return;
   Font.register({
     family: "Jakarta",
-    fonts: [400, 600, 700, 800].map((w) => ({ src: `${origin}/fonts/plus-jakarta-sans-${w}.woff`, fontWeight: w })),
+    fonts: [400, 600, 700, 800].map((w) => ({ src: asset("fonts", `plus-jakarta-sans-${w}.woff`), fontWeight: w })),
   });
   Font.registerHyphenationCallback((word) => [word]);
-  fontsFor = origin;
+  fontsReady = true;
 }
 
 const s = StyleSheet.create({
@@ -36,7 +44,7 @@ const s = StyleSheet.create({
 const COLS = [{ w: "26%" }, { w: "6%", r: true }, { w: "13%", r: true }, { w: "13%", r: true }, { w: "11%" }, { w: "15%", r: true }, { w: "16%", r: true }];
 const PILL: Record<string, { bg: string; fg: string }> = { mint: { bg: "#e5f6ee", fg: "#1d7550" }, teal: { bg: "#e1f3f1", fg: "#0f6e66" }, amber: { bg: "#fdf2dd", fg: "#94590a" }, rose: { bg: "#fce9e9", fg: "#b42318" }, neutral: { bg: C.surface, fg: C.muted } };
 
-function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store }, origin }: { bundle: InvoiceBundle; origin: string }) {
+function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store } }: { bundle: InvoiceBundle }) {
   const credit = inv.kind === "credit_note";
   const status = credit ? { label: "Credited", tone: "rose" } : PAYMENT_STATUS_META[paymentStatus] ?? { label: paymentStatus, tone: "neutral" };
   const pill = PILL[status.tone] ?? PILL.neutral;
@@ -53,7 +61,7 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
           <View style={s.between}>
             <View style={[s.row, { gap: 12 }]}>
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image src={`${origin}/brand/sparkle-logo-invoice.png`} style={{ width: 70, height: 59.5 }} />
+              <Image src={{ data: LOGO(), format: "png" }} style={{ width: 70, height: 59.5 }} />
               <View style={{ gap: 1.5 }}>
                 <Text style={{ fontSize: 11, fontWeight: 700 }}>{inv.seller_name}</Text>
                 <Text style={s.muted}>{store.address}</Text>
@@ -156,13 +164,13 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
   );
 }
 
-export async function renderInvoicePdf(bundles: InvoiceBundle[], origin: string): Promise<Buffer> {
-  registerFonts(origin);
+export async function renderInvoicePdf(bundles: InvoiceBundle[]): Promise<Buffer> {
+  registerFonts();
   const first = bundles[0].invoice;
   // An order's invoice and credit note go in one document, a page each.
   return renderToBuffer(
     <Document title={bundles.map((b) => b.invoice.invoice_number).join(" + ")} author={first.seller_name} subject={`Order ${first.order?.order_number ?? ""}`}>
-      {bundles.map((b) => <InvoicePage key={b.invoice.id} bundle={b} origin={origin} />)}
+      {bundles.map((b) => <InvoicePage key={b.invoice.id} bundle={b} />)}
     </Document>,
   );
 }

@@ -91,7 +91,7 @@ No chart library: charts are simple components in `components/admin/charts.tsx`.
 ### Tax invoice documents
 
 - On screen: `components/invoice-document.tsx` (admin `/admin/invoices/[id]`, customer `/order/[number]/invoice`).
-- PDF: `lib/invoice-pdf.tsx`, served by `/admin/invoices/[id]/pdf` and `/order/[number]/invoice/pdf` (inline to view or print; `?download=1` saves it). Same layout as the screen. Data comes from `lib/invoice-data.ts`; RLS decides who can open which invoice.
+- PDF: `lib/invoice-pdf.tsx` (fonts and logo read from `public/` on disk; `next.config.ts` traces them into the PDF routes and keeps `@react-pdf/renderer` external), served by `/admin/invoices/[id]/pdf` and `/order/[number]/invoice/pdf` (inline to view or print; `?download=1` saves it). Same layout as the screen. Data comes from `lib/invoice-data.ts`; RLS decides who can open which invoice.
 - **Dependency:** `@react-pdf/renderer` 4.9.0, added 2026-10-31 to generate real A4 PDFs on the server (the browser's print-to-PDF depends on the user's browser and printer settings).
 
 ## Environment variables

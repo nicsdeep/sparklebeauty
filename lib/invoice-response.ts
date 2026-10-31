@@ -5,7 +5,13 @@ import { renderInvoicePdf } from "@/lib/invoice-pdf";
 export async function invoicePdfResponse(request: Request, bundles: InvoiceBundle[]) {
   if (!bundles.length) return new Response("Invoice not found", { status: 404 });
   const url = new URL(request.url);
-  const pdf = await renderInvoicePdf(bundles, url.origin);
+  let pdf: Buffer;
+  try {
+    pdf = await renderInvoicePdf(bundles);
+  } catch (e) {
+    console.error("Invoice PDF failed", bundles.map((b) => b.invoice.invoice_number), e);
+    return new Response("The invoice PDF could not be created. Please try again, or use the invoice page.", { status: 500 });
+  }
   const name = `${bundles.map((b) => b.invoice.invoice_number).join("_")}_Sparkle.pdf`;
   return new Response(new Uint8Array(pdf), {
     headers: {
