@@ -22,6 +22,10 @@ export const formatDate = (d: string | Date) =>
 export const formatDateTime = (d: string | Date) =>
   new Date(d).toLocaleString("en-KE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: TZ });
 
+/** Full date and time with the year, for documents such as tax invoices. */
+export const formatDateTimeFull = (d: string | Date) =>
+  new Date(d).toLocaleString("en-KE", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: TZ });
+
 /** Start of today in Nairobi, as an ISO string, for "today" queries. */
 export function startOfTodayNairobi() {
   const now = new Date();

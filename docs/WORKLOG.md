@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Branded tax invoice with PDF view and download
+- PR: (this PR, branch `claude/invoice-design`)
+- Changed:
+  - `components/invoice-document.tsx`: redesigned. Logo, brand colour band, invoice number and paid status, key facts (issued with year, order, currency, amount), Billed to and Paid with cards, item table (cards on phones), VAT summary, eTIMS status, totals box, thank-you footer with hours and WhatsApp.
+  - `lib/invoice-pdf.tsx` (new) and PDF routes `/admin/invoices/[id]/pdf`, `/order/[number]/invoice/pdf`: the same design as an A4 PDF in the site font; "View PDF" opens it, "Download PDF" saves it as `INV-…_Sparkle.pdf`. An order with a credit note gets both pages in one file.
+  - `lib/invoice-data.ts` (new): loads an invoice with its order's payments and the shop details. `lib/invoice-response.ts` (new): the PDF response.
+  - `components/invoice-actions.tsx` replaces `components/print-button.tsx` (removed).
+  - `lib/format.ts`: `formatDateTimeFull` (date with the year, for documents).
+  - New dependency `@react-pdf/renderer` 4.9.0; logo PNG and font files for the PDF.
+- Why: Nicholas asked for an invoice with the logo, cleaner branded fonts and a well-organised layout that can be previewed, viewed and downloaded. Printing from the in-app browser had no preview.
+- Tested:
+  - Local preview of INV-1001: the page renders and `/pdf` returns `application/pdf` (71 KB, `INV-1001_Sparkle.pdf`).
+  - A sample PDF with a discount, delivery, an exempt line and a split payment was rendered and checked visually; columns align and totals match.
+  - `tsc --noEmit` and `next build` pass.
+  - Not tested: the phone layout of the on-screen invoice, and the PDF on the live site until deployed.
+- Follow-ups: shop KRA PIN still not set. The PIN sent in chat (P051234567X) is the example from the instructions, so it wasn't saved.
+
 ## 2026-10-31: Claude: VAT and KRA tax invoices (eTIMS-ready)
 - PR: (this PR, branch `claude/etims-invoicing`, built on `claude/pos-checkout-flow`)
 - Changed:
