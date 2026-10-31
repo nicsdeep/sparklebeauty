@@ -40,6 +40,8 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
   const status = credit ? { label: "Credited", tone: "rose" } : PAYMENT_STATUS_META[paymentStatus] ?? { label: paymentStatus, tone: "neutral" };
   const paid = status.tone === "teal" || status.tone === "mint";
   const etims = ETIMS_META[inv.etims_status];
+  // The PIN on the invoice; one issued before the PIN was saved shows the one in Settings.
+  const sellerPin = inv.seller_kra_pin ?? store.kra_pin;
   const vatTitle = vatHeading(inv.lines.map((l) => l.tax_rate));
   const summary = (Object.entries(inv.tax_summary) as [TaxType, { rate: number; taxable: number; tax: number }][]).sort(([a], [b]) => a.localeCompare(b));
   const facts: [string, string][] = [["Issued date", formatDateTimeFull(inv.issued_at)], ["Order no.", inv.order?.order_number ?? "—"],
@@ -60,7 +62,7 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
               <Text style={{ fontFamily: "Serif", fontSize: 18, color: C.navy }}>{inv.seller_name}</Text>
               <Text style={[s.muted, { marginTop: 3 }]}>{store.address}</Text>
               {store.landmark ? <Text style={s.muted}>{store.landmark}</Text> : null}
-              <Text style={{ marginTop: 8, fontWeight: 700 }}>KRA PIN: {inv.seller_kra_pin ?? "Not set"}</Text>
+              {sellerPin ? <Text style={{ marginTop: 8, fontWeight: 700 }}>KRA PIN: {sellerPin}</Text> : null}
             </View>
           </View>
           <View style={{ borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 18, width: 170 }}>
