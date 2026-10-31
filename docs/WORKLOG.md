@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Fix the invoice PDF on Vercel
+- PR: (this PR, branch `claude/invoice-pdf-vercel`)
+- Changed:
+  - `lib/invoice-pdf.tsx`: reads the font files and logo from disk (logo passed as data) instead of fetching them from the site.
+  - `next.config.ts`: `serverExternalPackages` for `@react-pdf/renderer`, and `outputFileTracingIncludes` so the PDF routes ship with `public/fonts` and the logo PNG.
+  - `lib/invoice-response.ts`: logs a failure with the invoice number and returns a plain message.
+- Why: after #30 deployed, the live `/admin/invoices/[id]/pdf` returned 500 while the same build worked locally.
+- Tested: local production build (`next build` + `next start`): INV-1001 PDF downloads (200, `attachment; filename="INV-1001_Sparkle.pdf"`); the route's traced files include the 4 fonts, the logo and `@react-pdf`; a sample PDF rendered from disk assets shows the logo and brand font. Live check after deploy still to do.
+- Follow-ups: none.
+
 ## 2026-10-31: Claude: Branded tax invoice with PDF view and download
 - PR: (this PR, branch `claude/invoice-design`)
 - Changed:
