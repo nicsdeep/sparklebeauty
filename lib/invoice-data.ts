@@ -1,16 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { INVOICE_SELECT, INVOICE_SELECT_BY_ORDER, toInvoice, type Invoice } from "@/lib/invoices";
+import { INVOICE_SELECT, INVOICE_SELECT_BY_ORDER, toInvoice, type InvoiceBundle } from "@/lib/invoices";
 import { getStoreSettings } from "@/lib/store";
-import type { StoreSettings } from "@/lib/store-types";
 import type { PaymentMethod } from "@/lib/format";
-
-/** Everything an invoice page or PDF shows: the invoice, how the order was paid, and the shop details. */
-export type InvoiceBundle = {
-  invoice: Invoice;
-  payments: { method: PaymentMethod; amount: number; provider_reference: string | null }[];
-  paymentStatus: string;
-  store: StoreSettings;
-};
 
 async function withOrder(rows: Record<string, unknown>[]): Promise<InvoiceBundle[]> {
   if (!rows.length) return [];
