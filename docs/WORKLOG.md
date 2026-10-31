@@ -15,6 +15,14 @@ Entry format:
 
 ---
 
+## 2026-10-31: Claude: Invoice to Nicholas's template
+- PR: (this PR, branch `claude/invoice-template`)
+- Changed: `components/invoice-document.tsx` and `lib/invoice-pdf.tsx` rebuilt to Nicholas's invoice image: pink/blue band, serif shop name, invoice number with a green Paid badge, facts row with the total in pink, Billed to and Payment details cards, pink table header with #, VAT column titled "VAT (16%)" when all lines share one rate (else per-line rates), tax summary with a total row, pink totals box, amber eTIMS notice, footer with hours and "Glow · Slay · Sparkle". `vatHeading()` added to `lib/invoices.ts`. Serif font files added.
+- Why: Nicholas sent the template to use.
+- Deviation from the template: its QR code is shown as an empty placeholder labelled "Available after transmission". A real KRA QR exists only after eTIMS accepts the invoice, so a printed sample QR would mislead anyone scanning it.
+- Tested: PDFs rendered for the template case (INV-1001, cash, KES 174) and a busier case (discount, delivery, exempt line, split payment) and checked visually; the on-screen INV-1001 page checked at desktop and phone width (no sideways scroll). `tsc --noEmit` and `next build` pass.
+- Follow-ups: none.
+
 ## 2026-10-31: Claude: Make the invoice PDF in the browser
 - PR: (this PR, branch `claude/invoice-pdf-browser`)
 - Changed:
