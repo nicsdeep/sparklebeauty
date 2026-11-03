@@ -15,6 +15,14 @@ Entry format:
 
 ---
 
+## 2026-11-02: Claude: System check, and indexes on foreign keys
+- PR: (this PR, branch `claude/fk-indexes`)
+- System check (no changes): deploy, migrations (22 = 22), typecheck, RLS on every table with policies, security-definer functions all with a fixed search_path; anon can call only the public catalogue/stock/quote/VAT-rate functions. Orders, payments, stock, loyalty and invoices all reconcile. Live pages 0.5–0.8 s warm. Found: 25 foreign keys without an index; 6 paid online orders still "pending" and 1 unpaid order (SPK-1078) from 30 Oct; 2 variants out of stock, 8 low; PostCSS advisory inside Next.js (fix needs Next 16); 38 old remote branches. The Supabase advisors tool returned "no permission" for this account, so the checks were done in SQL.
+- Changed: migration `20261102090000_foreign_key_indexes.sql` adds the 25 indexes.
+- Why: Nicholas approved adding the indexes after the check.
+- Tested: live database in a block that rolled back: no foreign key left without an index; nothing kept.
+- Follow-ups: apply after merge; Nicholas to process the waiting orders; Next 16 upgrade and branch clean-up when wanted.
+
 ## 2026-10-31: Claude: Sparkle-styled WhatsApp button
 - PR: (this PR, branch `claude/whatsapp-sparkle`)
 - Changed: `components/shop/whatsapp-chat.tsx`: the WhatsApp logo button uses a light Sparkle pink-to-blue gradient (#f074b2 → #ea5ea3 → #5ac7f7, lightened at Nicholas's request; the white logo sits on the ~3:1 mid pink), with three small four-point sparkles that twinkle in turn and a soft pink glow; the contact list has a matching gradient header and icons. `app/globals.css`: `sparkle-twinkle` and `sparkle-glow` animations, switched off for people who ask their device to reduce motion.
