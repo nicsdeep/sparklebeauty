@@ -93,7 +93,7 @@ export function maskPhone(phone: string) {
   return digits.length >= 4 ? `${digits.slice(0, 4)} XXX XXX` : phone;
 }
 
-type DeliveryRules = Pick<StoreSettings, "delivery_fee_nairobi" | "delivery_fee_other" | "free_delivery_threshold" | "free_delivery_areas">;
+export type DeliveryRules = Pick<StoreSettings, "delivery_fee_nairobi" | "delivery_fee_other" | "free_delivery_threshold" | "free_delivery_areas">;
 
 /** Mirrors public.delivery_fee(), which sets the real fee when the order is placed. */
 export function deliveryFee(

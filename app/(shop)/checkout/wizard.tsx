@@ -4,10 +4,15 @@ import Link from "next/link";
 import { SubmitButton } from "@/components/submit-button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent, type ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Banknote, Check, CheckCircle2, CreditCard, Smartphone, Store, Truck } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, Banknote, Check, CheckCircle2, CircleCheck, CreditCard, FileText, Mail, Minus, Phone, Plus, ShieldCheck,
+  ShoppingCart, Smartphone, Store, Trash2, Truck, User, Wallet, type LucideIcon,
+} from "lucide-react";
 import { ProductImage } from "@/components/shop/product-image";
+import { SavingsNudge } from "@/components/shop/savings-nudge";
 import { Button, ButtonLink, Field, cx, inputClass } from "@/components/ui";
-import { useCart } from "@/lib/cart";
+import { MAX_LINE_QTY, useCart } from "@/lib/cart";
+import { incentives } from "@/lib/incentives";
 import { ruleLabel } from "@/lib/pricing";
 import { useCheckoutState, type CheckoutState } from "@/lib/checkout-state";
 import { deliverySummary } from "@/lib/store-types";
@@ -42,6 +47,7 @@ export function CheckoutWizard({ profile, addresses }: {
   const cart = useCart();
   const store = useStore();
   const [state, update, reset, loaded] = useCheckoutState();
+  const [draftDelivery, setDraftDelivery] = useState<NonNullable<CheckoutState["delivery"]> | null>(null);
 
   const go = (id: StepId) => router.push(`/checkout?step=${id}`, { scroll: true });
 
@@ -69,25 +75,35 @@ export function CheckoutWizard({ profile, addresses }: {
   }
 
   const discount = state.discount ?? 0;
-  const delivery = state.delivery ?? EMPTY_DELIVERY;
+  // While the customer types an address the summary follows it (fee and free-delivery progress).
+  const delivery = (step === "delivery" ? draftDelivery : null) ?? state.delivery ?? EMPTY_DELIVERY;
   const fee = deliveryFee(delivery.method, delivery, cart.subtotal - discount, store);
   const vat = cart.taxFor(discount, fee, store.vat_registered);
   const total = vat.total;
+  const nudges = incentives(cart.items.map((i) => ({ name: i.name, quantity: i.quantity, breaks: cart.priceOf(i).breaks, available: cart.priceOf(i).available })),
+    { method: delivery.method, address: delivery, amountAfterDiscount: cart.subtotal - discount, rules: store });
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight">Checkout</h1>
-      <ol className="mb-8 grid grid-cols-5 gap-2" aria-label="Checkout steps">
-        {STEPS.map((s, i) => (
-          <li key={s.id} className="flex flex-col items-center gap-2 text-center" aria-current={s.id === step ? "step" : undefined}>
-            <span className={cx("flex size-9 items-center justify-center rounded-full text-sm font-bold",
-              i < stepIndex ? "bg-brand-600 text-white" : i === stepIndex ? "border-2 border-brand-600 bg-brand-50 text-brand-700" : "bg-surface text-ink-muted")}>
-              {i < stepIndex ? <Check className="size-4" /> : i + 1}
-            </span>
-            <span className={cx("text-xs font-semibold sm:text-sm", i === stepIndex ? "text-ink" : "text-ink-muted")}>{s.label}</span>
-          </li>
-        ))}
-      </ol>
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="text-[34px] font-extrabold tracking-tight sm:text-[40px]" style={{ color: NAVY }}>Checkout</h1>
+          <span className="mt-1 block h-1 w-16 rounded-full" style={{ background: PINK }} aria-hidden />
+          <p className="mt-3 text-[16px] text-[#4B5563]">Complete your order in a few simple steps.</p>
+        </div>
+        <ol className="grid flex-1 grid-cols-5 lg:max-w-[640px]" aria-label="Checkout steps">
+          {STEPS.map((s, i) => (
+            <li key={s.id} className="relative flex flex-col items-center gap-2 text-center" aria-current={s.id === step ? "step" : undefined}>
+              {i > 0 && <span aria-hidden className={cx("absolute right-1/2 top-[19px] h-0.5 w-full", i <= stepIndex ? "bg-[#E6007E]" : "bg-[#E5E7EB]")} />}
+              <span className={cx("relative z-10 flex size-10 items-center justify-center rounded-full text-[15px] font-bold",
+                i < stepIndex ? "bg-[#E6007E] text-white" : i === stepIndex ? "bg-[#E6007E] text-white ring-[5px] ring-[#FCE7F3]" : "border-2 border-[#E5E7EB] bg-white text-[#6B7280]")}>
+                {i < stepIndex ? <Check className="size-5" strokeWidth={3} /> : i + 1}
+              </span>
+              <span className={cx("text-[12px] sm:text-[15px]", i === stepIndex ? "font-bold text-[#111827]" : "text-[#4B5563]")}>{s.label}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
 
       {placed && step !== "confirmation" && step !== "payment" && (
         <p className="mb-5 rounded-xl bg-info-bg px-4 py-3 text-info-fg">
@@ -103,7 +119,7 @@ export function CheckoutWizard({ profile, addresses }: {
                 onBack={() => go("cart")} onNext={(contact) => { update({ contact, mpesaPhone: state.mpesaPhone ?? contact.phone }); go("delivery"); }} />
             : <SignInStep onBack={() => go("cart")} />)}
           {step === "delivery" && (profile ? (
-            <DeliveryStep initial={delivery} addresses={addresses}
+            <DeliveryStep initial={state.delivery ?? EMPTY_DELIVERY} addresses={addresses} onChange={setDraftDelivery}
               onBack={() => go("details")} onNext={(d) => { update({ delivery: d }); go("payment"); }} />
           ) : <SignInStep onBack={() => go("cart")} />)}
           {step === "payment" && (profile ? (
@@ -115,23 +131,34 @@ export function CheckoutWizard({ profile, addresses }: {
         </div>
 
         {step !== "confirmation" && (
-          <aside className="h-fit space-y-3 rounded-2xl border border-line p-5 lg:sticky lg:top-36">
-            <h2 className="font-semibold">Order summary</h2>
-            <ul className="space-y-2 text-sm">
+          <aside className="h-fit space-y-4 rounded-3xl border border-[#F1E8EE] bg-white p-5 shadow-[0_6px_24px_-16px_rgba(15,23,56,0.18)] sm:p-6 lg:sticky lg:top-36">
+            <h2 className="flex items-center gap-3 text-[22px] font-bold" style={{ color: NAVY }}>
+              <span className="grid size-11 place-items-center rounded-xl bg-[#FDF2F8]"><FileText className="size-6" style={{ color: PINK }} strokeWidth={1.75} /></span> Order summary
+            </h2>
+            <ul className="space-y-2 border-b border-[#EEF0F3] pb-3 text-[15px] text-[#111827]">
               {cart.items.map((i) => (
                 <li key={i.variantId} className="flex justify-between gap-3">
                   <span>{i.quantity} × {i.name}{i.variantName ? ` (${i.variantName})` : ""}</span>
-                  <span className="font-semibold">{kes(cart.priceOf(i).unit * i.quantity)}</span>
+                  <span className="font-semibold tabular-nums">{kes(cart.priceOf(i).unit * i.quantity)}</span>
                 </li>
               ))}
             </ul>
-            <dl className="space-y-1.5 border-t border-line pt-3 text-[15px]">
-              <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(cart.subtotal)}</dd></div>
-              {discount > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount ({state.promoCode})</dt><dd>-{kes(discount)}</dd></div>}
-              <div className="flex justify-between"><dt>Delivery</dt><dd>{stepIndex < 2 ? "Next step" : fee ? kes(fee) : "Free"}</dd></div>
-              {store.vat_registered && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(vat.tax)}</dd></div>}
-              <div className="flex justify-between border-t border-line pt-2 text-lg font-bold"><dt>Total</dt><dd>{kes(placed?.total ?? total)}</dd></div>
+            <dl className="space-y-2 text-[16px] text-[#111827]">
+              <div className="flex justify-between"><dt>Subtotal</dt><dd className="tabular-nums">{kes(cart.subtotal)}</dd></div>
+              {discount > 0 && <div className="flex justify-between text-[#15803D]"><dt>Discount ({state.promoCode})</dt><dd className="tabular-nums">-{kes(discount)}</dd></div>}
+              <div className="flex justify-between"><dt>Delivery</dt><dd className="tabular-nums">{stepIndex < 2 ? "Next step" : fee ? kes(fee) : "Free"}</dd></div>
+              {store.vat_registered && <div className="flex justify-between"><dt>VAT</dt><dd className="tabular-nums">{kes(vat.tax)}</dd></div>}
             </dl>
+            <div className="flex items-center justify-between rounded-full bg-[#FCE7F3] px-5 py-3.5">
+              <span className="text-[20px] font-extrabold" style={{ color: NAVY }}>Total</span>
+              <span className="text-[22px] font-extrabold tabular-nums" style={{ color: NAVY }}>{kes(placed?.total ?? total)}</span>
+            </div>
+            {!placed && <SavingsNudge value={stepIndex < 2 ? { ...nudges, delivery: null } : nudges} />}
+            <div className="grid grid-cols-3 divide-x divide-[#F1E8EE] pt-1 text-center text-[12px] font-medium text-[#374151] sm:text-[13px]">
+              {[{ Icon: ShieldCheck, text: "Secure Checkout" }, { Icon: Truck, text: "Reliable Delivery" }, { Icon: CreditCard, text: "Multiple Payment Options" }].map(({ Icon, text }) => (
+                <span key={text} className="flex flex-col items-center gap-1 px-1"><Icon className="size-6" style={{ color: PINK }} strokeWidth={1.75} />{text}</span>
+              ))}
+            </div>
           </aside>
         )}
       </div>
@@ -139,36 +166,68 @@ export function CheckoutWizard({ profile, addresses }: {
   );
 }
 
-function StepCard({ title, children, footer }: { title: string; children: ReactNode; footer: ReactNode }) {
+const PINK = "#E6007E";
+const NAVY = "#0F1738";
+
+function StepCard({ title, subtitle, Icon, children, footer }: { title: string; subtitle?: string; Icon: LucideIcon; children: ReactNode; footer: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-line">
-      <h2 className="border-b border-line px-5 py-4 text-lg font-semibold">{title}</h2>
-      <div className="space-y-4 p-5">{children}</div>
-      <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-4">{footer}</div>
+    <section className="rounded-3xl border border-[#F1E8EE] bg-white p-5 shadow-[0_6px_24px_-16px_rgba(15,23,56,0.18)] sm:p-7">
+      <div className="flex items-center gap-4">
+        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#FDF2F8]"><Icon className="size-7" style={{ color: PINK }} strokeWidth={1.75} /></span>
+        <div>
+          <h2 className="text-[22px] font-bold sm:text-[26px]" style={{ color: NAVY }}>{title}</h2>
+          {subtitle && <p className="text-[15px] text-[#4B5563]">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="mt-6 space-y-4">{children}</div>
+      <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#EEF0F3] pt-5">{footer}</div>
     </section>
   );
 }
 
 const BackButton = ({ onClick, label = "Back" }: { onClick: () => void; label?: string }) => (
-  <Button type="button" variant="ghost" onClick={onClick}><ArrowLeft className="size-4" /> {label}</Button>
+  <button type="button" onClick={onClick} className="inline-flex items-center gap-2 text-[16px] font-semibold text-[#111827] hover:underline"><ArrowLeft className="size-5" /> {label}</button>
+);
+
+/** Primary step action: Sparkle pink, rounded. */
+const NextButton = ({ children, disabled, onClick }: { children: ReactNode; disabled?: boolean; onClick?: () => void }) => (
+  <button type={onClick ? "button" : "submit"} onClick={onClick} disabled={disabled}
+    className="inline-flex h-13 items-center gap-2.5 rounded-full px-7 py-3.5 text-[16px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(230,0,126,0.7)] transition hover:opacity-90 disabled:opacity-50"
+    style={{ background: PINK }}>{children}</button>
 );
 
 function CartStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
-  const { items, priceOf } = useCart();
+  const { items, priceOf, setQuantity, remove, count } = useCart();
   return (
-    <StepCard title="Review your cart" footer={<><BackButton onClick={onBack} label="Back to Cart" /><Button onClick={onNext}>Next: Your Details <ArrowRight className="size-4" /></Button></>}>
-      <ul className="divide-y divide-line">
-        {items.map((i) => (
-          <li key={i.variantId} className="flex items-center gap-4 py-3">
-            <div className="w-16"><ProductImage category={i.category} name={i.name} image={i.image} size="sm" /></div>
-            <div className="flex-1">
-              <p className="font-semibold">{i.name}</p>
-              <p className="text-sm text-ink-muted">{i.variantName ? `${i.variantName} · ` : ""}Qty {i.quantity} · {kes(priceOf(i).unit)} each</p>
-              {ruleLabel(priceOf(i).rule, priceOf(i).minQty) && <p className="mt-1 inline-flex rounded-full bg-teal-bg px-2.5 py-0.5 text-xs font-semibold text-teal-fg">{ruleLabel(priceOf(i).rule, priceOf(i).minQty)}</p>}
-            </div>
-            <p className="font-semibold">{kes(priceOf(i).unit * i.quantity)}</p>
-          </li>
-        ))}
+    <StepCard Icon={ShoppingCart} title="Review your cart" subtitle={`Your selected items (${count})`}
+      footer={<><BackButton onClick={onBack} label="Back to Cart" /><NextButton onClick={onNext}>Next: Your Details <ArrowRight className="size-5" /></NextButton></>}>
+      <ul className="space-y-3">
+        {items.map((i) => {
+          const p = priceOf(i);
+          const label = ruleLabel(p.rule, p.minQty);
+          return (
+            <li key={i.variantId} className="flex flex-wrap items-center gap-4 rounded-2xl border border-[#F5E1EC] bg-[#FFFBFD] p-3 sm:flex-nowrap sm:p-4">
+              <div className="w-20 shrink-0 sm:w-24"><ProductImage category={i.category} name={i.name} image={i.image} size="sm" className="rounded-xl" /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[17px] font-bold" style={{ color: NAVY }}>{i.name}</p>
+                {i.variantName && <p className="text-[14px] text-[#6B7280]">{i.variantName}</p>}
+                {p.available !== null && i.quantity > p.available
+                  ? <p className="mt-1 text-[14px] font-semibold text-rose-fg">Only {p.available} available</p>
+                  : <p className="mt-1 flex items-center gap-1.5 text-[14px] font-semibold text-[#15803D]"><CircleCheck className="size-4" /> In stock – Ready to ship</p>}
+                {label && <p className="mt-1.5 inline-flex rounded-full bg-[#E8F7EC] px-2.5 py-0.5 text-[12px] font-semibold text-[#15803D]">{label}</p>}
+              </div>
+              <div className="flex w-full items-center justify-between gap-4 sm:w-auto">
+                <div className="flex items-center rounded-xl border border-[#E5E7EB] bg-white">
+                  <button type="button" className="p-2.5 disabled:opacity-40" onClick={() => setQuantity(i.variantId, i.quantity - 1)} disabled={i.quantity <= 1} aria-label={`Decrease ${i.name}`}><Minus className="size-4" /></button>
+                  <span className="w-8 text-center font-semibold">{i.quantity}</span>
+                  <button type="button" className="p-2.5 disabled:opacity-40" onClick={() => setQuantity(i.variantId, i.quantity + 1)} disabled={(p.available !== null && i.quantity >= p.available) || i.quantity >= MAX_LINE_QTY} aria-label={`Increase ${i.name}`}><Plus className="size-4" /></button>
+                </div>
+                <span className="min-w-24 text-right text-[17px] font-bold tabular-nums" style={{ color: NAVY }}>{kes(p.unit * i.quantity)}</span>
+                <button type="button" onClick={() => remove(i.variantId)} className="flex flex-col items-center text-[12px] text-[#6B7280] hover:text-rose-fg" aria-label={`Remove ${i.name}`}><Trash2 className="size-[18px]" />Remove</button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </StepCard>
   );
@@ -176,7 +235,7 @@ function CartStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }
 
 function SignInStep({ onBack }: { onBack: () => void }) {
   return (
-    <StepCard title="Sign in to continue" footer={<><BackButton onClick={onBack} /><span /></>}>
+    <StepCard Icon={User} title="Sign in to continue" subtitle="So you can track your order and earn points." footer={<><BackButton onClick={onBack} /><span /></>}>
       <p className="text-ink-muted">Sign in so you can track your order and earn loyalty points. Your cart is saved.</p>
       <form action={demoSignIn}>
         <input type="hidden" name="account" value="customer" />
@@ -185,6 +244,16 @@ function SignInStep({ onBack }: { onBack: () => void }) {
       </form>
       <p className="text-center text-sm">or <Link href="/login?next=/checkout?step=details" className="font-semibold text-brand-700">sign in with email</Link></p>
     </StepCard>
+  );
+}
+
+/** Text input with a leading icon. */
+function IconInput({ Icon, onChange, ...props }: { Icon: LucideIcon; onChange: (value: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange">) {
+  return (
+    <span className="relative block">
+      <Icon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#6B7280]" strokeWidth={1.75} />
+      <input {...props} onChange={(e) => onChange(e.target.value)} className={cx(inputClass, "pl-12")} />
+    </span>
   );
 }
 
@@ -198,39 +267,43 @@ function DetailsStep({ initial, onBack, onNext }: {
   const submit = (e: FormEvent) => { e.preventDefault(); if (valid) onNext(c); };
   return (
     <form onSubmit={submit}>
-      <StepCard title="Your details" footer={<><BackButton onClick={onBack} /><Button disabled={!valid}>Next: Delivery <ArrowRight className="size-4" /></Button></>}>
-        <Field label="Full name"><input className={inputClass} value={c.full_name} onChange={(e) => setC({ ...c, full_name: e.target.value })} required autoComplete="name" /></Field>
+      <StepCard Icon={User} title="Your details" subtitle="Tell us how to reach you for your order."
+        footer={<><BackButton onClick={onBack} /><NextButton disabled={!valid}>Next: Delivery <ArrowRight className="size-5" /></NextButton></>}>
+        <Field label="Full name"><IconInput Icon={User} value={c.full_name} onChange={(v) => setC({ ...c, full_name: v })} required autoComplete="name" /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Phone number" hint="For delivery updates and M-Pesa"><input className={inputClass} value={c.phone} onChange={(e) => setC({ ...c, phone: e.target.value })} required inputMode="tel" autoComplete="tel" /></Field>
-          <Field label="Email"><input className={inputClass} type="email" value={c.email} onChange={(e) => setC({ ...c, email: e.target.value })} autoComplete="email" /></Field>
+          <Field label="Phone number" hint="For delivery updates and M-Pesa"><IconInput Icon={Phone} value={c.phone} onChange={(v) => setC({ ...c, phone: v })} required inputMode="tel" autoComplete="tel" /></Field>
+          <Field label="Email"><IconInput Icon={Mail} type="email" value={c.email} onChange={(v) => setC({ ...c, email: v })} autoComplete="email" /></Field>
         </div>
       </StepCard>
     </form>
   );
 }
 
-function DeliveryStep({ initial, addresses, onBack, onNext }: {
+function DeliveryStep({ initial, addresses, onChange, onBack, onNext }: {
   initial: NonNullable<CheckoutState["delivery"]>;
   addresses: SavedAddress[];
+  /** Every edit, so the summary's delivery fee and free-delivery progress follow the address. */
+  onChange: (d: NonNullable<CheckoutState["delivery"]>) => void;
   onBack: () => void;
   onNext: (d: NonNullable<CheckoutState["delivery"]>) => void;
 }) {
   const store = useStore();
   const [d, setD] = useState(initial);
-  const set = (patch: Partial<typeof d>) => setD({ ...d, ...patch });
+  const set = (patch: Partial<typeof d>) => { const next = { ...d, ...patch }; setD(next); onChange(next); };
   const valid = d.method === "pickup" || (d.address_line1.trim() && d.city.trim());
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (valid) onNext(d); }}>
-      <StepCard title="Delivery" footer={<><BackButton onClick={onBack} /><Button disabled={!valid}>Next: Payment <ArrowRight className="size-4" /></Button></>}>
+      <StepCard Icon={Truck} title="Delivery" subtitle="Choose how you'd like to receive your order."
+        footer={<><BackButton onClick={onBack} /><NextButton disabled={!valid}>Next: Payment <ArrowRight className="size-5" /></NextButton></>}>
         <div className="grid gap-3 sm:grid-cols-2">
           {([
             { id: "delivery", Icon: Truck, title: "Home delivery", text: deliverySummary(store) },
             { id: "pickup", Icon: Store, title: "Pick up in store", text: `Free · ${store.address}` },
           ] as const).map(({ id, Icon, title, text }) => (
             <button type="button" key={id} onClick={() => set({ method: id })} aria-pressed={d.method === id}
-              className={cx("flex gap-3 rounded-2xl border p-4 text-left", d.method === id ? "border-brand-600 bg-brand-50" : "border-line hover:border-brand-200")}>
-              <Icon className="mt-0.5 size-5 shrink-0 text-brand-600" />
-              <span><span className="block font-semibold">{title}</span><span className="block text-sm text-ink-muted">{text}</span></span>
+              className={cx("flex gap-3.5 rounded-2xl border-2 p-4 text-left transition", d.method === id ? "border-[#E6007E] bg-[#FDF2F8]" : "border-[#EEF0F3] bg-white hover:border-[#F9A8D4]")}>
+              <Icon className="mt-0.5 size-6 shrink-0" style={{ color: PINK }} strokeWidth={1.75} />
+              <span><span className="block text-[17px] font-bold" style={{ color: NAVY }}>{title}</span><span className="block text-[14px] text-[#4B5563]">{text}</span></span>
             </button>
           ))}
         </div>
@@ -242,7 +315,7 @@ function DeliveryStep({ initial, addresses, onBack, onNext }: {
                 <div className="flex flex-wrap gap-2">
                   {addresses.map((a) => (
                     <button type="button" key={a.id} onClick={() => set({ address_line1: a.address_line1, address_line2: a.address_line2 ?? "", city: a.city, county: a.county ?? "", save: false })}
-                      className={cx("rounded-xl border px-3 py-2 text-left text-sm", d.address_line1 === a.address_line1 ? "border-brand-600 bg-brand-50" : "border-line")}>
+                      className={cx("rounded-xl border-2 px-4 py-2 text-left text-[15px]", d.address_line1 === a.address_line1 ? "border-[#E6007E] bg-[#FDF2F8]" : "border-[#EEF0F3]")}>
                       <strong>{a.label}</strong> · {a.address_line1}, {a.city}
                     </button>
                   ))}
@@ -320,7 +393,7 @@ function PaymentStep({ state, update, total, items, onBack, onPaid }: {
 
   if (placed?.paid && !prompt) {
     return (
-      <StepCard title="Payment" footer={<><BackButton onClick={onBack} /><Button onClick={() => finish(placed.reference)}>View Confirmation</Button></>}>
+      <StepCard Icon={Wallet} title="Payment" footer={<><BackButton onClick={onBack} /><NextButton onClick={() => finish(placed.reference)}>View Confirmation</NextButton></>}>
         <p>Order <strong>{placed.orderNumber}</strong> is already placed.</p>
       </StepCard>
     );
@@ -334,18 +407,21 @@ function PaymentStep({ state, update, total, items, onBack, onPaid }: {
 
   return (
     <>
-      <StepCard title="Payment"
+      <StepCard Icon={Wallet} title="Payment" subtitle="Choose how you'd like to pay."
         footer={<><BackButton onClick={onBack} />
-          <Button size="lg" onClick={submit} disabled={pending || (lockedMethod === "mpesa" && phone.replace(/\D/g, "").length < 9)}>
+          <NextButton onClick={submit} disabled={pending || (lockedMethod === "mpesa" && phone.replace(/\D/g, "").length < 9)}>
             {pending ? "Please wait…" : lockedMethod === "cash" ? "Place Order" : lockedMethod === "card" ? `Pay ${kes(total)}` : `Pay ${kes(total)} with M-Pesa`}
-          </Button></>}>
+          </NextButton></>}>
         {placed && <p className="rounded-xl bg-amber-bg px-4 py-3 text-amber-fg">Order <strong>{placed.orderNumber}</strong> is waiting for payment.</p>}
-        <div className="grid gap-3">
+        <div className="grid gap-3" role="radiogroup" aria-label="Payment method">
           {options.map(({ id, Icon, title, text }) => (
-            <button type="button" key={id} onClick={() => !placed && setMethod(id)} disabled={!!placed && id !== lockedMethod} aria-pressed={lockedMethod === id}
-              className={cx("flex items-center gap-3 rounded-2xl border p-4 text-left disabled:opacity-40", lockedMethod === id ? "border-brand-600 bg-brand-50" : "border-line hover:border-brand-200")}>
-              <Icon className="size-6 shrink-0 text-brand-600" />
-              <span><span className="block font-semibold">{title}</span><span className="block text-sm text-ink-muted">{text}</span></span>
+            <button type="button" key={id} onClick={() => !placed && setMethod(id)} disabled={!!placed && id !== lockedMethod} role="radio" aria-checked={lockedMethod === id}
+              className={cx("flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition disabled:opacity-40", lockedMethod === id ? "border-[#E6007E] bg-[#FDF2F8]" : "border-[#EEF0F3] bg-white hover:border-[#F9A8D4]")}>
+              <Icon className="size-7 shrink-0 text-[#374151]" strokeWidth={1.5} />
+              <span className="flex-1"><span className="block text-[17px] font-bold" style={{ color: NAVY }}>{title}</span><span className="block text-[14px] text-[#4B5563]">{text}</span></span>
+              <span className={cx("grid size-6 shrink-0 place-items-center rounded-full border-2", lockedMethod === id ? "border-[#E6007E]" : "border-[#C4C8CF]")} aria-hidden>
+                {lockedMethod === id && <span className="size-3 rounded-full" style={{ background: PINK }} />}
+              </span>
             </button>
           ))}
         </div>

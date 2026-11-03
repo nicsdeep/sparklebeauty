@@ -15,6 +15,32 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: Shopping incentives, and the cart and checkout redesign
+- PR: (this PR, branch `claude/smart-incentives`)
+- Decision (Nicholas, 2026-11-04): wholesale stays **per product at 10+ units of that product**. The cart total never triggers wholesale. A cart-value threshold applies only to free delivery (`store_settings.free_delivery_threshold`).
+- Changed:
+  - `lib/incentives.ts` (new): one rule for the website cart, checkout and POS.
+    - Wholesale nudge: the product closest to its wholesale break. It's taken from the engine's own price breaks, so a saving appears only when the engine really has a cheaper price. It shows only when the customer is at least halfway there, and never asks for more units than are in stock.
+    - Free delivery: amount remaining, progress and unlocked, worked out with `deliveryFee()`, the same rule as the database.
+  - `components/shop/savings-nudge.tsx` (new): one calm card, soft pink while approaching and soft green when unlocked, with a progress bar.
+  - Cart page (`app/(shop)/cart/page.tsx`) rebuilt to Nicholas's design: item cards with stock status and a quantity stepper, a trust strip, and an Order Summary with promo, a pink Total bar and the nudge.
+  - Checkout (`wizard.tsx`):
+    - a new header and stepper, and step cards with an icon tile and subtitle;
+    - quantity and remove in the cart step, and inputs with icons in the details step;
+    - pink-bordered delivery cards, and payment options with radio circles;
+    - a summary with a pink total, the nudge and a trust row;
+    - the summary follows the address as it's typed: delivery fee and free-delivery progress.
+  - POS: the same wholesale nudge under the total, and a "Wholesale pricing applied" badge. There's no delivery at the till.
+  - `LinePrice.breaks` in `lib/cart.tsx`; `DeliveryRules` exported from `lib/format.ts`.
+- Not changed: the pricing engine, the database and the 10+ rule. The nudges only display what the engine already decides.
+- Tested in the local preview:
+  - Cart: 6 serums gave "Add 4 more…" until stock (3) was known, then the nudge hid itself. At 3 serums (KES 8,400) it showed "Add KES 1,600 more for free Nairobi delivery" with a progress bar. It updated instantly on quantity change.
+  - Checkout: all 4 steps at 1440 width, and payment at 375 with no sideways scroll. Changing the town to Mombasa gave a KES 500 fee and "free Mombasa delivery"; pickup gave Free with no nudge.
+  - POS: 6 × Body Wave 14" gave "Add 4 more… KES 13,900 each, saves KES 46,000". At 10 it applied wholesale automatically, with the badge.
+  - `tsc --noEmit` passes.
+- Not done: the decorative flower and perfume images from the mockups (no image assets).
+- Follow-ups: none.
+
 ## 2026-11-04: Claude: Simpler customer tracking steps
 - PR: (this PR, branch `claude/simpler-tracking-steps`)
 - Changed:
