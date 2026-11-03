@@ -11,10 +11,11 @@ import { useCart } from "@/lib/cart";
 import { ruleLabel } from "@/lib/pricing";
 import { useCheckoutState, type CheckoutState } from "@/lib/checkout-state";
 import { deliverySummary } from "@/lib/store-types";
-import { deliveryFee, kes, maskPhone, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
+import { deliveryFee, kes, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
 import { payOrder, placeOrder } from "../actions";
 import { demoSignIn } from "@/app/login/actions";
 import { useStore } from "@/components/store-provider";
+import { MpesaModal } from "@/components/shop/mpesa-modal";
 
 export type SavedAddress = { id: string; label: string; address_line1: string; address_line2: string | null; city: string; county: string | null; is_default: boolean };
 
@@ -279,6 +280,7 @@ function PaymentStep({ state, update, total, items, onBack, onPaid }: {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const lockedMethod = placed ? (state.paymentMethod ?? method) : method;
+  const store = useStore();
 
   function finish(reference?: string) {
     update({ placed: { ...state.placed!, ...(placed ?? {}), paid: true, reference } as CheckoutState["placed"] });
@@ -315,17 +317,7 @@ function PaymentStep({ state, update, total, items, onBack, onPaid }: {
     });
   }
 
-  function simulateMpesa() {
-    startTransition(async () => {
-      const pay = await payOrder(state.placed!.orderId, phone);
-      if (!pay.ok) { setError(pay.error); setPrompt(false); return; }
-      setPrompt(false);
-      update({ placed: { ...state.placed!, paid: true, reference: pay.data.reference } });
-      onPaid();
-    });
-  }
-
-  if (placed?.paid) {
+  if (placed?.paid && !prompt) {
     return (
       <StepCard title="Payment" footer={<><BackButton onClick={onBack} /><Button onClick={() => finish(placed.reference)}>View Confirmation</Button></>}>
         <p>Order <strong>{placed.orderNumber}</strong> is already placed.</p>
@@ -373,21 +365,9 @@ function PaymentStep({ state, update, total, items, onBack, onPaid }: {
       </StepCard>
 
       {prompt && state.placed && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4" role="dialog" aria-modal="true" aria-labelledby="mpesa-title">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center">
-            <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-mint-bg text-mint-fg"><Smartphone className="size-7" /></span>
-            <h3 id="mpesa-title" className="mt-4 text-xl font-bold">Check your phone</h3>
-            <p className="mt-2 text-ink-muted">
-              An M-Pesa payment request has been sent to <strong className="text-ink">{maskPhone(phone)}</strong>.
-              Enter your M-Pesa PIN to pay <strong className="text-ink">{kes(state.placed.total)}</strong> to Sparkle Beauty.
-            </p>
-            <p className="mt-3 rounded-xl bg-surface px-3 py-2 text-sm text-ink-muted">Demo mode: no real M-Pesa request is sent.</p>
-            <Button size="lg" className="mt-5 w-full" onClick={simulateMpesa} disabled={pending}>
-              {pending ? "Confirming…" : "Simulate Successful Payment"}
-            </Button>
-            <Button variant="ghost" className="mt-2 w-full" onClick={() => setPrompt(false)} disabled={pending}>Cancel</Button>
-          </div>
-        </div>
+        <MpesaModal orderId={state.placed.orderId} phone={phone} amount={state.placed.total} merchant={store.name}
+          onPaid={(reference) => { update({ placed: { ...state.placed!, paid: true, reference } }); onPaid(); }}
+          onClose={() => setPrompt(false)} />
       )}
     </>
   );
