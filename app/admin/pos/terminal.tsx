@@ -17,6 +17,7 @@ import type { ReceiptData } from "@/lib/receipt";
 import { ReceiptActions } from "@/components/receipt-actions";
 import { ReceiptDocument } from "@/components/receipt-document";
 import { breakFor, nextBreak, ruleLabel, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
+import { incentives } from "@/lib/incentives";
 import type { StoreSettings } from "@/lib/store-types";
 import { completeSale, posPriceSheet, posQuote, type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment, type PosSaleResult } from "../actions";
 import { loadParked, loadQueue, newClientRef, saveParked, saveQueue, type ParkedSale, type QueuedSale } from "./offline-queue";
@@ -172,6 +173,9 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const total = vat.total;
   const units = priced.reduce((s, l) => s + l.qty, 0);
   const pay = settle(tenders, total);
+  // Same rule as the website cart (lib/incentives): the product closest to its wholesale break.
+  // No delivery at the till, so no free-delivery nudge.
+  const nudges = incentives(priced.map((l) => ({ name: l.item.name, quantity: l.qty, breaks: sheet?.[l.variantId], available: l.price.available })));
   const allConfirmed = !online || priced.every((l) => confirmed?.key.startsWith(cartKey) && confirmed.lines[l.variantId]?.quantity === l.qty);
 
   // Product list
@@ -597,6 +601,17 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
             <div className="flex items-end justify-between pt-1"><dt className="text-xl font-bold">Total</dt>
               <dd className={cx("text-3xl font-extrabold text-brand-600 transition-opacity", allConfirmed ? "" : "opacity-60")}>{kes(total)}</dd></div>
           </dl>
+          {(nudges.wholesale || nudges.wholesaleUnlocked.length > 0) && (
+            <div className="space-y-1 text-xs" aria-live="polite">
+              {nudges.wholesaleUnlocked.length > 0 && (
+                <p className="flex items-center gap-1.5 rounded-lg bg-mint-bg px-2.5 py-1.5 font-semibold text-mint-fg"><CheckCircle2 className="size-4" /> Wholesale pricing applied: {nudges.wholesaleUnlocked.join(", ")}</p>
+              )}
+              {nudges.wholesale && (
+                <p className="flex items-center gap-1.5 rounded-lg bg-amber-bg px-2.5 py-1.5 text-amber-fg"><BadgePercent className="size-4 shrink-0" />
+                  <span>Add {nudges.wholesale.more} more {nudges.wholesale.name} for wholesale ({kes(nudges.wholesale.unitPrice)} each{nudges.wholesale.saving > 0 ? `, saves ${kes(nudges.wholesale.saving)}` : ""}).</span></p>
+              )}
+            </div>
+          )}
 
           <PaymentPanel tenders={tenders} pay={pay} online={online} total={total} hasItems={priced.length > 0}
             onUpdate={updateTender} onAdd={addTender} onRemove={removeTender} />

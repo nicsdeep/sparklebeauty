@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { quoteCart } from "@/app/(shop)/actions";
 import { useLiveTopic } from "@/lib/live";
-import { breakFor, type PriceRule, type QuoteLine } from "@/lib/pricing";
+import { breakFor, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
 import { orderTax, STANDARD_VAT, type OrderTax } from "@/lib/tax";
 
 export type CartItem = {
@@ -21,7 +21,8 @@ export type CartItem = {
 
 /** What the pricing engine says about a cart line. */
 /** taxRate: VAT % for the line from the server quote (16, the standard rate, until the quote arrives). */
-export type LinePrice = { unit: number; retail: number; rule: PriceRule; minQty: number; available: number | null; confirmed: boolean; taxRate: number };
+/** breaks: the engine's price breaks for the line (for the wholesale nudge). */
+export type LinePrice = { unit: number; retail: number; rule: PriceRule; minQty: number; available: number | null; confirmed: boolean; taxRate: number; breaks?: PriceBreak[] };
 
 type CartContextValue = {
   items: CartItem[];
@@ -114,6 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       available: q.available,
       confirmed,
       taxRate: q.tax_rate,
+      breaks: q.breaks,
     };
   }, [quotes]);
 
