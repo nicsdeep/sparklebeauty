@@ -19,6 +19,7 @@ Entry format:
 - PR: (this PR, branch `claude/receipt-spec`)
 - Changed: `components/receipt-document.tsx`: Inter (400/500/600/700, Arial/Helvetica fallback) for everything and Dancing Script only for the thank-you line; his colours (navy #0F1738, body #252B3A, muted #6B7280, dividers #D7DCE5 solid and #9CA3AF dashed, pink #E6007E for the total and slogan only, #FDEBF3 table heading and total box); his sizes (RECEIPT 24px/700, metadata 11.5px, table heading 10.5px/700 uppercase, products 12.5px/600, SKU 9.5px, money 12.5px/600, TOTAL 21px and amount 24px/700, thank-you 21px, slogan 10.5px/600 with 0.25em spacing); money in tabular figures, right-aligned; logo 110px wide; 85px QR area.
 - Why: Nicholas sent an exact typography and colour spec for the receipt.
+- Fonts are bundled (`lib/fonts`: Inter 400–700 and Dancing Script 500, SIL OFL, from Fontsource) through `next/font/local`, because a local build failed once when downloading Google fonts.
 - Note: the QR stays an empty, labelled 85px space (black on white once KRA issues one).
 - Tested: local preview of SPK-1077: computed fonts, sizes, weights and colours match the spec. `tsc --noEmit` and `next build` pass.
 - Follow-ups: none.

@@ -1,5 +1,5 @@
 import { Fragment, type CSSProperties } from "react";
-import { Dancing_Script, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { QrCode } from "lucide-react";
 import { cx } from "@/components/ui";
 import { formatDateTimeFull, kes, PAYMENT_LABEL } from "@/lib/format";
@@ -11,8 +11,17 @@ import type { StoreSettings } from "@/lib/store-types";
 // `receipt-print` makes it the only thing printed, on an 80 mm page (globals.css).
 //   Inter (400/500/600/700) for everything; Dancing Script only for the thank-you line.
 //   Money: tabular figures, right-aligned, navy; Sparkle pink only for the final total.
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
-const script = Dancing_Script({ subsets: ["latin"], weight: ["500"] });
+// Bundled with the site (lib/fonts, SIL OFL, from Fontsource) so builds never depend on downloading them.
+const inter = localFont({
+  src: [
+    { path: "../lib/fonts/inter-latin-400.woff2", weight: "400", style: "normal" },
+    { path: "../lib/fonts/inter-latin-500.woff2", weight: "500", style: "normal" },
+    { path: "../lib/fonts/inter-latin-600.woff2", weight: "600", style: "normal" },
+    { path: "../lib/fonts/inter-latin-700.woff2", weight: "700", style: "normal" },
+  ],
+  fallback: ["Arial", "Helvetica", "sans-serif"],
+});
+const script = localFont({ src: "../lib/fonts/dancing-script-latin-500.woff2", weight: "500" });
 
 const C = {
   pink: "#E6007E", navy: "#0F1738", body: "#252B3A", muted: "#6B7280",
@@ -55,7 +64,7 @@ export function ReceiptDocument({ receipt: r, store, className }: { receipt: Rec
 
   return (
     <div className={cx(inter.className, "receipt-print mx-auto w-full max-w-[320px] drop-shadow-[0_10px_24px_rgba(15,23,56,0.14)] print:drop-shadow-none", className)}
-      style={{ fontFamily: `${inter.style.fontFamily}, Arial, Helvetica, sans-serif`, color: C.body }} title={formatDateTimeFull(r.issuedAt)}>
+      style={{ color: C.body }} title={formatDateTimeFull(r.issuedAt)}>
       <Edge />
       <article className="bg-white px-6 pb-5 pt-4 leading-snug">
         {/* Shop */}
