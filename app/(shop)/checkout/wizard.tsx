@@ -11,11 +11,12 @@ import { useCart } from "@/lib/cart";
 import { ruleLabel } from "@/lib/pricing";
 import { useCheckoutState, type CheckoutState } from "@/lib/checkout-state";
 import { deliverySummary } from "@/lib/store-types";
-import { deliveryFee, kes, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
+import { deliveryFee, kes, type PaymentMethod } from "@/lib/format";
 import { payOrder, placeOrder } from "../actions";
 import { demoSignIn } from "@/app/login/actions";
 import { useStore } from "@/components/store-provider";
 import { MpesaModal } from "@/components/shop/mpesa-modal";
+import { OrderConfirmedModal } from "@/components/shop/order-confirmed-modal";
 
 export type SavedAddress = { id: string; label: string; address_line1: string; address_line2: string | null; city: string; county: string | null; is_default: boolean };
 
@@ -375,6 +376,7 @@ function PaymentStep({ state, update, total, items, onBack, onPaid }: {
 
 function ConfirmationStep({ state, onDone }: { state: CheckoutState; onDone: () => void }) {
   const placed = state.placed;
+  const [open, setOpen] = useState(true);
   if (!placed) {
     return (
       <div className="rounded-2xl border border-line p-8 text-center">
@@ -383,25 +385,23 @@ function ConfirmationStep({ state, onDone }: { state: CheckoutState; onDone: () 
       </div>
     );
   }
-  const method = state.paymentMethod ?? "mpesa";
   return (
-    <section className="rounded-2xl border border-line p-8 text-center">
-      <CheckCircle2 className="mx-auto size-16 text-mint-fg" />
-      <h2 className="mt-4 text-2xl font-bold">Thank you{state.contact?.full_name ? `, ${state.contact.full_name.split(" ")[0]}` : ""}! Your order is confirmed.</h2>
-      <p className="mt-2 text-ink-muted">Order number</p>
-      <p className="text-3xl font-extrabold tracking-wide text-brand-700">{placed.orderNumber}</p>
-      <dl className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 rounded-2xl bg-surface p-4 text-left text-[15px]">
-        <dt className="text-ink-muted">Total</dt><dd className="text-right font-semibold">{kes(placed.total)}</dd>
-        <dt className="text-ink-muted">Payment</dt>
-        <dd className="text-right font-semibold">{PAYMENT_LABEL[method]}{method === "cash" ? " (on delivery)" : " · Paid"}</dd>
-        {placed.reference && <><dt className="text-ink-muted">Reference</dt><dd className="text-right font-mono font-semibold">{placed.reference}</dd></>}
-        <dt className="text-ink-muted">Delivery</dt><dd className="text-right font-semibold">{state.delivery?.method === "pickup" ? "Store pickup" : state.delivery?.city}</dd>
-      </dl>
-      <p className="mt-4 text-ink-muted">We&apos;ll send updates by SMS and to your account notifications.</p>
-      <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <ButtonLink href={`/order/${placed.orderNumber}`} size="lg" onClick={onDone}>Track Order</ButtonLink>
-        <ButtonLink href="/shop" size="lg" variant="secondary" onClick={onDone}>Continue Shopping</ButtonLink>
-      </div>
-    </section>
+    <>
+      {/* Behind the modal, and what stays once it's closed. */}
+      <section className="rounded-2xl border border-line p-8 text-center">
+        <CheckCircle2 className="mx-auto size-12 text-mint-fg" />
+        <p className="mt-3 text-lg font-semibold">Order <span className="text-brand-700">{placed.orderNumber}</span> is confirmed.</p>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <Button variant="secondary" onClick={() => setOpen(true)}>View Confirmation</Button>
+          <ButtonLink href={`/order/${placed.orderNumber}`} onClick={onDone}>View Order Details</ButtonLink>
+        </div>
+      </section>
+      {open && (
+        <OrderConfirmedModal firstName={state.contact?.full_name?.split(" ")[0]} orderNumber={placed.orderNumber} total={placed.total}
+          method={state.paymentMethod ?? "mpesa"} reference={placed.reference}
+          delivery={state.delivery?.method === "pickup" ? "Store pickup" : state.delivery?.city || "Delivery"}
+          onClose={() => setOpen(false)} onDone={onDone} />
+      )}
+    </>
   );
 }
