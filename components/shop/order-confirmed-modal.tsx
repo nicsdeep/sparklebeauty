@@ -111,7 +111,7 @@ export function OrderConfirmedModal({ firstName, orderNumber, total, method, ref
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4">
-              <Link href={`/order/${orderNumber}#tracking`} onClick={onDone}
+              <Link href={`/order/${orderNumber}/track`} onClick={onDone}
                 className="flex h-14 items-center justify-center gap-2.5 rounded-full text-[17px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(230,0,126,0.6)] transition hover:opacity-90" style={{ background: PINK }}>
                 <Truck className="size-5" /> Track Order
               </Link>
