@@ -12,6 +12,9 @@ import { ProductImage } from "@/components/shop/product-image";
 import { channelMeta, formatDateTime, kes, maskPhone, PAYMENT_LABEL } from "@/lib/format";
 import { useLiveTopic } from "@/lib/live";
 import { orderTax, type TaxType } from "@/lib/tax";
+import { vatHeading } from "@/lib/invoices";
+import { receiptText, type ReceiptData } from "@/lib/receipt";
+import { ReceiptDocument } from "@/components/receipt-document";
 import { breakFor, nextBreak, ruleLabel, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
 import { whatsappHref, type StoreSettings } from "@/lib/store-types";
 import { completeSale, posPriceSheet, posQuote, type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment, type PosSaleResult } from "../actions";
@@ -30,11 +33,8 @@ export type PosRecentSale = { id: string; number: string; customer: string; chan
 type Line = { variantId: string; qty: number };
 /** One part of the payment. amount "" means "whatever is left to pay" (for M-Pesa, card or bank). */
 type Tender = { id: string; method: PosPaymentMethod; amount: string; phone: string; reference: string };
-type Receipt = {
-  number: string; offline: boolean; at: string; customer: PosCustomer | null; lines: PosReceiptLine[];
-  subtotal: number; discount: number; tax: number; total: number; payments: PosRecordedPayment[]; cashReceived: number; change: number;
-  invoiceNumber: string | null;
-};
+/** The shared receipt (lib/receipt.ts) plus the customer, to prefill where it's sent. */
+type Receipt = ReceiptData & { customerRef: PosCustomer | null };
 type Sheet = Record<string, PriceBreak[]>;
 
 const RECENT_KEY = "sparkle-pos-recent-v1";
@@ -58,9 +58,9 @@ function settle(tenders: Tender[], total: number) {
 const VISIBLE_CHIPS = 8;
 const isNetworkError = (e: unknown) => e instanceof TypeError || /fetch|network|failed to fetch/i.test(String((e as Error)?.message ?? e));
 
-export function PosTerminal({ items, categories, customers, walkInSheet, threshold, recentSales, store }: {
+export function PosTerminal({ items, categories, customers, walkInSheet, threshold, recentSales, store, cashier }: {
   items: PosItem[]; categories: PosCategory[]; customers: PosCustomer[]; walkInSheet: Sheet; threshold: number;
-  recentSales: PosRecentSale[]; store: StoreSettings;
+  recentSales: PosRecentSale[]; store: StoreSettings; cashier: string | null;
 }) {
   const router = useRouter();
   const itemsBy = useMemo(() => new Map(items.map((i) => [i.variantId, i])), [items]);
@@ -252,11 +252,18 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   }
 
   function receiptFromCart(number: string, offline: boolean, payments: PosRecordedPayment[], server?: PosSaleResult): Receipt {
-    const ls = server?.lines ?? priced.map((l) => ({ name: l.item.name + (l.item.variantName ? ` – ${l.item.variantName}` : ""), sku: l.item.sku, quantity: l.qty, unitPrice: l.price.unit, lineTotal: l.price.unit * l.qty, rule: l.price.rule }));
+    // The server's lines when the sale is recorded; the till's own (same VAT rule) when offline.
+    const ls: PosReceiptLine[] = server?.lines ?? priced.map((l, i) => ({ name: l.item.name + (l.item.variantName ? ` – ${l.item.variantName}` : ""), sku: l.item.sku,
+      quantity: l.qty, unitPrice: l.price.unit, lineTotal: l.price.unit * l.qty, amount: l.price.unit * l.qty - vat.lines[i].discount + vat.lines[i].tax, rule: l.price.rule }));
+    const grand = server?.total ?? total;
     return {
-      number, offline, at: new Date().toLocaleString("en-KE", { timeZone: "Africa/Nairobi", dateStyle: "medium", timeStyle: "short" }),
-      customer, lines: ls, subtotal: ls.reduce((s, l) => s + l.lineTotal, 0), discount: vat.discount, tax: server?.tax ?? vat.tax,
-      total: server?.total ?? total, payments, cashReceived: pay.cash, change: server?.change ?? pay.change, invoiceNumber: server?.invoiceNumber ?? null,
+      number, offline, issuedAt: new Date().toISOString(), cashier, channel: "till", customerRef: customer,
+      customer: customer ? customer.business ?? customer.name : "Walk-in customer",
+      lines: ls.map((l) => ({ quantity: l.quantity, name: l.name, sku: l.sku || null, amount: l.amount })),
+      subtotal: ls.reduce((s, l) => s + l.lineTotal, 0), discount: vat.discount, delivery: 0, tax: server?.tax ?? vat.tax,
+      vatLabel: vatHeading(priced.map((l) => l.item.taxRate)), total: grand, payments,
+      cashReceived: pay.cash > 0 ? pay.cash : undefined, change: server?.change ?? pay.change, invoiceNumber: server?.invoiceNumber ?? null,
+      pointsEarned: customer && !customer.business && !offline ? Math.floor(grand / 100) : undefined,
     };
   }
 
@@ -683,7 +690,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
         </div>
       )}
 
-      {receipt && <ReceiptDialog receipt={receipt} store={store} threshold={threshold} onNewSale={newSale} onClose={() => { setLastReceipt(receipt); setReceipt(null); }} />}
+      {receipt && <ReceiptDialog receipt={receipt} store={store} onNewSale={newSale} onClose={() => { setLastReceipt(receipt); setReceipt(null); }} />}
     </div>
   );
 }
@@ -779,51 +786,18 @@ function ManualProduct({ items, onAdd }: { items: PosItem[]; onAdd: (item: PosIt
   );
 }
 
-function ReceiptDialog({ receipt, store, threshold, onNewSale, onClose }: { receipt: Receipt; store: StoreSettings; threshold: number; onNewSale: () => void; onClose: () => void }) {
-  const [to, setTo] = useState(receipt.customer?.phone ?? "");
-  const text = [`${store.name} – Receipt ${receipt.number}`, receipt.at,
-    ...receipt.lines.map((l) => `${l.quantity} x ${l.name} @ ${kes(l.unitPrice)} = ${kes(l.lineTotal)}`),
-    receipt.discount ? `Discount: -${kes(receipt.discount)}` : "", receipt.tax ? `VAT: ${kes(receipt.tax)}` : "", `Total: ${kes(receipt.total)}`,
-    receipt.invoiceNumber ? `Tax invoice ${receipt.invoiceNumber}${store.kra_pin ? ` · KRA PIN ${store.kra_pin}` : ""}` : "",
-    `Paid: ${receipt.payments.map((p) => `${PAYMENT_LABEL[p.method]} ${kes(p.amount)}`).join(" + ")}`,
-    receipt.change > 0 ? `Cash ${kes(receipt.cashReceived)}, change ${kes(receipt.change)}` : "", "Thank you for shopping with Sparkle!"]
-    .filter(Boolean).join("\n");
+function ReceiptDialog({ receipt, store, onNewSale, onClose }: { receipt: Receipt; store: StoreSettings; onNewSale: () => void; onClose: () => void }) {
+  const [to, setTo] = useState(receipt.customerRef?.phone ?? "");
+  const text = receiptText(receipt, store);
+  const email = receipt.customerRef?.email;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4" role="dialog" aria-modal="true" aria-label="Receipt">
-      <div className="max-h-[92vh] w-full max-w-sm overflow-y-auto rounded-3xl bg-white p-6">
-        <div className="text-center">
-          {receipt.offline ? <WifiOff className="no-print mx-auto size-10 text-amber-fg" /> : <CheckCircle2 className="no-print mx-auto size-12 text-mint-fg" />}
-          <p className="mt-2 text-xl font-extrabold text-brand-600">{store.name}</p>
-          <p className="text-sm text-ink-muted">{store.address} · {store.phones[0]?.number}</p>
-          <p className="mt-3 font-semibold">Receipt {receipt.number}</p>
-          <p className="text-sm text-ink-muted">{receipt.at}</p>
-          {receipt.customer && <p className="text-sm">{receipt.customer.business ?? receipt.customer.name}</p>}
-          {receipt.invoiceNumber && (
-            <p className="mt-1 text-xs text-ink-muted">Tax invoice <strong className="text-ink">{receipt.invoiceNumber}</strong>{store.kra_pin ? ` · KRA PIN ${store.kra_pin}` : ""} · eTIMS: waiting to send</p>
-          )}
-          {receipt.offline && <p className="no-print mt-2 rounded-lg bg-amber-bg px-3 py-1.5 text-xs text-amber-fg">Taken offline. It will be recorded when the till reconnects.</p>}
-        </div>
-        <ul className="mt-4 space-y-1.5 border-y border-dashed border-line py-3 text-sm">
-          {receipt.lines.map((l, i) => (
-            <li key={i}>
-              <div className="flex justify-between gap-3"><span>{l.quantity} × {l.name}</span><span>{kes(l.lineTotal)}</span></div>
-              <p className="text-xs text-ink-muted">@ {kes(l.unitPrice)}{ruleLabel(l.rule, threshold) ? ` · ${ruleLabel(l.rule, threshold)}` : ""}</p>
-            </li>
-          ))}
-        </ul>
-        <dl className="mt-3 space-y-1 text-sm">
-          <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(receipt.subtotal)}</dd></div>
-          {receipt.discount > 0 && <div className="flex justify-between"><dt>Discount</dt><dd>-{kes(receipt.discount)}</dd></div>}
-          {receipt.tax > 0 && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(receipt.tax)}</dd></div>}
-          <div className="flex justify-between text-base font-bold"><dt>Total</dt><dd>{kes(receipt.total)}</dd></div>
-          {receipt.payments.map((p, i) => (
-            <div key={i} className="flex justify-between gap-3"><dt>{PAYMENT_LABEL[p.method]} <span className="font-mono text-xs text-ink-muted">{p.reference}</span></dt><dd>{kes(p.amount)}</dd></div>
-          ))}
-          {receipt.change > 0 && <div className="flex justify-between"><dt>Cash received / Change</dt><dd>{kes(receipt.cashReceived)} / {kes(receipt.change)}</dd></div>}
-          {receipt.customer && !receipt.customer.business && !receipt.offline && <div className="flex justify-between"><dt>Points earned</dt><dd>+{Math.floor(receipt.total / 100)}</dd></div>}
-        </dl>
-        <p className="mt-4 text-center text-sm text-ink-muted">Thank you for shopping with Sparkle!</p>
-        <div className="no-print mt-5 space-y-2">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/50 p-4" role="dialog" aria-modal="true" aria-label="Receipt">
+      <div className="my-auto w-full max-w-sm space-y-4">
+        <p className="no-print flex items-center justify-center gap-2 font-semibold text-white">
+          {receipt.offline ? <WifiOff className="size-5" /> : <CheckCircle2 className="size-5" />} {receipt.offline ? "Saved on this till" : "Sale complete"}
+        </p>
+        <ReceiptDocument receipt={receipt} store={store} />
+        <div className="no-print space-y-2 rounded-3xl bg-white p-4">
           <div className="flex gap-2">
             <input value={to} onChange={(e) => setTo(e.target.value)} className={cx(inputClass, "h-10")} placeholder="Customer WhatsApp number" inputMode="tel" aria-label="Send receipt to" />
             <a href={to.replace(/\D/g, "").length >= 9 ? whatsappHref(to, text) : undefined} target="_blank" rel="noopener noreferrer"
@@ -831,7 +805,7 @@ function ReceiptDialog({ receipt, store, threshold, onNewSale, onClose }: { rece
               className={cx("inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full border border-brand-600 px-4 text-sm font-semibold text-brand-700", to.replace(/\D/g, "").length < 9 && "pointer-events-none opacity-40")}>
               <Mail className="size-4" /> Send</a>
           </div>
-          {receipt.customer?.email && <a href={`mailto:${receipt.customer.email}?subject=${encodeURIComponent(`Your Sparkle receipt ${receipt.number}`)}&body=${encodeURIComponent(text)}`} className="block text-center text-sm font-semibold text-brand-700">Or email it to {receipt.customer.email}</a>}
+          {email && <a href={`mailto:${email}?subject=${encodeURIComponent(`Your Sparkle receipt ${receipt.number}`)}&body=${encodeURIComponent(text)}`} className="block text-center text-sm font-semibold text-brand-700">Or email it to {email}</a>}
           <div className="grid grid-cols-3 gap-2">
             <Button variant="secondary" onClick={() => window.print()}><Printer className="size-4" /> Print</Button>
             <Button variant="ghost" className="border border-line" onClick={onClose}>Close</Button>

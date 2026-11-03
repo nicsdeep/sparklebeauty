@@ -71,3 +71,13 @@ body {
   .sparkle-twinkle { animation: none; opacity: 0.9; }
   .sparkle-glow { animation: none; }
 }
+
+/* Receipts (components/receipt-document.tsx): when one is on screen, print only the receipt, on
+   a till roll: 80 mm wide (browsers need a page length; roll printers cut after the content). */
+@page receipt { size: 80mm 297mm; margin: 3mm; }
+@media print {
+  body:has(.receipt-print) * { visibility: hidden; }
+  body:has(.receipt-print) .receipt-print,
+  body:has(.receipt-print) .receipt-print * { visibility: visible; }
+  body:has(.receipt-print) .receipt-print { position: absolute; left: 0; top: 0; width: 74mm; max-width: none; page: receipt; }
+}
