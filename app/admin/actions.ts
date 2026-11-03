@@ -19,6 +19,15 @@ export async function advanceOrder(orderId: string, note?: string): Promise<Acti
   return { ok: true, data: { status: data as string } };
 }
 
+/** When the order should reach the customer (shown on their tracking page); null clears it. */
+export async function setDeliveryEstimate(orderId: string, at: string | null): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_delivery_estimate", { p_order_id: orderId, p_at: at });
+  if (error) return fail(error);
+  revalidatePath("/admin", "layout");
+  return { ok: true, data: undefined };
+}
+
 export async function cancelOrder(orderId: string, reason: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("cancel_order", { p_order_id: orderId, p_reason: reason || null });

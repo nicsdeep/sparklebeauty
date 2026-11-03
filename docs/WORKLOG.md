@@ -15,6 +15,31 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: Rider banner, delivery estimate and live tracking
+- PR: (this PR, branch `claude/track-rider-banner`)
+- Changed:
+  - Nicholas's rider image is now a fixed asset, `public/brand/delivery-rider-banner.webp` (2000×667, unchanged). It's used as a full-width banner on the Track Order page.
+    - Desktop: live text on the left, the image on the right, its plain left edge faded into the banner colour.
+    - Phone: the text, then the image cropped to the rider.
+    - The SVG rider (`components/shop/delivery-rider.tsx`) was removed.
+  - Banner text by status:
+    - Processing: "Preparing your order".
+    - Ready for Dispatch: "Your order is packed and ready to leave."
+    - Out for Delivery: "Estimated Delivery" with the date and "By <time>", or "Out for Delivery" if no estimate is set.
+    - Delivered: "Delivered <date> at <time>", from the delivered event.
+  - Migration `20261103120000_order_tracking_eta_live.sql`:
+    - new column `orders.estimated_delivery_at`;
+    - `set_delivery_estimate()`, staff only;
+    - trigger `orders_broadcast_customer`, which broadcasts on the private topic `order:<id>` when status, payment or estimate changes;
+    - a policy on `realtime.messages` so only that order's customer (and staff) receive it.
+  - Admin order page: an "Estimated delivery" date-time field when an order is packed (saved as it's dispatched) or dispatched (Save).
+  - `components/shop/live-order.tsx` replaces `components/auto-refresh.tsx`. The tracking page re-renders the moment staff move the order on, and polls every 30 s only while the live connection is down. `lib/live.ts` accepts `order:<id>` topics.
+- Why: Nicholas sent the rider banner and asked for an estimated delivery from real data, with live updates.
+- Tested:
+  - Local preview of SPK-1094 at 1440 and 375 widths: the banner layout is as specified, with no sideways scroll. `tsc --noEmit` passes.
+  - **Not tested:** the migration against the live database (the database tool refused the rolled-back test; check after applying); live updates end to end; the admin estimate field in a browser; the Out for Delivery and Delivered banner text in a browser.
+- Follow-ups: apply the migration after merge, then test staff → customer live updates.
+
 ## 2026-11-03: Claude: Track Order page
 - PR: (this PR, branch `claude/track-order-page`)
 - Changed:

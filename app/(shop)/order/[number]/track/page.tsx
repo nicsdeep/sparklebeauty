@@ -1,9 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowLeft, CalendarDays, Check, CircleCheck, Clock, FileText, Headphones, Info, MapPin, Package, ShoppingBag, Store, Truck, X } from "lucide-react";
-import { AutoRefresh } from "@/components/auto-refresh";
+import { LiveOrder } from "@/components/shop/live-order";
 import { OrderTimeline } from "@/components/order-timeline";
-import { DeliveryRider } from "@/components/shop/delivery-rider";
 import { ProductImage } from "@/components/shop/product-image";
 import { cx } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -19,22 +18,41 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return { title: `Track order ${(await params).number}` };
 }
 
-/** Headline and "what's next" for where the order is. No delivery date is stored, so none is promised. */
-function update(status: OrderStatus, pickup: boolean, deliveredAt?: string) {
+const TZ = "Africa/Nairobi";
+/** "Nov 3, 2026" */
+const longDate = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: TZ });
+/** "6:00 PM" */
+const clock = (d: string) => new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TZ });
+
+type Banner = { eyebrow?: string; title: string; time?: string; line?: string; next: string };
+
+/** The banner text and "what's next" for where the order is, from the order's real data. */
+function banner(status: OrderStatus, pickup: boolean, eta: string | null, doneAt?: string): Banner {
   switch (status) {
     case "pending": return { title: "Waiting for payment", line: "Complete your M-Pesa payment and we'll start on your order.", next: "Once your payment is in, we'll confirm your order and start preparing it." };
     case "confirmed": case "paid": return { title: "Order confirmed", line: "We've received your order.", next: "Our team will start preparing your order shortly." };
-    case "processing": return { title: "Being prepared", line: "We're picking and checking your items.", next: pickup ? "We'll let you know as soon as it's ready to collect." : "Once it's packed, it goes to our rider." };
+    case "processing": return { title: "Preparing your order", line: "We're getting your items ready.", next: pickup ? "We'll let you know as soon as it's ready to collect." : "Once it's packed, it goes to our rider." };
     case "packed": return pickup
       ? { title: "Ready for pickup", line: "Your order is waiting for you at the shop.", next: "Come to the shop with your order number to collect it." }
-      : { title: "Ready for dispatch", line: "Packed and waiting for our rider.", next: "Our rider will pick it up and bring it to you." };
-    case "dispatched": return pickup
-      ? { title: "Ready for pickup", line: "Your order is waiting for you at the shop.", next: "Come to the shop with your order number to collect it." }
-      : { title: "On the way", line: "Our rider is bringing your order.", next: "Our rider is on the way to your delivery address. Keep your phone close." };
-    case "delivered": case "completed": return { title: pickup ? "Collected" : "Delivered", line: deliveredAt ? formatDateTimeFull(deliveredAt) : "Your order is complete.", next: "Enjoy your Sparkle goodies! We'd love to see you again." };
-    default: return { title: statusLabel(status), line: "", next: "Contact us if you have any questions about this order." };
+      : { title: "Ready for Dispatch", line: "Your order is packed and ready to leave.", next: "Our rider will pick it up and bring it to you." };
+    case "dispatched":
+      if (pickup) return { title: "Ready for pickup", line: "Your order is waiting for you at the shop.", next: "Come to the shop with your order number to collect it." };
+      return eta
+        ? { eyebrow: "Estimated Delivery", title: longDate(eta), time: `By ${clock(eta)}`, next: "Our rider is on the way to your delivery address. Keep your phone close." }
+        : { title: "Out for Delivery", line: "Our rider is on the way to you.", next: "Our rider is on the way to your delivery address. Keep your phone close." };
+    case "delivered": case "completed": return {
+      title: pickup ? "Collected" : "Delivered",
+      line: doneAt ? `${pickup ? "Collected" : "Delivered"} ${longDate(doneAt)} at ${clock(doneAt)}.` : "Your order is complete.",
+      next: "Enjoy your Sparkle goodies! We'd love to see you again.",
+    };
+    case "cancelled": return { title: "Cancelled", line: "This order was cancelled.", next: "Contact us if you have any questions about this order." };
+    default: return { title: statusLabel(status), next: "Contact us if you have any questions about this order." };
   }
 }
+
+const RIDER = "/brand/delivery-rider-banner.webp";
+/** The rider image's own background colour at its left edge, so the banner and image meet seamlessly. */
+const BANNER_BG = "#FBE5F1";
 
 export default async function TrackOrderPage({ params }: Params) {
   const { number } = await params;
@@ -44,13 +62,13 @@ export default async function TrackOrderPage({ params }: Params) {
   const stages = customerStages(pickup);
   const times = stageTimes(stages, events, order.created_at);
   const reached = stages.findIndex((s) => s.statuses.includes(status));
-  const now = update(status, pickup, times[stages.length - 1]);
+  const now = banner(status, pickup, order.estimated_delivery_at, times[stages.length - 1]);
   const cancelled = status === "cancelled";
   const methodLabel = pickup ? "Store Pickup" : "Standard Delivery";
 
   return (
     <div className="mx-auto max-w-7xl">
-      <AutoRefresh seconds={30} />
+      <LiveOrder orderId={order.id} />
       <Link href={`/order/${order.order_number}`} className="inline-flex items-center gap-2 text-[15px] font-medium text-[#111827] hover:underline"><ArrowLeft className="size-5" /> Back</Link>
       <h1 className="mt-3 text-[30px] font-extrabold tracking-tight sm:text-[36px]" style={{ color: NAVY }}>Track Order</h1>
       <p className="mt-1 text-[16px] text-[#4B5563]">Follow your order in real time.</p>
@@ -126,20 +144,32 @@ export default async function TrackOrderPage({ params }: Params) {
         </div>
       )}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-        <div className="min-w-0 space-y-6">
-          {/* Where it is now */}
-          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FDF2F8] via-[#FCE7F3] to-[#FBCFE8]/60 p-6 sm:p-7">
-            <div className="relative z-[1] flex gap-4 pr-0 sm:pr-48">
-              <CalendarDays className="mt-1 hidden size-8 shrink-0 sm:block" style={{ color: PINK }} strokeWidth={1.5} />
-              <div>
-                <p className="text-[18px] font-bold sm:text-[20px]" style={{ color: NAVY }}>{pickup ? "Pickup Update" : "Delivery Update"}</p>
-                <p className="mt-1 text-[28px] font-extrabold leading-tight sm:text-[34px]" style={{ color: PINK }}>{cancelled ? "Cancelled" : now.title}</p>
-                {now.line && !cancelled && <p className="mt-2 flex items-center gap-2 text-[16px] font-semibold text-[#111827]"><Clock className="size-5 shrink-0" style={{ color: PINK }} />{now.line}</p>}
-              </div>
+      {/* Where it is now: live text on the left, the fixed rider banner image on the right. */}
+      <section className="relative mt-8 overflow-hidden rounded-3xl" style={{ background: BANNER_BG }} aria-live="polite">
+        <div className="relative z-[1] flex p-6 sm:p-8 md:min-h-[260px] md:w-[52%] md:items-center lg:min-h-[300px] lg:p-10">
+          <div className="flex gap-4">
+            <CalendarDays className="mt-0.5 hidden size-8 shrink-0 sm:block" style={{ color: PINK }} strokeWidth={1.5} />
+            <div>
+              <p className="text-[18px] font-bold sm:text-[22px]" style={{ color: NAVY }}>{now.eyebrow ?? (pickup ? "Pickup Update" : "Delivery Update")}</p>
+              <p className="mt-1 text-[32px] font-extrabold leading-tight sm:text-[44px]" style={{ color: PINK }}>{now.title}</p>
+              {now.time && <p className="mt-2 flex items-center gap-2 text-[18px] font-bold sm:text-[22px]" style={{ color: NAVY }}><Clock className="size-6 shrink-0" style={{ color: PINK }} />{now.time}</p>}
+              {now.line && <p className="mt-2 text-[16px] font-medium text-[#374151] sm:text-[18px]">{now.line}</p>}
             </div>
-            <DeliveryRider className="pointer-events-none absolute -bottom-2 right-0 hidden h-[190px] w-[240px] sm:block" />
-          </section>
+          </div>
+        </div>
+        {/* Desktop: the image fills the banner height on the right; its plain left side fades into the banner. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={RIDER} alt="" aria-hidden className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-auto max-w-none md:block"
+          style={{ maskImage: "linear-gradient(to right, transparent, #000 18%)", WebkitMaskImage: "linear-gradient(to right, transparent, #000 18%)" }} />
+        {/* Phone: the image under the text, cropped to the rider so he stays large. */}
+        <div className="relative h-[210px] overflow-hidden md:hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={RIDER} alt="" aria-hidden className="absolute bottom-0 right-[-40px] h-full w-auto max-w-none" />
+        </div>
+      </section>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+        <div className="min-w-0 space-y-6">
 
           <Panel className="p-5">
             <h2 className="text-[19px] font-bold" style={{ color: NAVY }}>Items in this Order ({items.reduce((n, i) => n + i.quantity, 0)})</h2>
@@ -175,7 +205,7 @@ export default async function TrackOrderPage({ params }: Params) {
 
           <section className="flex gap-4 rounded-3xl border border-[#F8D7E8] bg-[#FDF2F8] p-5">
             <Info className="size-7 shrink-0" style={{ color: PINK }} strokeWidth={1.75} />
-            <div><p className="text-[18px] font-bold" style={{ color: PINK }}>What&apos;s next?</p><p className="mt-1 text-[15px] text-[#374151]">{cancelled ? "This order was cancelled. Contact us if you have any questions." : now.next}</p></div>
+            <div><p className="text-[18px] font-bold" style={{ color: PINK }}>What&apos;s next?</p><p className="mt-1 text-[15px] text-[#374151]">{now.next}</p></div>
           </section>
 
           <div className="grid gap-3 sm:grid-cols-2">

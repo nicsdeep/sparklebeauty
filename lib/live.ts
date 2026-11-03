@@ -8,12 +8,14 @@ import { createClient } from "@/lib/supabase/client";
  *  - "catalog" (public): `stock` {variant_id, available} and `catalog` (a product/price changed).
  *  - "admin" (private, staff only by RLS on realtime.messages): `change` {table} for orders,
  *    payments and customers.
+ *  - "order:<id>" (private, that order's customer and staff): `order` {status} when its status,
+ *    payment or delivery estimate changes (the tracking page).
  * The database stays the source of truth: listeners re-read from it, they never patch copies.
  * Each topic is joined once per browser tab and shared by every listener (joining the same
  * topic twice on one connection makes Realtime drop one of them).
  */
 export type LiveStatus = "connecting" | "live" | "offline";
-type Topic = "catalog" | "admin";
+type Topic = "catalog" | "admin" | `order:${string}`;
 type Handler = (event: string, payload: Record<string, unknown>) => void;
 
 const topics = new Map<Topic, { handlers: Set<Handler>; statuses: Set<(s: LiveStatus) => void>; status: LiveStatus; close: () => void }>();
@@ -27,10 +29,11 @@ function join(topic: Topic) {
   let channel: ReturnType<typeof supabase.channel> | null = null;
   let closed = false;
   (async () => {
-    if (topic === "admin") await supabase.realtime.setAuth(); // private topic: send the staff session
+    const isPrivate = topic !== "catalog";
+    if (isPrivate) await supabase.realtime.setAuth(); // private topic: send the signed-in session
     if (closed) return;
     channel = supabase
-      .channel(topic, { config: { private: topic === "admin" } })
+      .channel(topic, { config: { private: isPrivate } })
       .on("broadcast", { event: "*" }, (msg) => entry.handlers.forEach((h) => h(msg.event, (msg.payload ?? {}) as Record<string, unknown>)))
       .subscribe((s) => setStatus(s === "SUBSCRIBED" ? "live" : s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED" ? "offline" : "connecting"));
   })();
