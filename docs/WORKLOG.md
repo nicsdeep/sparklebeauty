@@ -15,6 +15,13 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: Delivery estimate is always Nairobi time
+- PR: (this PR, branch `claude/eta-nairobi-time`)
+- Changed: `app/admin/orders/[id]/order-actions.tsx`: the Estimated delivery field is read and shown as Nairobi time (UTC+3), not the device's timezone. It's labelled "(Nairobi time)".
+- Why: found while testing #47 in a browser set to Los Angeles. "6:00 PM" would have been saved as 6 PM Los Angeles time (5 AM in Nairobi) and shown to the customer that way.
+- Tested: on the live database after applying migration `20261103120000`, I moved test order SPK-1094 from the admin page through Processing → Packed → Dispatched (estimate 4 Nov, 6:00 PM) → Delivered, with its tracking page open in another tab. Each change appeared within about a second, with no reload (realtime, not the 30 s fallback). The banner showed "Estimated Delivery · Nov 4, 2026 · By 6:00 PM", then "Delivered Nov 4, 2026 at 12:44 AM." `tsc --noEmit` passes. Not tested: a signed-in customer (not staff) receiving the live update. The policy's customer check is the same expression, but only the staff branch was exercised.
+- Follow-ups: none.
+
 ## 2026-11-03: Claude: Rider banner, delivery estimate and live tracking
 - PR: (this PR, branch `claude/track-rider-banner`)
 - Changed:
