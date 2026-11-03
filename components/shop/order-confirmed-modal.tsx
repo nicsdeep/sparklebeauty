@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Check, Coins, Copy, CreditCard, FileText, Mail, MapPin, ReceiptText, ShoppingBag, ShoppingCart, Truck, X } from "lucide-react";
+import { useEffect } from "react";
+import { Check, Coins, CreditCard, FileText, Mail, MapPin, ReceiptText, ShoppingBag, ShoppingCart, Truck, X } from "lucide-react";
+import { CopyButton } from "@/components/copy-button";
 import { kes, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
 
 /**
@@ -45,7 +46,6 @@ export function OrderConfirmedModal({ firstName, orderNumber, total, method, ref
   /** Clears the finished checkout before leaving the page. */
   onDone: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
   const paid = method !== "cash";
 
   useEffect(() => {
@@ -53,20 +53,6 @@ export function OrderConfirmedModal({ firstName, orderNumber, total, method, ref
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  async function copy() {
-    if (!reference) return;
-    let ok = false;
-    try { await navigator.clipboard.writeText(reference); ok = true; } catch {
-      // Clipboard API blocked (older browsers, some in-app browsers): copy through a hidden field.
-      const t = document.createElement("textarea");
-      t.value = reference; t.style.position = "fixed"; t.style.opacity = "0";
-      document.body.appendChild(t); t.select();
-      ok = document.execCommand("copy");
-      t.remove();
-    }
-    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1800); }
-  }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#111827]/40 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="order-confirmed-title">
@@ -112,15 +98,12 @@ export function OrderConfirmedModal({ firstName, orderNumber, total, method, ref
                 <Row Icon={ReceiptText} label="Reference">
                   <span className="inline-flex items-center gap-2">
                     <strong className="text-[16px] font-semibold tracking-wide" style={{ color: NAVY }}>{reference}</strong>
-                    <button onClick={copy} aria-label="Copy payment reference" title={copied ? "Copied" : "Copy"} className="rounded-md p-1 transition hover:bg-white" style={{ color: PINK }}>
-                      {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
-                    </button>
+                    <CopyButton text={reference} label="Copy payment reference" className="hover:bg-white" />
                   </span>
                 </Row>
               )}
               <Row Icon={MapPin} label="Delivery" last><strong className="text-[16px] font-semibold" style={{ color: NAVY }}>{delivery}</strong></Row>
             </div>
-            {copied && <p className="sr-only" aria-live="polite">Reference copied</p>}
 
             <p className="mt-5 flex items-center justify-center gap-2.5 text-[14px] text-[#6B7280] sm:text-[15px]">
               <Mail className="size-5 shrink-0" style={{ color: PINK }} strokeWidth={1.75} />
