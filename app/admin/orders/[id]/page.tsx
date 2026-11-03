@@ -116,6 +116,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                   {p.paid_at && <p className="text-sm text-ink-muted">Paid {formatDateTime(p.paid_at)}</p>}
                 </div>
               )) : <p>{kes(order.total_amount)}</p>}
+              {order.payment_status !== "pending" && <Link href={`/admin/orders/${order.id}/receipt`} className="block border-t border-line pt-1.5 font-semibold text-brand-700">Print receipt ›</Link>}
               {(order.invoices as { id: string; kind: string; invoice_number: string; etims_status: EtimsStatus }[]).map((inv) => (
                 <p key={inv.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-1.5">
                   <Link href={`/admin/invoices/${inv.id}`} className="font-semibold text-brand-700">{inv.kind === "credit_note" ? "Credit note" : "Tax invoice"} {inv.invoice_number}</Link>

@@ -54,6 +54,7 @@ export default async function OrderPage({ params }: Params) {
                   {p.provider_reference && <p className="text-ink-muted">Ref <span className="font-mono font-semibold text-ink">{p.provider_reference}</span></p>}
                 </div>
               ))}
+              {order.payment_status !== "pending" && <Link href={`/order/${order.order_number}/receipt`} className="block font-semibold text-brand-700">View receipt ›</Link>}
               {(order.invoices as { id: string }[]).length > 0 && <Link href={`/order/${order.order_number}/invoice`} className="block font-semibold text-brand-700">View tax invoice ›</Link>}
             </div>
           </Card>

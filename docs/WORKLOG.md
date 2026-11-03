@@ -15,6 +15,19 @@ Entry format:
 
 ---
 
+## 2026-11-02: Claude: One receipt design across the system
+- PR: (this PR, branch `claude/receipt-design`)
+- Changed:
+  - `components/receipt-document.tsx` (new): Nicholas's receipt mockup as a till-roll slip (logo, address, KRA PIN; RECEIPT with No/Date/Time/Cashier or "Sold: Online shop"/Customer; Qty-Item-Amount with VAT; subtotal, VAT, pink Total; payment method, reference, amount paid, change; points earned and tax invoice no.; handwritten thank-you; eTIMS QR placeholder; GLOW • SLAY • SPARKLE).
+  - `lib/receipt.ts` (new): `ReceiptData` and the plain-text copy; `lib/receipt-data.ts` (new): receipt from an order (RLS decides access).
+  - Till: the receipt pop-up uses it, with the cashier's name (`app/admin/pos/page.tsx` passes it); `completeSale` returns each line's amount with VAT.
+  - New pages `/admin/orders/[id]/receipt` and `/order/[number]/receipt`, linked as "Print receipt" (admin order) and "View receipt" (customer order) when paid. `components/print-button.tsx` (new).
+  - `app/globals.css`: only the receipt prints when one is shown, on an 80 mm page.
+- Why: Nicholas asked to use his receipt design throughout the system.
+- Tested (local preview, live data): receipt page for SPK-1077 (till, cash) and SPK-1045 (online, M-Pesa) match the mockup; a till sale (SPK-1081, Ballerina, KES 200 cash) shows the new receipt with amount paid KES 200 and change KES 26, tax invoice INV-1004; the browser accepts the 80 mm print page. `tsc --noEmit` and `next build` pass.
+- Not tested: printing on a real receipt printer; the customer view of the receipt (same component, customer access by RLS).
+- Follow-ups: none.
+
 ## 2026-11-02: Claude: System check, and indexes on foreign keys
 - PR: (this PR, branch `claude/fk-indexes`)
 - System check (no changes): deploy, migrations (22 = 22), typecheck, RLS on every table with policies, security-definer functions all with a fixed search_path; anon can call only the public catalogue/stock/quote/VAT-rate functions. Orders, payments, stock, loyalty and invoices all reconcile. Live pages 0.5–0.8 s warm. Found: 25 foreign keys without an index; 6 paid online orders still "pending" and 1 unpaid order (SPK-1078) from 30 Oct; 2 variants out of stock, 8 low; PostCSS advisory inside Next.js (fix needs Next 16); 38 old remote branches. The Supabase advisors tool returned "no permission" for this account, so the checks were done in SQL.

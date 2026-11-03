@@ -1,6 +1,7 @@
 import { listProducts, getStock } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreSettings } from "@/lib/store";
+import { getProfile } from "@/lib/auth";
 import type { TaxType } from "@/lib/tax";
 import { posPriceSheet } from "../actions";
 import { PosTerminal, type PosCategory, type PosCustomer, type PosItem, type PosRecentSale } from "./terminal";
@@ -26,6 +27,7 @@ export default async function PosPage() {
     getStoreSettings(),
     supabase.rpc("variant_tax_rates"),
   ]);
+  const cashier = (await getProfile())?.full_name ?? null;
   const rateBy = new Map(((rates ?? []) as { variant_id: string; tax_type: TaxType; tax_rate: number }[]).map((r) => [r.variant_id, r]));
   const stock = await getStock(products.flatMap((p) => p.variants.map((v) => v.id)));
   const wholesaleBy = new Map((wholesale ?? []).map((w) => [w.profile_id, w.business_name]));
@@ -66,6 +68,6 @@ export default async function PosPage() {
 
   return (
     <PosTerminal items={items} categories={categories} customers={posCustomers} walkInSheet={sheet.ok ? sheet.data : {}}
-      threshold={tier?.min_order_quantity ?? 10} recentSales={recentSales} store={store} />
+      threshold={tier?.min_order_quantity ?? 10} recentSales={recentSales} store={store} cashier={cashier} />
   );
 }
