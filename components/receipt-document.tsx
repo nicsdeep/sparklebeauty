@@ -1,17 +1,28 @@
-import { Fragment } from "react";
-import { Great_Vibes } from "next/font/google";
+import { Fragment, type CSSProperties } from "react";
+import { Dancing_Script, Inter } from "next/font/google";
 import { QrCode } from "lucide-react";
 import { cx } from "@/components/ui";
 import { formatDateTimeFull, kes, PAYMENT_LABEL } from "@/lib/format";
 import type { ReceiptData } from "@/lib/receipt";
 import type { StoreSettings } from "@/lib/store-types";
 
-// Nicholas's receipt design (td2/Sparkle Beauty Receipt Mockup.png, 2026-11-02), used everywhere a
-// receipt is shown. `receipt-print` makes it the only thing printed, at till-roll width (globals.css).
-const script = Great_Vibes({ weight: "400", subsets: ["latin"] });
-const NAVY = "text-[#1c2150]";
+// The one receipt used everywhere (Nicholas's design and spec, 2026-11-02): an 80 mm till-roll
+// slip, about 85% white and navy text, 10% light gray, 5% Sparkle pink/blue accents.
+// `receipt-print` makes it the only thing printed, on an 80 mm page (globals.css).
+//   Inter (400/500/600/700) for everything; Dancing Script only for the thank-you line.
+//   Money: tabular figures, right-aligned, navy; Sparkle pink only for the final total.
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const script = Dancing_Script({ subsets: ["latin"], weight: ["500"] });
 
-/** Torn-paper edge along the top or bottom of the slip. */
+const C = {
+  pink: "#E6007E", navy: "#0F1738", body: "#252B3A", muted: "#6B7280",
+  line: "#D7DCE5", dash: "#9CA3AF", gray: "#F7F8FA", pinkSoft: "#FDEBF3",
+};
+const money: CSSProperties = { fontVariantNumeric: "tabular-nums" };
+const Solid = () => <div className="my-3" style={{ borderTop: `1px solid ${C.line}` }} />;
+const Dashed = () => <div className="my-3" style={{ borderTop: `1px dashed ${C.dash}` }} />;
+
+/** Torn-paper edge along the top or bottom of the slip (screen only). */
 function Edge({ bottom }: { bottom?: boolean }) {
   return (
     <svg aria-hidden viewBox="0 0 120 6" preserveAspectRatio="none" className={cx("block h-2 w-full text-white print:hidden", bottom && "rotate-180")}>
@@ -20,92 +31,107 @@ function Edge({ bottom }: { bottom?: boolean }) {
   );
 }
 
+/** A label/amount row, amount right-aligned in tabular figures. */
+function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-[12.5px]">
+      <dt style={{ color: C.body }}>{label}</dt>
+      <dd className={strong ? "font-semibold" : "font-medium"} style={{ ...money, color: C.navy }}>{value}</dd>
+    </div>
+  );
+}
+
 export function ReceiptDocument({ receipt: r, store, className }: { receipt: ReceiptData; store: StoreSettings; className?: string }) {
-  const [date, time] = (() => {
-    const d = new Date(r.issuedAt);
-    return [d.toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Nairobi" }),
-      d.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Africa/Nairobi" }).toUpperCase()];
-  })();
-  const rows: [string, string][] = [["No:", r.number], ["Date:", date], ["Time:", time]];
-  if (r.channel === "online") rows.push(["Sold:", "Online shop"]);
-  else if (r.cashier) rows.push(["Cashier:", r.cashier]);
-  rows.push(["Customer:", r.customer]);
+  const d = new Date(r.issuedAt);
+  const date = d.toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Nairobi" });
+  const time = d.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Africa/Nairobi" }).toUpperCase();
+  const meta: [string, string][] = [["No:", r.number], ["Date:", date], ["Time:", time]];
+  if (r.channel === "online") meta.push(["Sold:", "Online shop"]);
+  else if (r.cashier) meta.push(["Cashier:", r.cashier]);
+  meta.push(["Customer:", r.customer]);
   // What the customer handed over: the cash given at the till (when known) plus M-Pesa, card and bank.
   const cashKept = r.payments.filter((p) => p.method === "cash").reduce((s, p) => s + p.amount, 0);
   const handedOver = r.payments.reduce((s, p) => s + p.amount, 0) - cashKept + (r.cashReceived ?? cashKept);
 
   return (
-    <div className={cx("receipt-print mx-auto w-full max-w-[340px] drop-shadow-[0_10px_24px_rgba(31,26,29,0.16)] print:drop-shadow-none", className)} title={formatDateTimeFull(r.issuedAt)}>
+    <div className={cx(inter.className, "receipt-print mx-auto w-full max-w-[320px] drop-shadow-[0_10px_24px_rgba(15,23,56,0.14)] print:drop-shadow-none", className)}
+      style={{ fontFamily: `${inter.style.fontFamily}, Arial, Helvetica, sans-serif`, color: C.body }} title={formatDateTimeFull(r.issuedAt)}>
       <Edge />
-      <article className="bg-white px-6 pb-5 pt-4 text-[13px] leading-snug text-ink">
+      <article className="bg-white px-6 pb-5 pt-4 leading-snug">
         {/* Shop */}
-        <header className="text-center">
+        <header className="text-center text-[11.5px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/sparkle-logo.svg" alt={store.name} width={1313} height={1116} className="mx-auto h-24 w-auto" />
+          <img src="/brand/sparkle-logo.svg" alt={store.name} width={1313} height={1116} className="mx-auto h-auto w-[110px]" />
           <p className="mt-2">{store.address}</p>
           {store.landmark && <p>{store.landmark}</p>}
-          {store.kra_pin && <p className="mt-1"><strong>KRA PIN:</strong> {store.kra_pin}</p>}
+          {store.kra_pin && <p className="mt-1"><span className="font-semibold" style={{ color: C.navy }}>KRA PIN:</span> {store.kra_pin}</p>}
         </header>
 
-        <div className="my-3 border-t border-dashed border-ink-muted/50" />
-        <h2 className={cx(NAVY, "text-center text-3xl font-extrabold tracking-tight")}>RECEIPT</h2>
-        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5">
-          {rows.map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd>{v}</dd></Fragment>)}
+        <Dashed />
+        <h2 className="text-center text-[24px] font-bold tracking-tight" style={{ color: C.navy }}>RECEIPT</h2>
+        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-[11.5px]">
+          {meta.map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd className="font-medium" style={{ color: C.navy }}>{v}</dd></Fragment>)}
         </dl>
-        {r.offline && <p className="mt-2 rounded-md bg-amber-bg px-2 py-1 text-center text-xs text-amber-fg">Taken offline · recorded when the till reconnects</p>}
+        {r.offline && <p className="mt-2 rounded px-2 py-1 text-center text-[10.5px]" style={{ background: C.gray, color: C.muted }}>Taken offline · recorded when the till reconnects</p>}
 
-        <div className="my-3 border-t border-dashed border-ink-muted/50" />
+        <Dashed />
         {/* Items */}
-        <div className="grid grid-cols-[2rem_1fr_auto] rounded-md bg-brand-50 px-2 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] print:bg-transparent print:px-0">
+        <div className="grid grid-cols-[1.75rem_1fr_auto] rounded-[5px] px-2 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.08em]" style={{ background: C.pinkSoft, color: C.navy }}>
           <span>Qty</span><span>Item</span><span className="text-right">Amount</span>
         </div>
-        <ul className="divide-y divide-line border-b border-line">
+        <ul>
           {r.lines.map((l, i) => (
-            <li key={i} className="grid grid-cols-[2rem_1fr_auto] gap-x-1 px-2 py-2 print:px-0">
-              <span>{l.quantity}</span>
-              <span><span className={cx(NAVY, "block font-bold")}>{l.name}</span>{l.sku && <span className="block text-xs text-ink-muted">{l.sku}</span>}</span>
-              <span className="text-right font-semibold">{kes(l.amount)}</span>
+            <li key={i} className="grid grid-cols-[1.75rem_1fr_auto] gap-x-1 px-2 py-2" style={{ borderBottom: `1px solid ${C.line}` }}>
+              <span className="text-[12.5px]" style={{ ...money, color: C.navy }}>{l.quantity}</span>
+              <span>
+                <span className="block text-[12.5px] font-semibold" style={{ color: C.navy }}>{l.name}</span>
+                {l.sku && <span className="block text-[9.5px]" style={{ color: C.muted }}>{l.sku}</span>}
+              </span>
+              <span className="text-right text-[12.5px] font-semibold" style={{ ...money, color: C.navy }}>{kes(l.amount)}</span>
             </li>
           ))}
         </ul>
 
         {/* Totals */}
         <dl className="mt-3 space-y-0.5">
-          <div className="flex justify-between"><dt>Subtotal (excl. VAT)</dt><dd className="font-semibold">{kes(r.subtotal)}</dd></div>
-          {r.discount > 0 && <div className="flex justify-between"><dt>Discount</dt><dd className="font-semibold">-{kes(r.discount)}</dd></div>}
-          {r.delivery > 0 && <div className="flex justify-between"><dt>Delivery</dt><dd className="font-semibold">{kes(r.delivery)}</dd></div>}
-          {r.tax > 0 && <div className="flex justify-between"><dt>{r.vatLabel}</dt><dd className="font-semibold">{kes(r.tax)}</dd></div>}
+          <Row label="Subtotal (excl. VAT)" value={kes(r.subtotal)} strong />
+          {r.discount > 0 && <Row label="Discount" value={`-${kes(r.discount)}`} strong />}
+          {r.delivery > 0 && <Row label="Delivery" value={kes(r.delivery)} strong />}
+          {r.tax > 0 && <Row label={r.vatLabel} value={kes(r.tax)} strong />}
         </dl>
-        <div className="mt-3 flex items-center justify-between rounded-md bg-brand-50 px-3 py-2 print:bg-transparent print:px-0">
-          <span className={cx(NAVY, "text-xl font-extrabold")}>Total</span>
-          <span className="text-2xl font-extrabold text-brand-600">{kes(r.total)}</span>
+        <div className="mt-3 flex items-center justify-between rounded-[5px] px-3 py-2.5" style={{ background: C.pinkSoft }}>
+          <span className="text-[21px] font-bold uppercase" style={{ color: C.navy }}>Total</span>
+          <span className="text-[24px] font-bold" style={{ ...money, color: C.pink }}>{kes(r.total)}</span>
         </div>
 
         {/* Payment */}
-        <div className="my-3 border-t border-line" />
+        <Solid />
         <dl className="space-y-0.5">
-          {r.payments.length === 1 ? (
-            <div className="flex justify-between"><dt>Payment method:</dt><dd className="font-semibold">{PAYMENT_LABEL[r.payments[0].method]}</dd></div>
-          ) : r.payments.map((p, i) => (
-            <div key={i} className="flex justify-between"><dt>{PAYMENT_LABEL[p.method]}:</dt><dd className="font-semibold">{kes(p.amount)}</dd></div>
-          ))}
-          {r.payments.length === 1 && r.payments[0].reference && <div className="flex justify-between"><dt>Reference:</dt><dd className="font-semibold">{r.payments[0].reference}</dd></div>}
-          <div className="flex justify-between"><dt>Amount paid:</dt><dd className="font-semibold">{kes(handedOver)}</dd></div>
-          {!!r.change && <div className="flex justify-between"><dt>Change:</dt><dd className="font-semibold">{kes(r.change)}</dd></div>}
-          {!!r.pointsEarned && <div className="flex justify-between text-ink-muted"><dt>Loyalty points earned:</dt><dd>+{r.pointsEarned}</dd></div>}
-          {r.invoiceNumber && <div className="flex justify-between text-ink-muted"><dt>Tax invoice:</dt><dd>{r.invoiceNumber}</dd></div>}
+          {r.payments.length === 1
+            ? <Row label="Payment method:" value={PAYMENT_LABEL[r.payments[0].method]} />
+            : r.payments.map((p, i) => <Row key={i} label={`${PAYMENT_LABEL[p.method]}:`} value={kes(p.amount)} />)}
+          {r.payments.length === 1 && r.payments[0].reference && <Row label="Reference:" value={r.payments[0].reference} />}
+          <Row label="Amount paid:" value={kes(handedOver)} strong />
+          {!!r.change && <Row label="Change:" value={kes(r.change)} strong />}
         </dl>
+        {(!!r.pointsEarned || r.invoiceNumber) && (
+          <dl className="mt-1 space-y-0.5 text-[11px]" style={{ color: C.muted }}>
+            {!!r.pointsEarned && <div className="flex justify-between"><dt>Loyalty points earned</dt><dd style={money}>+{r.pointsEarned}</dd></div>}
+            {r.invoiceNumber && <div className="flex justify-between"><dt>Tax invoice</dt><dd>{r.invoiceNumber}</dd></div>}
+          </dl>
+        )}
 
         {/* Thanks, eTIMS, slogan */}
-        <div className="my-3 border-t border-dashed border-ink-muted/50" />
-        <p className={cx(script.className, NAVY, "text-center text-3xl")}>Thank you for shopping with us.</p>
-        <div className="mt-3 flex flex-col items-center gap-1 text-center text-xs">
-          {/* KRA's QR code exists only once eTIMS accepts the sale, so none is shown before that. */}
-          <span className="grid size-16 place-items-center rounded-md border-2 border-dashed border-line text-ink-muted"><QrCode className="size-8 opacity-50" /></span>
-          <p>Scan to verify receipt (eTIMS)</p>
-          <p className="text-ink-muted">Available once sent to KRA</p>
+        <Dashed />
+        <p className={cx(script.className, "text-center text-[21px]")} style={{ color: C.navy }}>Thank you for shopping with us.</p>
+        <div className="mt-3 flex flex-col items-center gap-1.5 text-center">
+          {/* Black-on-white QR from KRA once eTIMS accepts the sale; until then an empty, labelled space. */}
+          <span className="grid size-[85px] place-items-center rounded" style={{ border: `1px dashed ${C.dash}`, color: C.muted }}><QrCode className="size-9 opacity-40" /></span>
+          <p className="text-[10.5px]" style={{ color: C.body }}>Scan to verify receipt (eTIMS)</p>
+          <p className="text-[9.5px]" style={{ color: C.muted }}>Available once sent to KRA</p>
         </div>
-        <div className="mt-3 border-t border-line pt-3 text-center text-xs font-bold tracking-[0.35em] text-brand-600">GLOW • SLAY • SPARKLE</div>
+        <Solid />
+        <p className="text-center text-[10.5px] font-semibold uppercase tracking-[0.25em]" style={{ color: C.pink }}>Glow • Slay • Sparkle</p>
       </article>
       <Edge bottom />
     </div>

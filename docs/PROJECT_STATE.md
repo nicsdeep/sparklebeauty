@@ -90,7 +90,7 @@ No chart library: charts are simple components in `components/admin/charts.tsx`.
 
 ### Receipts
 
-- One receipt design everywhere (Nicholas's mockup `td2/Sparkle Beauty Receipt Mockup.png`, 2026-11-02): `components/receipt-document.tsx`, data shape and WhatsApp/email text in `lib/receipt.ts`, loaded from an order by `lib/receipt-data.ts`.
+- One receipt design everywhere (Nicholas's mockup `td2/Sparkle Beauty Receipt Mockup.png` and his type/colour spec, 2026-11-02: Inter 400–700 with Arial/Helvetica fallback, Dancing Script only for the thank-you line, navy #0F1738 text, Sparkle pink #E6007E only for the total and small accents, #FDEBF3 for the table heading and total box, tabular right-aligned money): `components/receipt-document.tsx`, data shape and WhatsApp/email text in `lib/receipt.ts`, loaded from an order by `lib/receipt-data.ts`.
 - Used by the till (after a sale, Reprint/Resend Last Receipt, WhatsApp and email copy), `/admin/orders/[id]/receipt` ("Print receipt" on the order page) and `/order/[number]/receipt` ("View receipt" for the customer).
 - The receipt number is the order number (SPK-…). Line amounts include VAT. Cash handed over and change are known only at the till, so reprints show the amount paid. The eTIMS QR stays a placeholder until KRA issues one.
 - Printing: when a receipt is on screen only the receipt prints, 80 mm wide (`@page receipt` in `app/globals.css`).
