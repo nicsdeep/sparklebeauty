@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: Simpler customer tracking steps
+- PR: (this PR, branch `claude/simpler-tracking-steps`)
+- Changed:
+  - `app/(shop)/order/[number]/order-data.tsx`: customers now see 4 delivery steps: Confirmed, Processing, Out for Delivery, Delivered. The internal `packed` status (Ready for Dispatch) counts as Processing until the order is `dispatched`.
+  - `track/page.tsx`: a packed order's banner reads "Preparing your order · Your order is packed and will be on its way soon."
+  - The order details timeline uses the same steps. Pickup stays at 4 steps (Confirmed, Processing, Ready for Pickup, Collected). The admin flow and the `order_status` enum are unchanged.
+- Why: Nicholas asked for simpler, calmer customer tracking.
+- Tested: local preview of SPK-1094 (delivered). The tracker shows 4 evenly spaced green steps with times. `tsc --noEmit` passes. Not seen in a browser: a packed order (it maps through the same stage list).
+- Follow-ups: none.
+
 ## 2026-11-04: Claude: Delivery estimate is always Nairobi time
 - PR: (this PR, branch `claude/eta-nairobi-time`)
 - Changed: `app/admin/orders/[id]/order-actions.tsx`: the Estimated delivery field is read and shown as Nairobi time (UTC+3), not the device's timezone. It's labelled "(Nairobi time)".

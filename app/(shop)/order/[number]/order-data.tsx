@@ -47,7 +47,11 @@ export async function loadCustomerOrder(number: string) {
 
 export type Stage = { label: string; text: string; statuses: OrderStatus[] };
 
-/** The stages customers follow (the admin keeps the full ORDER_FLOW). */
+/**
+ * The stages customers follow (the admin keeps the full ORDER_FLOW). Packed ("ready for
+ * dispatch") is an internal step: for delivery orders the customer still sees Processing until
+ * the rider leaves.
+ */
 export function customerStages(pickup: boolean): Stage[] {
   return pickup ? [
     { label: "Confirmed", text: "We've received your order.", statuses: ["pending", "confirmed", "paid"] },
@@ -56,8 +60,7 @@ export function customerStages(pickup: boolean): Stage[] {
     { label: "Collected", text: "Order completed.", statuses: ["delivered", "completed"] },
   ] : [
     { label: "Confirmed", text: "We've received your order.", statuses: ["pending", "confirmed", "paid"] },
-    { label: "Processing", text: "We're preparing your order.", statuses: ["processing"] },
-    { label: "Ready for Dispatch", text: "Packed and ready for our rider.", statuses: ["packed"] },
+    { label: "Processing", text: "We're preparing your order.", statuses: ["processing", "packed"] },
     { label: "Out for Delivery", text: "Your order is on the way.", statuses: ["dispatched"] },
     { label: "Delivered", text: "Order completed.", statuses: ["delivered", "completed"] },
   ];

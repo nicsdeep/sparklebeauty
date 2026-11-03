@@ -34,7 +34,7 @@ function banner(status: OrderStatus, pickup: boolean, eta: string | null, doneAt
     case "processing": return { title: "Preparing your order", line: "We're getting your items ready.", next: pickup ? "We'll let you know as soon as it's ready to collect." : "Once it's packed, it goes to our rider." };
     case "packed": return pickup
       ? { title: "Ready for pickup", line: "Your order is waiting for you at the shop.", next: "Come to the shop with your order number to collect it." }
-      : { title: "Ready for Dispatch", line: "Your order is packed and ready to leave.", next: "Our rider will pick it up and bring it to you." };
+      : { title: "Preparing your order", line: "Your order is packed and will be on its way soon.", next: "Our rider will pick it up and bring it to you." };
     case "dispatched":
       if (pickup) return { title: "Ready for pickup", line: "Your order is waiting for you at the shop.", next: "Come to the shop with your order number to collect it." };
       return eta
