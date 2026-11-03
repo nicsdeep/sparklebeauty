@@ -13,10 +13,11 @@ import { channelMeta, formatDateTime, kes, maskPhone, PAYMENT_LABEL } from "@/li
 import { useLiveTopic } from "@/lib/live";
 import { orderTax, type TaxType } from "@/lib/tax";
 import { vatHeading } from "@/lib/invoices";
-import { receiptText, type ReceiptData } from "@/lib/receipt";
+import type { ReceiptData } from "@/lib/receipt";
+import { ReceiptActions } from "@/components/receipt-actions";
 import { ReceiptDocument } from "@/components/receipt-document";
 import { breakFor, nextBreak, ruleLabel, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
-import { whatsappHref, type StoreSettings } from "@/lib/store-types";
+import type { StoreSettings } from "@/lib/store-types";
 import { completeSale, posPriceSheet, posQuote, type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment, type PosSaleResult } from "../actions";
 import { loadParked, loadQueue, newClientRef, saveParked, saveQueue, type ParkedSale, type QueuedSale } from "./offline-queue";
 
@@ -264,6 +265,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
       vatLabel: vatHeading(priced.map((l) => l.item.taxRate)), total: grand, payments,
       cashReceived: pay.cash > 0 ? pay.cash : undefined, change: server?.change ?? pay.change, invoiceNumber: server?.invoiceNumber ?? null,
       pointsEarned: customer && !customer.business && !offline ? Math.floor(grand / 100) : undefined,
+      token: server?.receiptToken ?? null,
     };
   }
 
@@ -787,9 +789,6 @@ function ManualProduct({ items, onAdd }: { items: PosItem[]; onAdd: (item: PosIt
 }
 
 function ReceiptDialog({ receipt, store, onNewSale, onClose }: { receipt: Receipt; store: StoreSettings; onNewSale: () => void; onClose: () => void }) {
-  const [to, setTo] = useState(receipt.customerRef?.phone ?? "");
-  const text = receiptText(receipt, store);
-  const email = receipt.customerRef?.email;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/50 p-4" role="dialog" aria-modal="true" aria-label="Receipt">
       <div className="my-auto w-full max-w-sm space-y-4">
@@ -798,16 +797,8 @@ function ReceiptDialog({ receipt, store, onNewSale, onClose }: { receipt: Receip
         </p>
         <ReceiptDocument receipt={receipt} store={store} />
         <div className="no-print space-y-2 rounded-3xl bg-white p-4">
-          <div className="flex gap-2">
-            <input value={to} onChange={(e) => setTo(e.target.value)} className={cx(inputClass, "h-10")} placeholder="Customer WhatsApp number" inputMode="tel" aria-label="Send receipt to" />
-            <a href={to.replace(/\D/g, "").length >= 9 ? whatsappHref(to, text) : undefined} target="_blank" rel="noopener noreferrer"
-              aria-disabled={to.replace(/\D/g, "").length < 9}
-              className={cx("inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full border border-brand-600 px-4 text-sm font-semibold text-brand-700", to.replace(/\D/g, "").length < 9 && "pointer-events-none opacity-40")}>
-              <Mail className="size-4" /> Send</a>
-          </div>
-          {email && <a href={`mailto:${email}?subject=${encodeURIComponent(`Your Sparkle receipt ${receipt.number}`)}&body=${encodeURIComponent(text)}`} className="block text-center text-sm font-semibold text-brand-700">Or email it to {email}</a>}
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant="secondary" onClick={() => window.print()}><Printer className="size-4" /> Print</Button>
+          <ReceiptActions receipt={receipt} store={store} phone={receipt.customerRef?.phone ?? ""} />
+          <div className="grid grid-cols-2 gap-2">
             <Button variant="ghost" className="border border-line" onClick={onClose}>Close</Button>
             <Button onClick={onNewSale}>New Sale</Button>
           </div>

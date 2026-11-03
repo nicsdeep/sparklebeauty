@@ -11,17 +11,17 @@ import type { StoreSettings } from "@/lib/store-types";
 // `receipt-print` makes it the only thing printed, on an 80 mm page (globals.css).
 //   Inter (400/500/600/700) for everything; Dancing Script only for the thank-you line.
 //   Money: tabular figures, right-aligned, navy; Sparkle pink only for the final total.
-// Bundled with the site (lib/fonts, SIL OFL, from Fontsource) so builds never depend on downloading them.
+// Bundled with the site (public/fonts, also used by the receipt PDF; SIL OFL, from Fontsource) so builds never depend on downloading them.
 const inter = localFont({
   src: [
-    { path: "../lib/fonts/inter-latin-400.woff2", weight: "400", style: "normal" },
-    { path: "../lib/fonts/inter-latin-500.woff2", weight: "500", style: "normal" },
-    { path: "../lib/fonts/inter-latin-600.woff2", weight: "600", style: "normal" },
-    { path: "../lib/fonts/inter-latin-700.woff2", weight: "700", style: "normal" },
+    { path: "../public/fonts/inter-latin-400.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/inter-latin-500.woff2", weight: "500", style: "normal" },
+    { path: "../public/fonts/inter-latin-600.woff2", weight: "600", style: "normal" },
+    { path: "../public/fonts/inter-latin-700.woff2", weight: "700", style: "normal" },
   ],
   fallback: ["Arial", "Helvetica", "sans-serif"],
 });
-const script = localFont({ src: "../lib/fonts/dancing-script-latin-500.woff2", weight: "500" });
+const script = localFont({ src: "../public/fonts/dancing-script-latin-500.woff2", weight: "500" });
 
 const C = {
   pink: "#E6007E", navy: "#0F1738", body: "#252B3A", muted: "#6B7280",
