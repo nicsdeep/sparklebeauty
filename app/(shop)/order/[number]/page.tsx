@@ -39,10 +39,12 @@ export default async function OrderPage({ params }: Params) {
       <p className="mt-1 text-ink-muted">Placed {formatDateTime(order.created_at)} · {order.channel === "pos" ? "In store" : order.channel === "wholesale" ? "Wholesale order" : "Online"}</p>
 
       <div className="mt-6 grid gap-6 md:grid-cols-[1fr_320px]">
-        <Card>
-          <CardHeader title="Order tracking" />
-          <div className="p-5"><OrderTimeline status={order.status as OrderStatus} events={events} /></div>
-        </Card>
+        <div id="tracking" className="scroll-mt-36">
+          <Card>
+            <CardHeader title="Order tracking" />
+            <div className="p-5"><OrderTimeline status={order.status as OrderStatus} events={events} /></div>
+          </Card>
+        </div>
         <div className="space-y-6">
           <Card>
             <CardHeader title="Payment" />

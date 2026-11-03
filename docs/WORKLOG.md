@@ -15,6 +15,21 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: Order confirmation modal
+- PR: (this PR, branch `claude/order-confirmation-modal`)
+- Changed:
+  - `components/shop/order-confirmed-modal.tsx` (new), to Nicholas's reference. White card with a soft pink border and a wave along the bottom, and a round close button.
+  - It shows: a green check with pink and yellow confetti; "Thank you, Grace!" and "Your order is confirmed."; an Order Number pill; a pink summary card. The card has rows for Total, Payment (green "M-Pesa – Paid" badge, or amber cash on delivery / pay at the shop), Reference with a copy button, and Delivery.
+  - Below the card: the updates line, Track Order (`/order/<n>#tracking`), Continue Shopping (`/shop`) and View Order Details (`/order/<n>`). Escape or X closes it.
+  - `app/(shop)/checkout/wizard.tsx`: the confirmation step opens the modal. A small card stays behind it, with View Confirmation (opens it again) and View Order Details.
+  - `app/(shop)/order/[number]/page.tsx`: `id="tracking"` on the tracking card.
+- Why: Nicholas asked for the confirmation to match his design.
+- Tested:
+  - Local preview with SPK-1094's details in the checkout state, at 1280 and 375 widths. The layout matches; on a phone nothing wraps or scrolls sideways.
+  - Close works, and the link targets are correct. `tsc --noEmit` passes.
+  - Not tested: the copy button actually copying, because the preview browser blocks the clipboard. A browser fallback is in place.
+- Follow-ups: none.
+
 ## 2026-11-03: Claude: M-Pesa payment modal redesign
 - PR: (this PR, branch `claude/mpesa-modal`)
 - Changed:
