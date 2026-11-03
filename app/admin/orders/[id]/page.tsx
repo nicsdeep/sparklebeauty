@@ -102,7 +102,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
           <Card>
             <CardHeader title="Next step" />
             <div className="p-5">
-              <OrderActions orderId={order.id} status={status} canCancel={reserved} />
+              <OrderActions orderId={order.id} status={status} canCancel={reserved} delivery={order.delivery_method !== "pickup"} eta={order.estimated_delivery_at} />
             </div>
           </Card>
           <Card>
