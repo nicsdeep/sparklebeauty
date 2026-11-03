@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { PrintButton } from "@/components/print-button";
+import { ReceiptActions } from "@/components/receipt-actions";
 import { ReceiptDocument } from "@/components/receipt-document";
 import { requireUser } from "@/lib/auth";
 import { loadReceipt } from "@/lib/receipt-data";
@@ -23,9 +23,9 @@ export default async function CustomerReceiptPage({ params }: Params) {
     <div className="mx-auto max-w-md space-y-4">
       <div className="no-print flex items-center justify-between gap-3">
         <Link href={`/order/${number}`} className="font-semibold text-brand-700">← Order {number}</Link>
-        <PrintButton label="Print receipt" />
       </div>
       <div className="rounded-3xl bg-surface p-6 print:bg-transparent print:p-0"><ReceiptDocument receipt={receipt} store={store} /></div>
+      <ReceiptActions receipt={receipt} store={store} />
     </div>
   );
 }

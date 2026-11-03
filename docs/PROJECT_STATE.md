@@ -93,7 +93,8 @@ No chart library: charts are simple components in `components/admin/charts.tsx`.
 - One receipt design everywhere (Nicholas's mockup `td2/Sparkle Beauty Receipt Mockup.png` and his type/colour spec, 2026-11-02: Inter 400–700 with Arial/Helvetica fallback and Dancing Script only for the thank-you line, both bundled in `lib/fonts`, navy #0F1738 text, Sparkle pink #E6007E only for the total and small accents, #FDEBF3 for the table heading and total box, tabular right-aligned money): `components/receipt-document.tsx`, data shape and WhatsApp/email text in `lib/receipt.ts`, loaded from an order by `lib/receipt-data.ts`.
 - Used by the till (after a sale, Reprint/Resend Last Receipt, WhatsApp and email copy), `/admin/orders/[id]/receipt` ("Print receipt" on the order page) and `/order/[number]/receipt` ("View receipt" for the customer).
 - The receipt number is the order number (SPK-…). Line amounts include VAT. Cash handed over and change are known only at the till, so reprints show the amount paid. The eTIMS QR stays a placeholder until KRA issues one.
-- Printing: when a receipt is on screen only the receipt prints, 80 mm wide (`@page receipt` in `app/globals.css`).
+- Receipt PDF: `lib/receipt-pdf.tsx` makes the receipt as a PDF in the browser, 80 mm wide and exactly as long as the receipt (the page has a width only). It embeds the woff fonts in `public/fonts` (the PDF library can't embed woff2). `components/receipt-actions.tsx` (till, receipt pages, link page): **Print** prints that PDF, so the printer gets the exact receipt size; **PDF** downloads it; **Share PDF** sends the file through the device share menu (e.g. into a WhatsApp chat) where supported; **Send on WhatsApp** opens the customer's number with a private link `/r/<token>` to view and download it. A WhatsApp link can carry text only; sending the file to the customer's number automatically needs the WhatsApp Business (Cloud) API.
+- Printing from the page itself (browser print) still prints only the receipt, 80 mm wide (`@page receipt` in `app/globals.css`).
 
 ### Tax invoice documents
 
@@ -161,7 +162,7 @@ Passwords are set outside the repo to the `DEMO_PASSWORD` value. Other seeded cu
 
   When the connection returns, it syncs them. `pos_complete_sale` returns an already-recorded `client_ref` instead of recording it twice, and refuses a sale that no longer fits the stock. Refused sales stay on the till as "needs attention" for a manager. They are never forced through.
 
-## Database (as of migration `20261102090000`)
+## Database (as of migration `20261102120000`)
 
 Migrations, in order:
 1. `20261029000000_baseline_schema.sql`: the schema that existed before migrations were tracked.
@@ -199,6 +200,7 @@ Migrations, in order:
 21. `20261101150000_invoice_seller_kra_pin.sql`: invoices without the shop KRA PIN (issued before it was saved) take it from Settings, if not yet sent to eTIMS; the trigger `store_settings_fill_invoice_pin` does the same whenever the PIN is saved. Invoices that already have a PIN never change.
 22. `20261101180000_whatsapp_contacts.sql`: replaces `store_settings.whatsapp` with `whatsapp_contacts` (labelled list, up to 8). The first is the main contact. Set to Maureen (Support, 0702 388 724); Nicholas's own number was removed at his request.
 23. `20261102090000_foreign_key_indexes.sql`: an index on each of the 25 foreign-key columns that had none (order items, payments, loyalty history, stock movements and others), so lookups stay fast as data grows.
+24. `20261102120000_receipt_links.sql`: `orders.receipt_token` (random, unique) and `public_receipt(token)` (anyone with the link; paid or refunded orders only), for the private receipt link sent on WhatsApp.
 
 Tables in `public`, all with RLS on:
 - **People:**

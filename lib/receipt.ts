@@ -1,8 +1,9 @@
-import { formatDateTimeFull, kes, PAYMENT_LABEL, type PaymentMethod } from "@/lib/format";
-import { mainWhatsapp, type StoreSettings } from "@/lib/store-types";
+import { kes, type PaymentMethod } from "@/lib/format";
+import { vatHeading } from "@/lib/invoices";
+import type { StoreSettings } from "@/lib/store-types";
 
 // One receipt for the whole system (Nicholas's receipt design, 2026-11-02): the till after a sale
-// or a reprint, the WhatsApp/email copy, and the receipt pages for admin and customers.
+// or a reprint, the PDF and WhatsApp message, and the receipt pages for admin and customers.
 // The receipt number is the order number customers already see (SPK-…).
 
 export type ReceiptData = {
@@ -29,22 +30,25 @@ export type ReceiptData = {
   invoiceNumber: string | null;
   pointsEarned?: number;
   offline?: boolean;
+  /** Token of the private receipt link (/r/<token>) customers get on WhatsApp; null for offline sales. */
+  token: string | null;
 };
 
-/** Plain-text copy for WhatsApp or email. */
-export function receiptText(r: ReceiptData, store: StoreSettings) {
-  const wa = mainWhatsapp(store);
-  return [
-    `${store.name}`, `Receipt ${r.number} · ${formatDateTimeFull(r.issuedAt)}`, store.kra_pin ? `KRA PIN: ${store.kra_pin}` : "", "",
-    ...r.lines.map((l) => `${l.quantity} x ${l.name}  ${kes(l.amount)}`), "",
-    `Subtotal (excl. VAT): ${kes(r.subtotal)}`,
-    r.discount ? `Discount: -${kes(r.discount)}` : "",
-    r.delivery ? `Delivery: ${kes(r.delivery)}` : "",
-    r.tax ? `${r.vatLabel}: ${kes(r.tax)}` : "",
-    `TOTAL: ${kes(r.total)}`,
-    `Paid: ${r.payments.map((p) => `${PAYMENT_LABEL[p.method]} ${kes(p.amount)}`).join(" + ") || "—"}`,
-    r.change ? `Cash ${kes(r.cashReceived)}, change ${kes(r.change)}` : "",
-    r.invoiceNumber ? `Tax invoice: ${r.invoiceNumber}` : "",
-    "", "Thank you for shopping with us. Glow · Slay · Sparkle", wa ? `WhatsApp ${wa}` : "",
-  ].filter((x, i, a) => x !== "" || (a[i - 1] !== "" && i > 0)).join("\n");
+/** WhatsApp/email message with the private link where the customer views and downloads the receipt PDF. */
+export function receiptMessage(r: ReceiptData, store: StoreSettings, link: string) {
+  return `Hi! Thank you for shopping at ${store.name}. Here is your receipt ${r.number} (${kes(r.total)}). View or download it as a PDF: ${link}`;
+}
+
+/** Receipt from public_receipt() (the private link page). */
+export function receiptFromPublic(j: Record<string, unknown>, token: string): ReceiptData {
+  const n = (v: unknown) => Number(v ?? 0);
+  const lines = (j.lines as { quantity: number; name: string; sku: string | null; amount: number; tax_rate: number }[]) ?? [];
+  return {
+    number: String(j.number), issuedAt: String(j.issued_at), cashier: (j.cashier as string | null) ?? null, channel: j.channel === "online" ? "online" : "till",
+    customer: String(j.customer), lines: lines.map((l) => ({ quantity: n(l.quantity), name: l.name, sku: l.sku, amount: n(l.amount) })),
+    subtotal: n(j.subtotal), discount: n(j.discount), delivery: n(j.delivery), tax: n(j.tax),
+    vatLabel: vatHeading(lines.map((l) => n(l.tax_rate))), total: n(j.total),
+    payments: ((j.payments as { method: PaymentMethod; amount: number; reference: string | null }[]) ?? []).map((p) => ({ ...p, amount: n(p.amount) })),
+    invoiceNumber: (j.invoice_number as string | null) ?? null, token,
+  };
 }

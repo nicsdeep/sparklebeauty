@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentMethod } from "@/lib/format";
 import { vatHeading } from "@/lib/invoices";
-import type { ReceiptData } from "@/lib/receipt";
+import { receiptFromPublic, type ReceiptData } from "@/lib/receipt";
 
 /**
  * The receipt for an order, by id (admin) or order number (customer). RLS decides who may read
@@ -10,7 +10,7 @@ import type { ReceiptData } from "@/lib/receipt";
  */
 export async function loadReceipt(by: { id: string } | { number: string }): Promise<ReceiptData | null> {
   const supabase = await createClient();
-  let q = supabase.from("orders").select(`order_number, created_at, created_by, customer_name, subtotal, discount_amount, delivery_amount, tax_amount, total_amount,
+  let q = supabase.from("orders").select(`order_number, created_at, created_by, receipt_token, customer_name, subtotal, discount_amount, delivery_amount, tax_amount, total_amount,
     cashier:profiles!orders_created_by_fkey(full_name),
     order_items(product_name, sku, quantity, line_total, discount_amount, tax_amount, tax_rate),
     payments(method, amount, provider_reference, status, created_at),
@@ -40,5 +40,14 @@ export async function loadReceipt(by: { id: string } | { number: string }): Prom
     total: Number(o.total_amount),
     payments: payments.map((p) => ({ method: p.method, amount: Number(p.amount), reference: p.provider_reference })),
     invoiceNumber: invoice?.invoice_number ?? null,
+    token: o.receipt_token,
   };
+}
+
+/** The receipt behind a private link (anyone with the link; paid orders only). */
+export async function loadPublicReceipt(token: string): Promise<ReceiptData | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("public_receipt", { p_token: token });
+  return data ? receiptFromPublic(data as Record<string, unknown>, token) : null;
 }

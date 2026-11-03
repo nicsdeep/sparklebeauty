@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-11-02: Claude: Receipt as a PDF: print at receipt size, share on WhatsApp
+- PR: (this PR, branch `claude/receipt-pdf`)
+- Changed:
+  - `lib/receipt-pdf.tsx` (new): the receipt as a PDF, same design, 80 mm wide and exactly as long as the content. Woff font copies added to `public/fonts`; the woff2 receipt fonts moved there from `lib/fonts`.
+  - `components/receipt-actions.tsx` (new): Print (prints the PDF from a hidden frame), PDF download, Share PDF (Web Share with the file), Send on WhatsApp (customer number + private link). Used in the till dialog, both receipt pages and the link page. `components/print-button.tsx` removed; the old plain-text receipt removed.
+  - Migration `20261102120000_receipt_links.sql`: `orders.receipt_token` and `public_receipt()`. New page `/r/[token]` (no sign-in, not indexed). `completeSale` returns the token.
+- Why: Nicholas asked that the receipt reach customers on WhatsApp as the file (PDF, same design and size), and that printing uses the receipt size without wasting paper.
+- Tested:
+  - PDFs rendered for a 1-line and a 7-line receipt: one page each, 80 mm wide, height fits the content (592 and 892 pt), fonts and logo embedded.
+  - Live database, in a block that rolled back: tokens unique; the link returns a paid order's receipt; unpaid or unknown tokens return nothing; anon still can't read orders.
+  - `tsc --noEmit` and `next build` pass.
+  - Not tested yet: the link page, Print, Share PDF and WhatsApp in a browser (need the migration, applied after merge); printing on a real receipt printer.
+- Follow-ups: apply the migration after merge; WhatsApp Business API if fully automatic sending is wanted.
+
 ## 2026-11-02: Claude: Receipt to Nicholas's type and colour spec
 - PR: (this PR, branch `claude/receipt-spec`)
 - Changed: `components/receipt-document.tsx`: Inter (400/500/600/700, Arial/Helvetica fallback) for everything and Dancing Script only for the thank-you line; his colours (navy #0F1738, body #252B3A, muted #6B7280, dividers #D7DCE5 solid and #9CA3AF dashed, pink #E6007E for the total and slogan only, #FDEBF3 table heading and total box); his sizes (RECEIPT 24px/700, metadata 11.5px, table heading 10.5px/700 uppercase, products 12.5px/600, SKU 9.5px, money 12.5px/600, TOTAL 21px and amount 24px/700, thank-you 21px, slogan 10.5px/600 with 0.25em spacing); money in tabular figures, right-aligned; logo 110px wide; 85px QR area.
