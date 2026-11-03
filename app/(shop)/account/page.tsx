@@ -78,7 +78,7 @@ export default async function AccountPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Notifications" action={unread > 0 ? <form action={markNotificationsRead}><SubmitButton unstyled className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">Mark all read</SubmitButton></form> : undefined} />
+            <div id="notifications" className="scroll-mt-40"><CardHeader title="Notifications" action={unread > 0 ? <form action={markNotificationsRead}><SubmitButton unstyled className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">Mark all read</SubmitButton></form> : undefined} /></div>
             <ul className="divide-y divide-line">
               {(notifications.data ?? []).map((n) => (
                 <li key={n.id} className="px-5 py-3">
@@ -121,7 +121,7 @@ export default async function AccountPage() {
           </ul>
         </Card>
         <Card>
-          <CardHeader title="Saved addresses" />
+          <div id="addresses" className="scroll-mt-40"><CardHeader title="Saved addresses" /></div>
           <ul className="divide-y divide-line">
             {(addresses.data ?? []).map((a) => (
               <li key={a.id} className="flex gap-3 px-5 py-3 text-[15px]">
@@ -132,7 +132,7 @@ export default async function AccountPage() {
           </ul>
         </Card>
         <Card>
-          <CardHeader title="Profile & communication" />
+          <div id="settings" className="scroll-mt-40"><CardHeader title="Profile & communication" /></div>
           <form action={updatePreferences} className="space-y-4 p-5">
             <Field label="Full name"><input name="full_name" defaultValue={profile.full_name ?? ""} className={inputClass} /></Field>
             <Field label="Phone"><input name="phone" defaultValue={profile.phone ?? ""} className={inputClass} /></Field>

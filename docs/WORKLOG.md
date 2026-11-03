@@ -15,6 +15,26 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: Order details page redesign
+- PR: (this PR, branch `claude/order-details-page`)
+- Changed:
+  - `app/(shop)/order/[number]/page.tsx`, rebuilt to Nicholas's reference:
+    - an account side menu (desktop);
+    - Back to Orders, and "Order Details" with Download Invoice (if there's an invoice), Print Receipt (if paid) and Track Order;
+    - a pink summary strip: number, date, status and total paid;
+    - Items Ordered with photo, variant tags (colour, shade, length, size), price, qty and total, then subtotal, discount, VAT, delivery fee and Total Paid;
+    - Need Help? → /contact;
+    - Order Timeline in 4 customer stages (Confirmed, Processing, Out for Delivery / Ready for Pickup, Delivered / Collected); till and cancelled orders keep the event list;
+    - Payment Information with a copyable reference and the payment date;
+    - Delivery (or Pickup) Information.
+  - A paid order still at `pending` shows as Confirmed to the customer.
+  - `components/copy-button.tsx` (new), shared with the confirmation modal.
+  - `app/(shop)/account/page.tsx`: anchors `#addresses`, `#notifications` and `#settings` for the side menu.
+- Left out: "Payment Methods" in the menu (there are no saved payment methods) and "Expected Delivery" (no delivery date is stored). Neither was invented.
+- Why: Nicholas asked that View Order Details open this design.
+- Tested: local preview of SPK-1094 at 1440 and 375 widths. The layout matches, and there's no sideways scroll on a phone. `tsc --noEmit` passes. Not tested: a till order, a cancelled order or a split payment on this page (code paths kept from before).
+- Follow-ups: none.
+
 ## 2026-11-03: Claude: Order confirmation modal
 - PR: (this PR, branch `claude/order-confirmation-modal`)
 - Changed:
