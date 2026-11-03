@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: Track Order page
+- PR: (this PR, branch `claude/track-order-page`)
+- Changed:
+  - New page `app/(shop)/order/[number]/track/page.tsx`, to Nicholas's reference:
+    - summary strip: number, date, current status and delivery method;
+    - a 5-step progress bar: Confirmed, Processing, Ready for Dispatch, Out for Delivery, Delivered, each with the time it happened. Pickup orders get 4 steps: Confirmed, Processing, Ready for Pickup, Collected. On a phone the steps are stacked;
+    - a pink "Delivery Update" card with a rider illustration (`components/shop/delivery-rider.tsx`, inline SVG);
+    - the items with Qty; Delivery Details; "What's next?"; View Order Details and Contact Support.
+  - Cancelled orders and till sales show their event list.
+  - It refreshes itself every 30 s and when the customer returns to the tab (`components/auto-refresh.tsx`), because customers can't receive the staff realtime topic.
+  - The order loading and stages moved to `app/(shop)/order/[number]/order-data.tsx`, shared with the details page. The details timeline now uses the same 5 stages.
+  - Track Order on the details page and in the confirmation modal opens this page.
+- Not built: the estimated delivery date and time, because no delivery estimate is stored or defined. The card shows where the order actually is instead ("Order confirmed", "On the way", "Delivered" with the date).
+- Why: Nicholas asked that Track Order show this design.
+- Tested: local preview of SPK-1094 (confirmed) at 1440 and 375 widths, with no sideways scroll. `tsc --noEmit` passes. Not seen in a browser: the later stages (processing through delivered), pickup, and cancelled orders, because there was no such test order to view.
+- Follow-ups: an ETA needs a rule from Nicholas (e.g. same day in Nairobi, 1–3 days elsewhere) or a date staff set at dispatch.
+
 ## 2026-11-03: Claude: Order details page redesign
 - PR: (this PR, branch `claude/order-details-page`)
 - Changed:
