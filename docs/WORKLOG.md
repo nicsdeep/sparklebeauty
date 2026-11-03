@@ -15,6 +15,17 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: M-Pesa payment modal redesign
+- PR: (this PR, branch `claude/mpesa-modal`)
+- Changed:
+  - `components/shop/mpesa-modal.tsx` (new): the checkout M-Pesa prompt to Nicholas's reference. White card, 28px corners, `min(92vw, 520px)` wide; M-Pesa mark on soft green; "Check your phone"; number in bold as +254 …; grey #F5F5F7 instruction box with the amount in bold and the shop name in #E6007E; countdown ring (5 min, pink arc); "Waiting for payment…"; Resend Request (30 s cooldown); Cancel Payment; pale pink wave. States: waiting, paid (green check, reference, continues by itself after ~2 s or on Continue), failed, expired, cancelled, each with Send New Request.
+  - It reads `orders.payment_status` every 3 s, so a real M-Pesa callback would be picked up with no reload.
+  - The demo simulation moved out of the card into a dark "Demo mode" strip below it (Approve / Decline). The big "Simulate Successful Payment" button is gone.
+  - `app/(shop)/checkout/wizard.tsx`: uses the modal; the old inline modal and `simulateMpesa` removed. The modal stays up until the confirmation step loads, so the "already placed" card no longer flashes.
+- Why: Nicholas asked to revamp only the payment popup to match his reference, with live states and the demo control kept apart.
+- Tested: local preview as Grace, desktop (1280) and phone (375) widths. Decline → failed, Send New Request → waiting, Cancel → cancelled, Approve → "Payment successful" with reference → confirmation (SPK-1094 and SPK-1095, paid test orders in the live demo DB). Phone layout scrolls with nothing cut off. `tsc --noEmit` passes. Not tested: letting the 5-minute timer run out (expired state), and the transition fix after the last change (checked by code, not re-run).
+- Follow-ups: real Daraja STK push and callback when M-Pesa credentials are available.
+
 ## 2026-11-02: Claude: Receipt as a PDF: print at receipt size, share on WhatsApp
 - PR: (this PR, branch `claude/receipt-pdf`)
 - Changed:
