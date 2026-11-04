@@ -15,6 +15,30 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: POS revamp to doctrine §22–§38 (variant-first, searchable filters)
+- PR: (this PR, branch `claude/pos-variant-first`)
+- Changed:
+  - `components/combobox.tsx` (new, shared):
+    - `Combobox`: opening it focuses the search; results narrow with every key, word-start matches first; arrow keys, Enter, Escape (focus returns) and Tab work; clear button; "No … matches" empty state; listbox ARIA; it opens towards the side with room, so it never runs off a phone screen.
+    - `FilterChips` with Clear all.
+  - `components/product-result-row.tsx` (new, shared): `ProductResultRow` (image, name — variant, category · brand, SKU, price, compact stock), plus `variantText()` and `stockText()`.
+  - `app/admin/pos/product-finder.tsx`, rewritten:
+    - filters are comboboxes with chips, and search, filters and tab are kept for the tab;
+    - search is one row per exact variant within the active filters: arrow keys plus Enter adds, an exact SKU or barcode adds at once, Escape closes, focus returns to search after adding, and the empty state offers Clear filters / Try another search;
+    - cards are variant-first: price and stock text at top, then name, variant, SKU, the wholesale break and one Add, white with a subtle border;
+    - the product-level variant picker is removed, because results are already exact SKUs.
+  - `app/admin/products/product-form.tsx`: Category is the shared combobox (sub-categories show their parent as a hint), with a "Choose a category" check on save.
+- Why: Nicholas asked to build the POS changes from doctrine rules 22–38.
+- Tested in the local preview, signed in as admin:
+  - Category + "hair" showed Hair, Hair Pieces and Hair Care; "wig" + Enter picked Wigs; Color then offered only the 4 wig colours; Escape closed and returned focus; a Wigs chip appeared (22 matches).
+  - "body wa" gave 6 variant rows with SKU, price and stock; Down ×4 + Enter added Honey Blonde 18" and cleared the search.
+  - "best laa" showed the empty state with both actions.
+  - POS → Recent Sales → Back kept the Wigs filter, chip and cart.
+  - At 375 px there's no sideways scroll; the right-column dropdowns open leftward (found and fixed while testing).
+  - Product form: "braid" + Enter chose Braids.
+  - `tsc --noEmit` passes.
+- Follow-ups (Known issues): the POS customer picker (no arrow keys yet), database search for large datasets, checkout town/county.
+
 ## 2026-11-04: Claude: Doctrine rules 22–38 (search, selection, filters, POS cards)
 - PR: (this PR, branch `claude/doctrine-search-rules`)
 - Changed:
