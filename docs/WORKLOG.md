@@ -15,6 +15,31 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: Rotating announcement bar and a clearer header logo
+- PR: (this PR, branch `claude/announcement-bar`)
+- Changed:
+  - `components/shop/announcement-bar.tsx` replaces the static "Free delivery … · Pay with M-Pesa, card or cash on delivery" strip:
+    - one message at a time, changing every 4.5 s with a soft fade and a 6 px rise;
+    - it pauses on hover or focus and while the tab is hidden;
+    - dots let the customer pick a message (desktop);
+    - with `prefers-reduced-motion`, messages change without movement;
+    - 40 px tall on desktop and 36 px on phones, always one line, using the shorter phone wording.
+  - Messages are data (migration `20261107090000_announcements.sql`, `lib/announcements.ts`), edited in Admin → Settings (`announcements-form.tsx`, `saveAnnouncements`). Seeded with:
+    - free delivery over {free_threshold}, linking to /delivery;
+    - original products from trusted brands;
+    - fast delivery across Kenya, linking to /delivery;
+    - track your order, linking to /account#orders.
+  - Payment wording moved out of the top bar. Checkout now says "Secure checkout · M-Pesa · Card · Cash on delivery"; the footer already shows "We accept".
+  - Header logo: the same full-colour file as the footer, drawn larger (64 px on phones, 84 px on desktop; was 56 / 76). The header padding is trimmed so the phone header stays 81 px. The admin sidebar logo uses the same size.
+- Why: Nicholas asked for a trust-first, calm announcement bar, and for the header logo to look as clear as the footer one.
+- Tested in the browser:
+  - 1366 px and 375 px: the messages rotate, each phone message fits on one line, no overflow;
+  - pause on hover, the dots, the links;
+  - the checkout line;
+  - the migration in a rolled-back batch (seed rows, and the icon check rejects unknown icons).
+  - Not tested in the browser: the reduced-motion path (it can't be emulated in the test browser). It is covered by CSS `motion-reduce` and a `matchMedia` check.
+- Follow-ups: none.
+
 ## 2026-11-03: Claude: Mobile-first Shop page
 - PR: (this PR, branch `claude/mobile-shop-page`)
 - Changed:

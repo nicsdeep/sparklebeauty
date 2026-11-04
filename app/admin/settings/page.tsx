@@ -8,6 +8,8 @@ import { StoreSettingsForm } from "./store-form";
 import { StaffUsers, type StaffUser } from "./staff-users";
 import { HeroForm } from "./hero-form";
 import { getHeroBanner } from "@/lib/hero";
+import { getAnnouncements } from "@/lib/announcements";
+import { AnnouncementsForm } from "./announcements-form";
 
 export const metadata = { title: "Settings" };
 
@@ -15,9 +17,10 @@ export default async function SettingsPage() {
   const profile = await requireStaff();
   const isAdmin = profile.role === "admin";
   const supabase = await createClient();
-  const [store, hero, { data: tiers }, { data: resets }, users] = await Promise.all([
+  const [store, hero, announcements, { data: tiers }, { data: resets }, users] = await Promise.all([
     getStoreSettings(),
     getHeroBanner(),
+    getAnnouncements(),
     supabase.from("pricing_tiers").select("name, code, min_order_quantity, is_wholesale"),
     supabase.from("activity_log").select("created_at").eq("action", "demo.reset").order("created_at", { ascending: false }).limit(1),
     // Includes sign-in status, so it's admin-only (admin_list_users checks the caller).
@@ -29,6 +32,8 @@ export default async function SettingsPage() {
       <PageHeader title="Settings" subtitle={isAdmin ? "Shop details, phone numbers, delivery pricing, work users and demo controls." : "Shop details and price lists. Ask an admin to make changes."} />
 
       <StoreSettingsForm settings={store} canEdit={isAdmin} />
+
+      {isAdmin && <AnnouncementsForm items={announcements} />}
 
       {isAdmin && <HeroForm banner={hero} />}
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cx } from "@/components/ui";
 
-const HEIGHT = { sm: "h-12", md: "h-14 lg:h-[76px]", lg: "h-24" };
+const HEIGHT = { sm: "h-12", md: "h-[64px] lg:h-[84px]", lg: "h-24" };
 const FILE = { brand: "/brand/sparkle-logo.svg", footer: "/brand/sparkle-logo-footer.svg" };
 
 /**

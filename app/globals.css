@@ -67,9 +67,16 @@ body {
 }
 .sparkle-twinkle { animation: sparkle-twinkle 2.4s ease-in-out infinite; }
 .sparkle-glow { animation: sparkle-glow 2.8s ease-out infinite; }
+/* Announcement bar (components/shop/announcement-bar.tsx): each message rises in softly. */
+@keyframes announce-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.announce-in { animation: announce-in 450ms ease-out both; }
 @media (prefers-reduced-motion: reduce) {
   .sparkle-twinkle { animation: none; opacity: 0.9; }
   .sparkle-glow { animation: none; }
+  .announce-in { animation: none; }
 }
 
 /* Receipts (components/receipt-document.tsx): when one is on screen, print only the receipt, on
