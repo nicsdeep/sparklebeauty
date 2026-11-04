@@ -38,6 +38,8 @@ export function StoreSettingsForm({ settings, canEdit }: { settings: StoreSettin
             <Field label="Directions link"><input name="directions_url" defaultValue={settings.directions_url ?? ""} className={inputClass} /></Field>
             <Field label="Facebook page"><input name="facebook_url" defaultValue={settings.facebook_url ?? ""} className={inputClass} placeholder="https://www.facebook.com/…" /></Field>
             <Field label="Instagram"><input name="instagram_url" defaultValue={settings.instagram_url ?? ""} className={inputClass} placeholder="https://www.instagram.com/…" /></Field>
+            <Field label="TikTok"><input name="tiktok_url" defaultValue={settings.tiktok_url ?? ""} className={inputClass} placeholder="https://www.tiktok.com/@…" /></Field>
+            <Field label="YouTube"><input name="youtube_url" defaultValue={settings.youtube_url ?? ""} className={inputClass} placeholder="https://www.youtube.com/@…" /></Field>
           </div>
         </Card>
 

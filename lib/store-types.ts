@@ -15,6 +15,8 @@ export type StoreSettings = {
   directions_url: string | null;
   facebook_url: string | null;
   instagram_url: string | null;
+  tiktok_url: string | null;
+  youtube_url: string | null;
   delivery_fee_nairobi: number;
   delivery_fee_other: number;
   free_delivery_threshold: number;
