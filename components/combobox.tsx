@@ -24,10 +24,18 @@ export function rankOptions(options: ComboOption[], query: string) {
   return [...starts, ...contains];
 }
 
-export function Combobox({ label, value, options, onChange, allLabel, placeholder = "Type to search…", required, className }: {
+export function Combobox({ label, value, options, onChange, allLabel, placeholder = "Type to search…", required, className, allowCustom, error, hideLabel, variant = "filter" }: {
   label: string; value: string; options: ComboOption[]; onChange: (value: string) => void;
   /** Text when nothing is chosen (e.g. "All colours"); also offered as a reset option when set. */
   allLabel?: string; placeholder?: string; required?: boolean; className?: string;
+  /** Offer "Use “…”" for text that isn't in the list (a new brand, a new colour). */
+  allowCustom?: boolean;
+  /** Validation message shown under the control. */
+  error?: string | null;
+  /** "form" matches the size and label of form fields (Field); "filter" is the compact filter style. */
+  variant?: "filter" | "form";
+  /** Keep the label for screen readers only (e.g. inside a table row). */
+  hideLabel?: boolean;
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -38,8 +46,13 @@ export function Combobox({ label, value, options, onChange, allLabel, placeholde
   const button = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
 
-  const selected = options.find((o) => o.value === value);
-  const shown = useMemo(() => rankOptions(options, query).slice(0, 100), [options, query]);
+  const selected = options.find((o) => o.value === value) ?? (value && allowCustom ? { value, label: value } : undefined);
+  const shown = useMemo(() => {
+    const ranked = rankOptions(options, query).slice(0, 100);
+    const typed = query.trim();
+    const exists = options.some((o) => o.label.toLowerCase() === typed.toLowerCase());
+    return allowCustom && typed && !exists ? [{ value: typed, label: `Use “${typed}”`, hint: "new" }, ...ranked] : ranked;
+  }, [options, query, allowCustom]);
 
   useEffect(() => {
     if (!open) return;
@@ -71,13 +84,13 @@ export function Combobox({ label, value, options, onChange, allLabel, placeholde
 
   return (
     <div ref={box} className={cx("relative min-w-0", className)}>
-      <span id={`${id}-label`} className="mb-1 block text-xs font-medium text-ink-muted">{label}{required && <span className="text-rose-fg"> *</span>}</span>
+      <span id={`${id}-label`} className={cx(variant === "form" ? "mb-1.5 block text-sm font-semibold" : "mb-1 block text-xs font-medium text-ink-muted", hideLabel && "sr-only")}>{label}{required && <span className="text-rose-fg"> *</span>}</span>
       <div className="relative">
         <button ref={button} type="button" onClick={() => (open ? setOpen(false) : openList())}
           onKeyDown={(e) => { if (e.key === "ArrowDown" || (e.key.length === 1 && !e.metaKey && !e.ctrlKey)) { e.preventDefault(); openList(); if (e.key.length === 1) setQuery(e.key); } }}
           aria-haspopup="listbox" aria-expanded={open} aria-labelledby={`${id}-label ${id}-value`}
-          className={cx("flex h-10 w-full items-center gap-2 rounded-xl border bg-white pl-3 text-left text-sm transition", value ? "pr-16" : "pr-9",
-            open ? "border-ink/40" : "border-line hover:border-ink/30")}>
+          className={cx("flex w-full items-center gap-2 rounded-xl border bg-white pl-3 text-left transition", variant === "form" ? "h-11 text-[15px]" : "h-10 text-sm", value ? "pr-16" : "pr-9",
+            error ? "border-rose-fg" : open ? "border-ink/40" : "border-line hover:border-ink/30")} aria-invalid={!!error}>
           <span id={`${id}-value`} className={cx("truncate", !selected && "text-ink-muted")}>{selected ? selected.label : allLabel ?? "Choose…"}</span>
         </button>
         {value && !required && (
@@ -111,6 +124,7 @@ export function Combobox({ label, value, options, onChange, allLabel, placeholde
           </ul>
         </div>
       )}
+      {error && <p className="mt-1 text-xs text-rose-fg" role="alert">{error}</p>}
     </div>
   );
 }

@@ -65,45 +65,57 @@ export function PhotoManager({ photos, onChange, folder }: { photos: string[]; o
     onChange(next);
   };
 
+  const [over, setOver] = useState(false);
+  const makeMain = (i: number) => onChange([photos[i], ...photos.filter((_, j) => j !== i)]);
+
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-        {photos.map((p, i) => (
-          <div key={p} className={cx("group relative aspect-square overflow-hidden rounded-xl border-2 bg-brand-50", i === 0 ? "border-brand-600" : "border-line")}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={sized(p, 240, 240)} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
-            {i === 0 && <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-bold text-white"><Star className="size-3" /> Main</span>}
-            <button type="button" onClick={() => onChange(photos.filter((_, j) => j !== i))} aria-label={`Remove photo ${i + 1}`}
-              className="absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-full bg-white/95 text-rose-fg shadow-sm"><X className="size-4" /></button>
-            <div className="absolute inset-x-1.5 bottom-1.5 flex justify-between">
-              {i > 0 ? <button type="button" onClick={() => move(i, -1)} aria-label={`Move photo ${i + 1} earlier`} className="grid size-7 place-items-center rounded-full bg-white/95 shadow-sm"><ArrowLeft className="size-4" /></button> : <span />}
-              {i < photos.length - 1 && <button type="button" onClick={() => move(i, 1)} aria-label={`Move photo ${i + 1} later`} className="grid size-7 place-items-center rounded-full bg-white/95 shadow-sm"><ArrowRight className="size-4" /></button>}
+      {photos.length < MAX_PHOTOS && (
+        <button type="button" onClick={() => input.current?.click()} disabled={busy > 0}
+          onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
+          onDrop={(e) => { e.preventDefault(); setOver(false); upload(e.dataTransfer.files); }}
+          className={cx("flex w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-6 text-center transition disabled:opacity-60",
+            over ? "border-brand-600 bg-brand-50" : "border-brand-200 hover:bg-brand-50/60")}>
+          <ImagePlus className="size-8 text-brand-600" strokeWidth={1.5} />
+          <span className="text-sm font-semibold text-brand-700">{busy > 0 ? `Uploading ${busy}…` : "Add product photos"}</span>
+          <span className="text-xs text-ink-muted">Drag and drop, or click to upload · JPG, PNG or WebP</span>
+        </button>
+      )}
+      {photos.length > 0 && (
+        <div className="grid grid-cols-4 gap-2">
+          {photos.map((p, i) => (
+            <div key={p} className={cx("group relative aspect-square overflow-hidden rounded-lg border-2 bg-surface", i === 0 ? "border-brand-600" : "border-line")}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={sized(p, 240, 240)} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+              {i === 0
+                ? <span className="absolute left-1 top-1 flex items-center gap-0.5 rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-bold text-white"><Star className="size-2.5" /> Main</span>
+                : <button type="button" onClick={() => makeMain(i)} aria-label={`Make photo ${i + 1} the main photo`} title="Make main"
+                    className="absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-white/95 text-ink-muted shadow-sm hover:text-brand-600"><Star className="size-3.5" /></button>}
+              <button type="button" onClick={() => onChange(photos.filter((_, j) => j !== i))} aria-label={`Remove photo ${i + 1}`}
+                className="absolute right-1 top-1 grid size-6 place-items-center rounded-full bg-white/95 text-rose-fg shadow-sm"><X className="size-3.5" /></button>
+              <div className="absolute inset-x-1 bottom-1 flex justify-between">
+                {i > 0 ? <button type="button" onClick={() => move(i, -1)} aria-label={`Move photo ${i + 1} earlier`} className="grid size-6 place-items-center rounded-full bg-white/95 shadow-sm"><ArrowLeft className="size-3.5" /></button> : <span />}
+                {i < photos.length - 1 && <button type="button" onClick={() => move(i, 1)} aria-label={`Move photo ${i + 1} later`} className="grid size-6 place-items-center rounded-full bg-white/95 shadow-sm"><ArrowRight className="size-3.5" /></button>}
+              </div>
             </div>
-          </div>
-        ))}
-        {photos.length < MAX_PHOTOS && (
-          <button type="button" onClick={() => input.current?.click()} disabled={busy > 0}
-            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand-200 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-60">
-            <ImagePlus className="size-7" strokeWidth={1.6} />
-            {busy > 0 ? `Uploading ${busy}…` : "Add photos"}
-          </button>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => upload(e.target.files)} />
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Or paste a photo link (https://… or /products/…)" className={cx(inputClass, "pl-9")} />
+          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Or paste a photo link" aria-label="Photo link" className={cx(inputClass, "h-10 pl-9 text-sm")} />
         </div>
-        <Button type="button" variant="secondary" disabled={!link.trim() || photos.length >= MAX_PHOTOS}
+        <Button type="button" variant="secondary" size="sm" className="h-10" disabled={!link.trim() || photos.length >= MAX_PHOTOS}
           onClick={() => {
             const v = link.trim();
             if (!/^(\/|https:\/\/)/.test(v)) return setError("Links must start with https:// or /.");
             if (!photos.includes(v)) onChange([...photos, v]);
             setLink(""); setError(null);
-          }}>Add link</Button>
+          }}>Add</Button>
       </div>
-      <p className="text-sm text-ink-muted">JPEG, PNG or WebP. Large photos are resized to 1600px. The first photo is the main one; use the arrows to reorder.</p>
+      <p className="text-xs text-ink-muted">Up to {MAX_PHOTOS} photos, resized to 1600px. The first is the main photo; use the star to change it and the arrows to reorder.</p>
       {error && <p className="text-sm text-rose-fg" role="alert">{error}</p>}
     </div>
   );
