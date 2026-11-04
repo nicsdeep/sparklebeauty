@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { PaymentMethod } from "@/lib/format";
 import { KRA_PIN, type TaxType } from "@/lib/tax";
 import { toQuoteLine, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
+import { ANNOUNCEMENT_ICONS } from "@/lib/announcement-types";
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
 const fail = (e: unknown) => ({ ok: false as const, error: (e as { message?: string })?.message ?? "Something went wrong." });
@@ -331,6 +332,45 @@ export async function saveHeroBanner(formData: FormData): Promise<ActionResult> 
   if (!res.data?.length) return { ok: false, error: "Only an admin can change the homepage banner." };
   revalidatePath("/", "layout");
   return { ok: true, data: undefined };
+}
+
+export type AnnouncementInput = { id: string | null; text: string; mobile_text: string; icon: string; href: string; is_active: boolean };
+
+/** Saves the announcement bar: the list as shown (its order becomes sort_order); rows left out are deleted. */
+export async function saveAnnouncements(rows: AnnouncementInput[]): Promise<ActionResult<{ ids: string[] }>> {
+  if (rows.length > 8) return { ok: false, error: "Up to 8 announcements." };
+  for (const [i, r] of rows.entries()) {
+    const n = `Announcement ${i + 1}`;
+    if (!r.text.trim()) return { ok: false, error: `${n} needs its text.` };
+    if (r.text.trim().length > 120) return { ok: false, error: `${n}: keep the text under 120 characters.` };
+    if (r.mobile_text.trim().length > 60) return { ok: false, error: `${n}: keep the phone text under 60 characters so it fits on one line.` };
+    if (!(ANNOUNCEMENT_ICONS as readonly string[]).includes(r.icon)) return { ok: false, error: `${n}: choose an icon.` };
+    if (r.href.trim() && !safeHref(r.href.trim())) return { ok: false, error: `${n}: links must start with / or https://` };
+  }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const now = new Date().toISOString();
+  const keep = rows.map((r) => r.id).filter((id): id is string => !!id);
+  const { data: existing, error: readError } = await supabase.from("announcements").select("id");
+  if (readError) return fail(readError);
+  const gone = (existing ?? []).map((e) => e.id).filter((id) => !keep.includes(id));
+  if (gone.length) {
+    const { data, error } = await supabase.from("announcements").delete().in("id", gone).select("id");
+    if (error) return fail(error);
+    if (data.length !== gone.length) return { ok: false, error: "Only an admin can change the announcement bar." };
+  }
+  const ids: string[] = [];
+  for (const [i, r] of rows.entries()) {
+    const row = { text: r.text.trim(), mobile_text: r.mobile_text.trim() || null, icon: r.icon, href: r.href.trim() || null,
+      is_active: r.is_active, sort_order: i + 1, updated_at: now, updated_by: user?.id ?? null };
+    const res = r.id ? await supabase.from("announcements").update(row).eq("id", r.id).select("id")
+      : await supabase.from("announcements").insert(row).select("id");
+    if (res.error) return fail(res.error);
+    if (!res.data?.length) return { ok: false, error: "Only an admin can change the announcement bar." };
+    ids.push(res.data[0].id);
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, data: { ids } };
 }
 
 // Quick-action create flows ----------------------------------------------------------------

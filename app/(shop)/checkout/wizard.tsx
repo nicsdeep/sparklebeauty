@@ -90,6 +90,9 @@ export function CheckoutWizard({ profile, addresses }: {
           <h1 className="text-[34px] font-extrabold tracking-tight sm:text-[40px]" style={{ color: NAVY }}>Checkout</h1>
           <span className="mt-1 block h-1 w-16 rounded-full" style={{ background: PINK }} aria-hidden />
           <p className="mt-3 text-[16px] text-[#4B5563]">Complete your order in a few simple steps.</p>
+          <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-[#4B5563]">
+            <ShieldCheck className="size-4 text-[#E6007E]" aria-hidden /> Secure checkout · M-Pesa · Card · Cash on delivery
+          </p>
         </div>
         <ol className="grid flex-1 grid-cols-5 lg:max-w-[640px]" aria-label="Checkout steps">
           {STEPS.map((s, i) => (

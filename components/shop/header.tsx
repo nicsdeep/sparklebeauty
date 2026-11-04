@@ -8,6 +8,7 @@ import { Logo } from "@/components/logo";
 import { SearchSuggest } from "@/components/search-suggest";
 import { cx } from "@/components/ui";
 import { useCart } from "@/lib/cart";
+import { AnnouncementBar, type BarMessage } from "@/components/shop/announcement-bar";
 
 export const NAV = [
   { label: "Home", href: "/" },
@@ -24,7 +25,7 @@ export const NAV = [
   { label: "Contact", href: "/contact" },
 ];
 
-export function ShopHeader({ userName, isStaff }: { userName: string | null; isStaff: boolean }) {
+export function ShopHeader({ userName, isStaff, announcements }: { userName: string | null; isStaff: boolean; announcements: BarMessage[] }) {
   const cart = useCart();
   // The cart lives in localStorage; only show its count after this component mounts so the
   // first client render matches the server HTML.
@@ -50,11 +51,9 @@ export function ShopHeader({ userName, isStaff }: { userName: string | null; isS
 
   return (
     <>
-      <div className="bg-brand-600 px-4 py-2 text-center text-sm font-medium text-white">
-        Free delivery on orders over KES 10,000 · Pay with M-Pesa, card or cash on delivery
-      </div>
+      <AnnouncementBar messages={announcements} />
       <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:gap-8">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2 lg:gap-8">
           <button className="-ml-2 rounded-full p-2 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
             <Menu className="size-6" />
           </button>

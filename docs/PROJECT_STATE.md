@@ -216,6 +216,7 @@ Migrations, in order:
 27. `20261105090000_product_combo_options_barcode.sql`: `admin_create_product()` / `admin_update_product()` accept two-part options (`colour_length`, `colour_size`; rows carry `option` + `option2`; the variant is named "Colour · Length") and an optional unique `barcode` per variant. Editing no longer clears the attributes the option type doesn't use (it used to wipe a wig's colour when saved by length).
 28. `20261105120000_social_tiktok_youtube.sql`: `store_settings.tiktok_url` and `youtube_url` (nullable), set in Admin → Settings. The footer shows a social icon only for links that are set.
 29. `20261106090000_brands_featured_rank.sql`: `brands.featured_rank` (null = not featured) orders the Shop page's "Shop by Brands" row. It is set for L'Oréal Paris, Garnier, Nivea and Maybelline (Nicholas's choice). There's no admin screen for it yet.
+30. `20261107090000_announcements.sql`: `announcements` holds the storefront's rotating top bar. Columns: `text`, `mobile_text`, `icon` (a checked list), `href`, `is_active`, `sort_order`. In the text, `*phrase*` is highlighted and `{free_threshold}` becomes the free-delivery amount. Anyone can read active rows, and only admins can change them (Admin → Settings → Announcement bar). It is seeded with 4 messages.
 
 Tables in `public`, all with RLS on:
 - **People:**
