@@ -40,6 +40,39 @@ Entry format:
   - `tsc --noEmit` passes.
 - Follow-ups: move the filtering into the database when the catalogue grows (Known issues).
 
+## 2026-11-04: Claude: Add / Edit Product as a tabbed workspace
+- PR: (this PR, branch `claude/product-form-workspace`)
+- Changed:
+  - `app/admin/products/product-form.tsx`, rewritten (same data, same save functions):
+    - **Header:** breadcrumb (Products › Add Product) and title. The Discard and Save Product actions and the tabs are pinned on desktop. It shows "Unsaved changes", an error banner, and a red dot on any tab that needs attention.
+    - **Tabs:** Basic Details · Options & Variants · Pricing & Stock · Product Page. They switch instantly (local state, mirrored in `?tab=` by `history.replaceState`) and keep every value.
+    - **Basic Details:** name, Category and Brand/Supplier as searchable comboboxes (brand accepts a new name), description, hair texture/type for hair, VAT, Featured and Visible. Product Media sits on the right.
+    - **Options & Variants:** an option-type selector; a compact table with each option as a searchable combobox of values already in the catalogue (new ones allowed), SKU and status; Hide/Show and Remove; search when there are more than 8.
+    - **Pricing & Stock:** one table with retail, wholesale, opening stock (or stock with Adjust), reorder level, SKU and status, using narrow numeric inputs. The 10+ wholesale rule is explained.
+    - **Product Page:** benefits, how to use, ingredients, Featured, and the shop address (slug, read-only).
+    - **Quick Preview**, on Basic Details and Product Page: main photo, name, brand, option, price and stock, with a choice of which option to preview.
+    - **Validation** sits by each field (name, category, option, retail, wholesale ≤ retail, non-negative stock and reorder level). Save opens the first tab with a problem. Wholesale above retail shows as soon as it's typed.
+    - **Unsaved work:** leaving with unsaved changes asks first (both the browser and in-app links). Discard asks, then reverts (edit) or goes back to Products (add).
+  - `components/admin/photo-manager.tsx`: a drag-and-drop zone, "Make main" (star) on each photo, and a compact layout.
+  - `components/combobox.tsx`: `allowCustom` ("Use “…”"), an `error` message, `hideLabel` and `variant="form"` (form-sized).
+  - `app/admin/products/form-data.ts`: option values already in use (colours, shades, sizes, lengths).
+  - The new and edit pages pass these through; the header moved into the form.
+- Why: Nicholas asked for the Add Product page as a modern tabbed workspace instead of one long form.
+- Not done: these need the database save functions (`admin_create_product` / `admin_update_product`) to accept more:
+  - Colour + Length together (they take one option type per product);
+  - a barcode per variant;
+  - "Product Highlights" (no such field exists).
+  These are follow-ups.
+- Tested in the local preview, signed in as admin:
+  - Add Product: typed a name → Options (Length, 2 options) → Pricing (1000 / 1500) → Basic. The tab switch took about 50 ms and the name was kept. "Wholesale price cannot exceed retail price" showed live.
+  - Save opened Basic Details with "Category is required" and marked 3 tabs.
+  - Clicking the Products breadcrumb asked "Leave without saving?", and Stay kept the work.
+  - Edit Ballerina loaded name, category, brand, 2 photos and stock 16; Save Changes succeeded.
+  - 375 px: no sideways scroll; the tabs scroll.
+  - Found and fixed: tab switches took about 1 s (they re-fetched the page); the Pricing table scrolled sideways.
+  - `tsc --noEmit` passes. I didn't create a new product in the live demo data.
+- Follow-ups: Colour + Length combinations and barcodes in the save functions (migration); a test of creating a product.
+
 ## 2026-11-04: Claude: POS revamp to doctrine §22–§38 (variant-first, searchable filters)
 - PR: (this PR, branch `claude/pos-variant-first`)
 - Changed:

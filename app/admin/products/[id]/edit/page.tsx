@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Badge, PageHeader } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { ProductForm, type ProductFormValues, type ProductRow } from "../../product-form";
 import { loadProductFormOptions } from "../../form-data";
@@ -19,7 +19,7 @@ export default async function EditProductPage({ params, searchParams }: { params
   const { id } = await params;
   const created = (await searchParams).created === "1";
   const supabase = await createClient();
-  const [{ data: p }, { categories, brands }] = await Promise.all([
+  const [{ data: p }, { categories, brands, optionValues }] = await Promise.all([
     supabase.from("products").select(`id, name, slug, description, image_urls, is_featured, is_active, benefits, how_to_use, ingredients, tax_type,
       category:categories(slug), brand:brands(name),
       product_variants(id, sku, name, color, shade, size, hair_length, hair_texture, hair_type, is_active,
@@ -48,10 +48,7 @@ export default async function EditProductPage({ params, searchParams }: { params
   });
 
   return (
-    <div>
-      <PageHeader title={`Edit ${p.name}`} subtitle="Changes show in the shop as soon as you save."
-        action={<div className="flex gap-2">{!p.is_active && <Badge tone="amber">Hidden from the shop</Badge>}{created && <Badge tone="mint">✓ Product added</Badge>}</div>} />
-      <ProductForm categories={categories} brands={brands} initial={initial} initialRows={rows} edit={{ id: p.id, slug: p.slug }} />
-    </div>
+    <ProductForm categories={categories} brands={brands} optionValues={optionValues} initial={initial} initialRows={rows} edit={{ id: p.id, slug: p.slug }}
+      notice={<>{!p.is_active && <Badge tone="amber">Hidden from the shop</Badge>}{created && <Badge tone="mint">✓ Product added</Badge>}</>} />
   );
 }
