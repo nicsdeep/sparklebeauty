@@ -45,6 +45,8 @@ The current build is a **CEO demo of the full Order-to-Cash flow**:
 | --- | --- |
 | `AGENTS.md` | Agent doctrine (read first) |
 | `CLAUDE.md` | Points Claude Code to `AGENTS.md` |
+| `UX_NAVIGATION_DOCTRINE.md` | Binding UX and navigation standard; every PR that changes user interaction answers its review |
+| `.github/pull_request_template.md` | PR description template, including the UX Doctrine review checklist |
 | `docs/PROJECT_STATE.md` | This file |
 | `docs/WORKLOG.md` | What each agent did and why, newest first |
 | `design/` | Written design system |
@@ -299,8 +301,16 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 | 2026-10-30 | One pricing engine in the database for every channel: negotiated, then wholesale account, then 10+ units, then retail. Wholesale sales are their own channel. The till works offline for cash only and never forces a sale past real stock | Nicholas |
 | 2026-10-31 | Sparkle is VAT registered. Prices are VAT-exclusive: VAT is added on top at the till and checkout. Tax invoices are built now; the KRA eTIMS connection is added when the KRA credentials are available | Nicholas |
 | 2026-10-29 | The O2C demo migrations were applied to the live database before their PR merged, to build and test the demo in time. The database held no real data | Nicholas approved |
+| 2026-11-04 | `UX_NAVIGATION_DOCTRINE.md` is a binding standard: pages for major work, drawers for context, tabs for related sections, inline for small actions, modals only for short confirmations; Back follows the real path; state is preserved; large lists are paged in the database. Every PR that changes user interaction answers its UX review (PR template) | Nicholas |
 
 ## Known issues
+
+- **Not yet compliant with `UX_NAVIGATION_DOCTRINE.md`** (audit of 2026-11-04; fix these as each area is next touched, or in dedicated PRs):
+  - **No paging on large lists (§8):** Admin Orders and Invoices load up to 200 rows; Products, Customers, Wholesale and the shop catalogue have no limit or pages. Only POS Recent Sales and Suspended Sales use database paging (`components/admin/list-controls.tsx`).
+  - **No drawers or master–detail yet (§2, §7, §11):** order, customer, product and sale details open as full pages (with real Back). There's no shared drawer component with its own history yet. The doctrine prefers drawers for these; Nicholas asked for POS sale details as a page (PR #52) before the doctrine, so check with him before converting.
+  - **Large dialogs that show records (§2):** the POS receipt after a sale (ReceiptDialog in `app/admin/pos/terminal.tsx`) and the checkout "Thank you" confirmation (`components/shop/order-confirmed-modal.tsx`).
+  - **Hardcoded Back links (§4):** the shop's order details and Track Order pages, and admin pages other than the POS pages, order, receipt, invoice and customer details. `components/admin/back-link.tsx` covers admin only; the storefront has no equivalent yet.
+  - **Filters and search on admin lists (§3, §10):** most keep `?q=` and filters in the URL already, but they haven't all been checked against the doctrine.
 
 - **KRA eTIMS isn't connected yet.** Tax invoices and credit notes are issued and kept in order with `etims_status = 'pending'`; nothing is sent to KRA. Connecting needs Sparkle's eTIMS (OSCU) registration from KRA: the shop's KRA PIN, branch ID, device serial and communication key (server-only secret). Then a server job sends pending invoices and stores KRA's reply (`etims_receipt_number`, `etims_signature`, `etims_internal_data`, `etims_sent_at`). Admin → Invoices shows how many are waiting.
 - **Orders from before VAT** (including the demo seed) have no VAT lines and no tax invoice. Reports and dashboard revenue use order totals, which now include VAT for new orders.
