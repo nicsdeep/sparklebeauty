@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: CRON_SECRET set in Vercel; keep-alive switched on
+- PR: (this PR, branch `claude/keep-alive-enabled`)
+- Changed:
+  - `CRON_SECRET` was added in Vercel → sparklebeauty → Environment Variables. It is a Secret type, for Production only, with a note pointing to `docs/supabase-keep-alive.md`.
+  - Claude filled in the name, note, type and environment. Nicholas generated and pasted the value, so it was never typed by an agent or shown in chat.
+  - This entry's merge triggers the production deploy that picks up the variable. Vercel's own "Redeploy" button asks for an emailed re-authentication code, which is left to Nicholas.
+- Why: the daily `/api/health` check (PR #63) refuses every call until the secret exists.
+- Tested: see the PR. After the deploy, production returns 401 for calls without the secret (it was 503 "not set" before), and the cron job is listed in Vercel.
+- Follow-ups: none.
+
 ## 2026-11-03: Claude: Supabase keep-alive health check
 - PR: (this PR, branch `claude/supabase-keep-alive`)
 - Changed:
