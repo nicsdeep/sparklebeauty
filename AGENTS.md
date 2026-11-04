@@ -15,6 +15,7 @@ Do these in order. Don't skip any because the task looks small.
    - `docs/PROJECT_STATE.md`
    - the top entries of `docs/WORKLOG.md`
    - the design system, if the task touches any screen
+   - `UX_NAVIGATION_DOCTRINE.md`, if the task touches navigation, pages, drawers, modals, forms, lists, search, filters, pagination, workflow state or Back behaviour
 3. **Verify, don't assume.** Before using a table, column, file, function, package or route, confirm it exists:
    - code and files: open the file
    - database: read `supabase/migrations/`, or query the database
@@ -32,10 +33,11 @@ When two sources disagree, the higher one wins. Report the mismatch; don't silen
 2. **This doctrine** (`AGENTS.md`).
 3. **The live database schema**, as defined by `supabase/migrations/`, which must always match the live database.
 4. **`docs/PROJECT_STATE.md`**: current architecture, stack, decisions and known issues.
-5. **`design/Sparkle_Beauty_Cosmetics_Design_System.md`**: the binding UI standard.
-6. **Code on `main`.**
-7. **`docs/WORKLOG.md`**: history of what each agent did and why.
-8. **Mockups** in `td/` and `td2/`: visual reference only. Where they conflict with the design system (e.g. the cyan/blue nav bar), the design system wins.
+5. **`UX_NAVIGATION_DOCTRINE.md`**: the binding standard for how users move through the system (pages, drawers, tabs, modals, Back, state, pagination). Every PR that changes user interaction includes its UX Doctrine review.
+6. **`design/Sparkle_Beauty_Cosmetics_Design_System.md`**: the binding UI standard.
+7. **Code on `main`.**
+8. **`docs/WORKLOG.md`**: history of what each agent did and why.
+9. **Mockups** in `td/` and `td2/`: visual reference only. Where they conflict with the design system or the UX doctrine (e.g. the cyan/blue nav bar), those win.
 
 Nothing else counts as truth. That includes chat history, an agent's memory, other projects and "how it's usually done".
 
@@ -64,6 +66,7 @@ Nothing else counts as truth. That includes chat history, an agent's memory, oth
   - how it was tested
   - anything left undone
   - any migration that must be applied after merge
+  - the **UX Doctrine review**, if it changes user interaction (the questions are in `.github/pull_request_template.md`; any "No" is explained)
 - Before opening a PR, merge or rebase the latest `main`.
 - Don't edit files that another agent's open PR is changing, unless Nicholas asks.
 - Commit messages explain why, not just what. End them with the agent's attribution line if it uses one.
@@ -98,13 +101,14 @@ A task is done only when every one of these is true:
 
 1. The change works and was tested. The PR says how.
 2. It follows the design system, if it touches the UI.
-3. There are no secrets, dead code or unexplained new dependencies.
-4. **`docs/WORKLOG.md` has a new entry at the top** (format is in that file). This is how other agents learn what you did. Skipping it breaks the doctrine.
-5. **`docs/PROJECT_STATE.md` is updated** if the change affects any of these:
+3. It follows `UX_NAVIGATION_DOCTRINE.md`, if it changes how users move or work. The user can enter, work, inspect related information, go deeper, return and continue from where they left off, and the full navigation chain was tested on desktop and mobile.
+4. There are no secrets, dead code or unexplained new dependencies.
+5. **`docs/WORKLOG.md` has a new entry at the top** (format is in that file). This is how other agents learn what you did. Skipping it breaks the doctrine.
+6. **`docs/PROJECT_STATE.md` is updated** if the change affects any of these:
    - stack, structure or hosting
    - schema, environment variables or decisions
    - known issues
-6. The PR is open, and its description is complete.
+7. The PR is open, and its description is complete.
 
 ## 8. Ownership
 
@@ -122,6 +126,6 @@ Agree areas of work per task so agents don't edit the same files at once. Update
 - **Codex:** reads this file automatically, as `AGENTS.md`.
 - **Lovable:** doesn't automatically read repo files. Nicholas pastes the text below into the Lovable project's **Knowledge** settings:
 
-  > Before every change, read `AGENTS.md`, `docs/PROJECT_STATE.md` and the latest entries in `docs/WORKLOG.md` in this repo, and follow them. Never change the database schema through Lovable; schema changes are SQL migrations in `supabase/migrations/` made through a pull request. After every change, add an entry to the top of `docs/WORKLOG.md`.
+  > Before every change, read `AGENTS.md`, `UX_NAVIGATION_DOCTRINE.md`, `docs/PROJECT_STATE.md` and the latest entries in `docs/WORKLOG.md` in this repo, and follow them. Never change the database schema through Lovable; schema changes are SQL migrations in `supabase/migrations/` made through a pull request. After every change, add an entry to the top of `docs/WORKLOG.md`.
 
 - **Any other agent:** point it at this file first.

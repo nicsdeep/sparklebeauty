@@ -15,6 +15,22 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: UX Navigation Doctrine
+- PR: (this PR, branch `claude/ux-navigation-doctrine`)
+- Changed:
+  - `UX_NAVIGATION_DOCTRINE.md` (new, repo root): Nicholas's doctrine, in full. It covers the 21 rules, enforcement, the developer/agent requirement, the PR review questions and the definition of done.
+  - `.github/pull_request_template.md` (new): the PR sections from AGENTS.md §5 plus the UX Doctrine review checklist (11 questions, any "No" explained).
+  - `AGENTS.md`:
+    - pre-flight now reads the doctrine for UX work;
+    - it's source of truth #5 (after PROJECT_STATE, before the design system), and mockups lose to it;
+    - PR descriptions include the UX review;
+    - definition of done includes doctrine compliance with the full chain tested on desktop and mobile;
+    - the Lovable knowledge text includes it.
+  - `docs/PROJECT_STATE.md`: decision row; repository layout; a Known issues audit of where the system doesn't comply yet (no paging on several admin lists, no drawers or master–detail, the receipt and thank-you dialogs, hardcoded Back links).
+- Why: Nicholas asked for one doctrine that every change and PR is checked against.
+- Tested: documentation only; links and section anchors checked by reading the files. No code changed.
+- Follow-ups: work through the Known issues audit area by area. Before converting POS sale details from a page to a drawer, ask Nicholas: he asked for a page in PR #52, before the doctrine.
+
 ## 2026-11-04: Claude: POS lists and details as pages, not popups
 - PR: (this PR, branch `claude/pos-pages`)
 - Rule (Nicholas): pages for information, small dialogs only for confirmations.
