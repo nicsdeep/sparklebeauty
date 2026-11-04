@@ -55,13 +55,17 @@ export function FilterInput({ label, param, type, placeholder }: { label: string
 }
 
 /** "Showing 1–20 of 246 sales" with Previous / page numbers / Next and a page-size choice. */
-export function Pagination({ page, size, total, noun }: { page: number; size: number; total: number; noun: string }) {
+/**
+ * Pager for lists. With `anchor` (the shop), page links jump to that element and there is no
+ * page-size picker; without it (admin lists) the page keeps its scroll position.
+ */
+export function Pagination({ page, size, total, noun, anchor }: { page: number; size: number; total: number; noun: string; anchor?: string }) {
   const { params, set } = useSetParams();
   const pages = Math.max(1, Math.ceil(total / size));
   const href = (p: number) => {
     const next = new URLSearchParams(params.toString());
     if (p > 1) next.set("page", String(p)); else next.delete("page");
-    return `?${next}`;
+    return `?${next}${anchor ? `#${anchor}` : ""}`;
   };
   // 1 … 4 5 6 … 13
   const nums = [...new Set([1, page - 1, page, page + 1, pages].filter((n) => n >= 1 && n <= pages))].sort((a, b) => a - b);
@@ -72,22 +76,22 @@ export function Pagination({ page, size, total, noun }: { page: number; size: nu
     <nav className="flex flex-wrap items-center justify-between gap-3 text-sm" aria-label="Pages">
       <p className="text-ink-muted">Showing {from}–{Math.min(page * size, total)} of {total} {noun}</p>
       <div className="flex flex-wrap items-center gap-1.5">
-        {page > 1 ? <Link href={href(page - 1)} scroll={false} className={cx(link, "border-line bg-white")}><ChevronLeft className="size-4" /> Previous</Link>
+        {page > 1 ? <Link href={href(page - 1)} scroll={!!anchor} className={cx(link, "border-line bg-white")}><ChevronLeft className="size-4" /> Previous</Link>
           : <span className={cx(link, "border-line text-ink-muted opacity-50")}><ChevronLeft className="size-4" /> Previous</span>}
         {nums.map((n, i) => (
           <span key={n} className="flex items-center gap-1.5">
             {i > 0 && n - nums[i - 1] > 1 && <span className="px-1 text-ink-muted">…</span>}
-            <Link href={href(n)} scroll={false} aria-current={n === page ? "page" : undefined}
+            <Link href={href(n)} scroll={!!anchor} aria-current={n === page ? "page" : undefined}
               className={cx(link, n === page ? "border-ink bg-ink text-white" : "border-line bg-white hover:border-ink/30")}>{n}</Link>
           </span>
         ))}
-        {page < pages ? <Link href={href(page + 1)} scroll={false} className={cx(link, "border-line bg-white")}>Next <ChevronRight className="size-4" /></Link>
+        {page < pages ? <Link href={href(page + 1)} scroll={!!anchor} className={cx(link, "border-line bg-white")}>Next <ChevronRight className="size-4" /></Link>
           : <span className={cx(link, "border-line text-ink-muted opacity-50")}>Next <ChevronRight className="size-4" /></span>}
-        <label className="ml-2 flex items-center gap-1.5 text-ink-muted">Per page
+        {!anchor && <label className="ml-2 flex items-center gap-1.5 text-ink-muted">Per page
           <select value={size} onChange={(e) => set({ size: e.target.value === "20" ? null : e.target.value })} className="h-9 rounded-lg border border-line bg-white px-2 text-ink">
             {[10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
-        </label>
+        </label>}
       </div>
     </nav>
   );

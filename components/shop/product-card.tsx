@@ -1,12 +1,24 @@
 import Link from "next/link";
-import { Sparkles, Star } from "lucide-react";
 import { ProductImage } from "@/components/shop/product-image";
 import { QuickAdd, WishlistHeart } from "@/components/shop/card-actions";
-import { StockBadge } from "@/components/ui";
 import { kes } from "@/lib/format";
 import { productStock, type Product, type Stock } from "@/lib/catalog";
-import { variantLabel } from "@/lib/variant";
 
+const NEW_DAYS = 30;
+
+/** Badge for a card: a discount first, then Bestseller (featured), then New (added in the last 30 days). */
+function badge(product: Product) {
+  const v = product.variants[0];
+  if (v.compare_at && v.compare_at > v.price) return `-${Math.round((1 - v.price / v.compare_at) * 100)}%`;
+  if (product.is_featured) return "Bestseller";
+  if (Date.now() - new Date(product.created_at).getTime() < NEW_DAYS * 86_400_000) return "New";
+  return null;
+}
+
+/**
+ * Product card: white, photo first, the price in Sparkle pink. The card opens the product, the
+ * heart saves it, the cart button adds it (or asks for the option first).
+ */
 export function ProductCard({ product, stock, wishlisted = false, priority = false }: {
   product: Product;
   stock: Record<string, Stock>;
@@ -15,55 +27,36 @@ export function ProductCard({ product, stock, wishlisted = false, priority = fal
 }) {
   const cheapest = product.variants[0];
   const s = productStock(product, stock);
-  const hasOptions = product.variants.length > 1;
   const priceVaries = new Set(product.variants.map((v) => v.price)).size > 1;
-  const discount = cheapest.compare_at ? Math.round((1 - cheapest.price / cheapest.compare_at) * 100) : 0;
   const href = `/product/${product.slug}`;
+  const label = badge(product);
+  // Only this product's stock goes to the cart button (a client component).
+  const own = Object.fromEntries(product.variants.map((v) => [v.id, stock[v.id]]).filter(([, x]) => x));
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition hover:border-brand-200 hover:shadow-[0_8px_24px_-12px_rgba(208,35,122,0.25)]">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-line/80 bg-white shadow-[0_2px_10px_-4px_rgba(31,26,29,0.08)] transition hover:shadow-[0_10px_28px_-12px_rgba(31,26,29,0.18)]">
       <div className="relative">
         <Link href={href} aria-label={product.name} tabIndex={-1}>
           <ProductImage category={product.category.slug} name={product.name} image={product.image} className="rounded-none" priority={priority} />
         </Link>
-        {discount > 0 ? (
-          <span className="absolute left-2.5 top-2.5 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-bold text-white">{discount}% OFF</span>
-        ) : product.is_featured ? (
-          <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-700 shadow-sm">Best Seller</span>
-        ) : null}
+        {label && <span className="absolute left-2 top-2 rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-semibold text-white">{label}</span>}
         <WishlistHeart productId={product.id} slug={product.slug} initial={wishlisted} />
       </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-3.5">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{product.brand ?? product.category.name}</span>
-        <h3 className="line-clamp-2 min-h-[2.6em] font-semibold leading-snug">
-          <Link href={href} className="hover:text-brand-700">{product.name}</Link>
+      <div className="flex flex-1 flex-col p-3 sm:p-3.5">
+        <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug">
+          <Link href={href} className="after:absolute after:inset-0 after:content-[''] hover:text-brand-700">{product.name}</Link>
         </h3>
-        {product.review_count > 0 ? (
-          <div className="flex items-center gap-1 text-sm text-ink-muted">
-            <span className="flex" aria-label={`Rated ${product.rating.toFixed(1)} out of 5`}>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star key={i} className={i <= Math.round(product.rating) ? "size-3.5 fill-amber-400 text-amber-400" : "size-3.5 text-line"} aria-hidden />
-              ))}
-            </span>
-            <span>({product.review_count})</span>
+        <p className="mt-0.5 truncate text-sm text-ink-muted">{product.brand ?? product.category.name}</p>
+        <div className="mt-auto flex items-end justify-between gap-2 pt-2.5">
+          <div className="min-w-0">
+            {!s.inStock && <p className="text-xs font-semibold text-rose-fg">Out of stock</p>}
+            {priceVaries && <p className="text-xs text-ink-muted">From</p>}
+            <p className="flex flex-wrap items-baseline gap-x-1.5 leading-tight">
+              <span className="whitespace-nowrap text-base font-bold text-brand-600 sm:text-lg">{kes(cheapest.price)}</span>
+              {cheapest.compare_at && <span className="whitespace-nowrap text-xs text-ink-muted line-through sm:text-sm">{kes(cheapest.compare_at)}</span>}
+            </p>
           </div>
-        ) : (
-          // A product with no reviews yet (e.g. just added) shows this instead of empty stars.
-          <p className="flex items-center gap-1 text-sm font-medium text-brand-700"><Sparkles className="size-3.5" aria-hidden /> New arrival</p>
-        )}
-        <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-lg font-bold">{priceVaries ? <span className="text-sm font-medium text-ink-muted">From </span> : null}{kes(cheapest.price)}</span>
-          {cheapest.compare_at && <span className="text-sm text-ink-muted line-through">{kes(cheapest.compare_at)}</span>}
-        </div>
-        <div><StockBadge stock={s} /></div>
-        <div className="mt-auto pt-2">
-          <QuickAdd
-            slug={product.slug}
-            hasOptions={hasOptions}
-            available={stock[cheapest.id]?.available ?? 0}
-            item={{ variantId: cheapest.id, slug: product.slug, name: product.name, variantName: hasOptions ? variantLabel(cheapest) : null,
-              category: product.category.slug, brand: product.brand, image: product.image, price: cheapest.price }}
-          />
+          <div className="relative z-10"><QuickAdd product={product} stock={own} /></div>
         </div>
       </div>
     </article>
@@ -74,10 +67,11 @@ export function ProductGrid({ products, stock, wishlist = [], columns = 4 }: {
   products: Product[];
   stock: Record<string, Stock>;
   wishlist?: string[];
-  columns?: 4 | 6;
+  columns?: 3 | 4 | 6;
 }) {
+  const cols = { 3: "grid-cols-2 md:grid-cols-3 xl:grid-cols-4", 4: "grid-cols-2 md:grid-cols-3 lg:grid-cols-4", 6: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" }[columns];
   return (
-    <div className={columns === 6 ? "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6" : "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"}>
+    <div className={`grid gap-3 sm:gap-4 ${cols}`}>
       {products.map((p, i) => (
         <ProductCard key={p.id} product={p} stock={stock} wishlisted={wishlist.includes(p.id)} priority={i < 4} />
       ))}
@@ -88,10 +82,10 @@ export function ProductGrid({ products, stock, wishlist = [], columns = 4 }: {
 /** Small card for side panels such as "You May Also Like": photo, brand, name, price and a cart icon. */
 export function ProductMiniCard({ product, stock, wishlisted = false }: { product: Product; stock: Record<string, Stock>; wishlisted?: boolean }) {
   const cheapest = product.variants[0];
-  const hasOptions = product.variants.length > 1;
   const href = `/product/${product.slug}`;
+  const own = Object.fromEntries(product.variants.map((v) => [v.id, stock[v.id]]).filter(([, x]) => x));
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition hover:border-brand-200 hover:shadow-[0_8px_24px_-12px_rgba(208,35,122,0.25)]">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition hover:shadow-[0_10px_28px_-12px_rgba(31,26,29,0.18)]">
       <div className="relative">
         <Link href={href} aria-label={product.name} tabIndex={-1}>
           <ProductImage category={product.category.slug} name={product.name} image={product.image} size="sm" className="rounded-none" />
@@ -101,13 +95,11 @@ export function ProductMiniCard({ product, stock, wishlisted = false }: { produc
       <div className="flex flex-1 flex-col p-3">
         <span className="truncate text-[11px] font-bold uppercase tracking-wide text-ink-muted">{product.brand ?? product.category.name}</span>
         <h3 className="mt-0.5 line-clamp-2 min-h-[2.5em] text-sm font-semibold leading-snug">
-          <Link href={href} className="hover:text-brand-700">{product.name}</Link>
+          <Link href={href} className="after:absolute after:inset-0 after:content-[''] hover:text-brand-700">{product.name}</Link>
         </h3>
         <div className="mt-auto flex items-center justify-between gap-1.5 pt-2">
-          <span className="whitespace-nowrap text-sm font-bold text-brand-600">{hasOptions && new Set(product.variants.map((v) => v.price)).size > 1 ? <span className="text-xs font-medium text-ink-muted">From </span> : null}{kes(cheapest.price)}</span>
-          <QuickAdd compact slug={product.slug} hasOptions={hasOptions} available={stock[cheapest.id]?.available ?? 0}
-            item={{ variantId: cheapest.id, slug: product.slug, name: product.name, variantName: hasOptions ? variantLabel(cheapest) : null,
-              category: product.category.slug, brand: product.brand, image: product.image, price: cheapest.price }} />
+          <span className="whitespace-nowrap text-sm font-bold text-brand-600">{new Set(product.variants.map((v) => v.price)).size > 1 ? <span className="text-xs font-medium text-ink-muted">From </span> : null}{kes(cheapest.price)}</span>
+          <div className="relative z-10"><QuickAdd product={product} stock={own} /></div>
         </div>
       </div>
     </article>

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Loader2, Package, Receipt, Search, Tag, UserRound } from "lucide-react";
+import { BadgeCheck, Loader2, Package, Receipt, Search, Tag, UserRound, X } from "lucide-react";
 import { cx } from "@/components/ui";
 import { sized } from "@/lib/images";
 import { createClient } from "@/lib/supabase/client";
@@ -12,30 +12,36 @@ import { createClient } from "@/lib/supabase/client";
  * Search box that suggests matches as you type. Products, categories and customers are loaded
  * once per tab (they're small) and matched instantly in the browser; orders are looked up in the
  * database as you type. Enter opens the full results page; arrow keys pick a suggestion.
- *  - scope "shop": products and categories, results at /shop?q=
+ *  - scope "shop": products (by name, brand, category or SKU), brands and categories, results at /shop?q=
+ *  - `live` (the Shop page): the product grid also filters as you type, keeping the other filters
  *  - scope "admin": orders, products and customers, results at /admin/search?q= (staff only, by RLS)
  */
-type Suggestion = { href: string; title: string; detail: string; image?: string | null; kind: "product" | "category" | "order" | "customer" };
+type Suggestion = { href: string; title: string; detail: string; image?: string | null; kind: "product" | "brand" | "category" | "order" | "customer" };
 type Indexed = Suggestion & { text: string };
 
-const ICON = { product: Package, category: Tag, order: Receipt, customer: UserRound };
-const GROUP = { product: "Products", category: "Categories", order: "Orders", customer: "Customers" };
+const ICON = { product: Package, brand: BadgeCheck, category: Tag, order: Receipt, customer: UserRound };
+const GROUP = { product: "Products", brand: "Brands", category: "Categories", order: "Orders", customer: "Customers" };
 const cache: Partial<Record<"shop" | "admin", Promise<Indexed[]>>> = {};
 
 function loadIndex(scope: "shop" | "admin"): Promise<Indexed[]> {
   cache[scope] ??= (async () => {
     const supabase = createClient();
-    const products = supabase.from("products").select("id, name, slug, image_urls, brand:brands(name), category:categories(name)")
-      .order("name").then(({ data }) => (data ?? []).map((p): Indexed => {
+    // The shop lists only products on sale; staff also find hidden ones.
+    let productQuery = supabase.from("products").select("id, name, slug, image_urls, brand:brands(name), category:categories(name), product_variants(sku)");
+    if (scope === "shop") productQuery = productQuery.eq("is_active", true);
+    const products = productQuery.order("name").then(({ data }) => (data ?? []).map((p): Indexed => {
         const brand = (p.brand as unknown as { name: string } | null)?.name ?? "";
         const category = (p.category as unknown as { name: string } | null)?.name ?? "";
         return { kind: "product", href: scope === "shop" ? `/product/${p.slug}` : `/admin/products/${p.id}/edit`, title: p.name,
-          detail: [brand, category].filter(Boolean).join(" · "), image: p.image_urls?.[0] ?? null, text: `${p.name} ${brand} ${category}` };
+          detail: [brand, category].filter(Boolean).join(" · "), image: p.image_urls?.[0] ?? null,
+          text: `${p.name} ${brand} ${category} ${(p.product_variants as { sku: string }[] | null ?? []).map((v) => v.sku).join(" ")}` };
       }));
     if (scope === "shop") {
       const categories = supabase.from("categories").select("name, slug").then(({ data }) => (data ?? []).map((c): Indexed => (
         { kind: "category", href: `/shop?category=${c.slug}`, title: c.name, detail: "Category", text: c.name })));
-      return (await Promise.all([categories, products])).flat();
+      const brands = supabase.from("brands").select("name").eq("is_active", true).order("name").then(({ data }) => (data ?? []).map((b): Indexed => (
+        { kind: "brand", href: `/shop?brand=${encodeURIComponent(b.name)}`, title: b.name, detail: "Brand", text: b.name })));
+      return (await Promise.all([categories, brands, products])).flat();
     }
     const customers = Promise.all([
       supabase.from("profiles").select("id, full_name, phone, email").eq("role", "customer"),
@@ -77,11 +83,14 @@ function Mark({ text, ws }: { text: string; ws: string[] }) {
   return <>{text.split(re).map((part, i) => (i % 2 ? <mark key={i} className="bg-transparent font-bold text-brand-700">{part}</mark> : part))}</>;
 }
 
-export function SearchSuggest({ scope, placeholder, defaultValue = "", autoFocus, className, inputClassName, onNavigate }: {
+export function SearchSuggest({ scope, placeholder, defaultValue = "", autoFocus, className, inputClassName, onNavigate, live, id }: {
   scope: "shop" | "admin"; placeholder: string; defaultValue?: string; autoFocus?: boolean;
-  className?: string; inputClassName?: string; onNavigate?: () => void;
+  className?: string; inputClassName?: string; onNavigate?: () => void; live?: boolean; id?: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const typing = useRef(false);
   const listId = useId();
   const [q, setQ] = useState(defaultValue);
   const [open, setOpen] = useState(false);
@@ -92,7 +101,26 @@ export function SearchSuggest({ scope, placeholder, defaultValue = "", autoFocus
   const box = useRef<HTMLDivElement>(null);
   const ws = words(q);
 
-  useEffect(() => setQ(defaultValue), [defaultValue]);
+  useEffect(() => { if (!typing.current) setQ(defaultValue); }, [defaultValue]);
+
+  // Arriving from the header's search icon (/shop#search): put the cursor in the box.
+  useEffect(() => {
+    if (live && id && window.location.hash === `#${id}`) document.getElementById(id)?.focus();
+  }, [live, id]);
+
+  // Live mode: the results on this page follow the box as you type (a short pause after the last key).
+  useEffect(() => {
+    if (!live || !typing.current) return;
+    const t = setTimeout(() => {
+      const next = new URLSearchParams(params.toString());
+      if (q.trim()) next.set("q", q.trim()); else next.delete("q");
+      next.delete("page");
+      router.replace(`${pathname}${next.size ? `?${next}` : ""}`, { scroll: false });
+      typing.current = false;
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, live]);
 
   // Instant matches from the cached index.
   useEffect(() => {
@@ -103,7 +131,7 @@ export function SearchSuggest({ scope, placeholder, defaultValue = "", autoFocus
       const hits = index.filter((s) => matches(s.text, ws));
       // Names that start with what was typed come first.
       hits.sort((a, b) => Number(!a.title.toLowerCase().startsWith(ws[0])) - Number(!b.title.toLowerCase().startsWith(ws[0])));
-      setLocal([...hits.filter((s) => s.kind === "category").slice(0, 3), ...hits.filter((s) => s.kind === "product").slice(0, scope === "shop" ? 6 : 4),
+      setLocal([...hits.filter((s) => s.kind === "category").slice(0, 3), ...hits.filter((s) => s.kind === "brand").slice(0, 3), ...hits.filter((s) => s.kind === "product").slice(0, scope === "shop" ? 6 : 4),
         ...hits.filter((s) => s.kind === "customer").slice(0, 4)]);
     }).catch(() => setLocal([]));
     return () => { live = false; };
@@ -140,6 +168,7 @@ export function SearchSuggest({ scope, placeholder, defaultValue = "", autoFocus
   function submit(e: FormEvent) {
     e.preventDefault();
     if (active >= 0 && items[active]) go(items[active].href);
+    else if (live) { setOpen(false); (document.activeElement as HTMLElement | null)?.blur(); }
     else seeAll();
   }
 
@@ -169,16 +198,21 @@ export function SearchSuggest({ scope, placeholder, defaultValue = "", autoFocus
     <div ref={box} className={cx("relative", className)}>
       <form onSubmit={submit} role="search">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-ink-muted" aria-hidden />
-        <input value={q} autoFocus={autoFocus} placeholder={placeholder} aria-label={placeholder}
+        <input id={id} type="search" enterKeyHint="search" value={q} autoFocus={autoFocus} placeholder={placeholder} aria-label={placeholder}
           role="combobox" aria-expanded={show} aria-controls={listId} aria-autocomplete="list" aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-          onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+          onChange={(e) => { typing.current = true; setQ(e.target.value); setOpen(true); }}
           onFocus={() => { setOpen(true); loadIndex(scope).catch(() => {}); }}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setActive((a) => Math.min(items.length - 1, a + 1)); }
             else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(-1, a - 1)); }
-            else if (e.key === "Escape") setOpen(false);
+            // Escape closes the suggestions; it must not also clear the box (search inputs do that natively).
+            else if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
           }}
           className={cx("w-full pl-11 pr-10 outline-none", inputClassName)} autoComplete="off" />
+        {live && q && !loading && (
+          <button type="button" onClick={() => { typing.current = true; setQ(""); setOpen(false); }} aria-label="Clear search"
+            className="absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-ink-muted hover:bg-surface"><X className="size-4" /></button>
+        )}
         {loading && <Loader2 className="absolute right-4 top-1/2 size-4 -translate-y-1/2 animate-spin text-ink-muted" aria-hidden />}
       </form>
       {show && (
@@ -186,8 +220,8 @@ export function SearchSuggest({ scope, placeholder, defaultValue = "", autoFocus
           {rows}
           {!items.length && !loading && <li className="px-4 py-3 text-[15px] text-ink-muted">No matches for “{q.trim()}”.</li>}
           <li className="mt-1 border-t border-line">
-            <button type="button" onClick={seeAll} className="w-full px-4 pt-2.5 text-left text-sm font-semibold text-brand-700">
-              See all results for “{q.trim()}” ›
+            <button type="button" onClick={live ? () => setOpen(false) : seeAll} className="w-full px-4 pt-2.5 text-left text-sm font-semibold text-brand-700">
+              {live ? <>Show all results for “{q.trim()}”</> : <>See all results for “{q.trim()}” ›</>}
             </button>
           </li>
         </ul>
