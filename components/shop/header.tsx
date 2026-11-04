@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Heart, Home, LayoutDashboard, Menu, Package, Search, ShoppingBag, User, X } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -35,6 +35,13 @@ export function ShopHeader({ userName, isStaff }: { userName: string | null; isS
   const pathname = usePathname();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  // Phones: the search icon goes to the Shop page search (focusing it if already there).
+  const openSearch = () => {
+    const box = document.getElementById("search");
+    if (box) { box.scrollIntoView({ block: "center", behavior: "smooth" }); box.focus({ preventScroll: true }); }
+    else router.push("/shop#search");
+  };
 
   const current = pathname + (params.toString() ? `?${params}` : "");
   const isActive = (href: string) =>
@@ -54,7 +61,10 @@ export function ShopHeader({ userName, isStaff }: { userName: string | null; isS
           <Logo />
           <SearchSuggest scope="shop" placeholder="Search wigs, braids, serums, perfumes…" defaultValue={params.get("q") ?? ""} className="hidden max-w-xl flex-1 md:block"
             inputClassName="h-11 rounded-full border border-line bg-surface focus:border-brand-500 focus:bg-white" />
-          <nav className="ml-auto flex items-center gap-1" aria-label="Account">
+          <nav className="ml-auto flex items-center gap-0.5 sm:gap-1" aria-label="Account">
+            <button type="button" onClick={openSearch} className="rounded-full p-2.5 hover:bg-surface md:hidden" aria-label="Search products">
+              <Search className="size-5" />
+            </button>
             {isStaff && (
               <Link href="/admin" className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-ink hover:bg-surface sm:flex">
                 <LayoutDashboard className="size-5" /> Admin
@@ -129,10 +139,15 @@ export function ShopHeader({ userName, isStaff }: { userName: string | null; isS
           { href: "/account#orders", label: "Orders", Icon: Package },
           { href: userName ? "/account" : "/login", label: "Account", Icon: User },
         ].map(({ href, label, Icon }) => (
-          <Link key={label} href={href} className={cx("flex flex-col items-center gap-0.5 py-2 text-xs font-medium", pathname === href ? "text-brand-700" : "text-ink-muted")}>
-            <Icon className="size-5" />
+          <Link key={label} href={href} aria-current={pathname === href ? "page" : undefined}
+            className={cx("flex flex-col items-center gap-0.5 py-2 text-xs font-medium", pathname === href ? "text-brand-600" : "text-ink-muted")}>
+            <span className="relative">
+              <Icon className="size-[22px]" strokeWidth={pathname === href ? 2.4 : 2} />
+              {label === "Cart" && ready && count > 0 && (
+                <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">{count}<span className="sr-only"> items</span></span>
+              )}
+            </span>
             {label}
-            {label === "Cart" && ready && count > 0 && <span className="sr-only">{count} items</span>}
           </Link>
         ))}
       </nav>

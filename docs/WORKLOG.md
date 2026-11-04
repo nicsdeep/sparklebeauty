@@ -15,6 +15,48 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: Mobile-first Shop page
+- PR: (this PR, branch `claude/mobile-shop-page`)
+- Changed:
+  - `app/(shop)/shop/page.tsx` is a product-discovery workspace with no hero. In order:
+    - "All Products" and the live count;
+    - a large search;
+    - quick category tiles that scroll sideways, plus More (a sheet);
+    - Shop by Brands (featured brands plus See All, a searchable sheet);
+    - Filter and Sort;
+    - products, 2 columns on phones, 3 on tablet, 4 on wide desktop;
+    - pages of 20.
+  - Filters:
+    - `lib/shop-filters.ts` filters by category, brand, colour/shade, length, size, price, in stock and on offer;
+    - filter values come from the products and depend on each other (doctrine §24, §25);
+    - `components/shop/shop-controls.tsx` shows the filter panel in a bottom sheet below `lg` and in a sidebar on desktop; long lists use the shared Combobox;
+    - active filters show as chips with Clear all, and everything is in the URL.
+  - New shared `components/sheet.tsx`: a bottom sheet on phones and a right-hand drawer from `md`.
+  - Product cards (`components/shop/product-card.tsx`, used site-wide):
+    - white, with a discount, Bestseller or New badge, the heart, name, brand, pink price with the old price, and a cart button;
+    - a product with options opens a variant picker sheet instead of guessing a SKU; with Shop filters set, it preselects the matching option.
+  - `components/search-suggest.tsx`:
+    - the shop index adds brands and SKUs and lists only active products;
+    - `live` mode filters the grid as you type;
+    - Escape no longer clears the box.
+  - Header: a search icon on phones. The bottom bar shows a cart count badge and highlights Shop.
+  - `Pagination` gains `anchor`, so shop page links jump to the grid.
+  - Removed `components/shop/sort-select.tsx`, replaced by `SortMenu`.
+  - Migration `20261106090000_brands_featured_rank.sql`.
+- Why: Nicholas asked for a modern mobile Shop page that reaches products straight away.
+- Tested in the browser:
+  - 375, 390, 430, 768, 1024 and 1440 px: no horizontal overflow; 2, 2, 2, 3, 3 (sidebar) and 3 columns, the last now 4 from 1280 px;
+  - live search ("wig" → 10 products, no Enter) and SKU search;
+  - dependent filters (Wigs offers only wig colours and lengths);
+  - quick taps on colour then length keep both;
+  - chips;
+  - the variant picker adds the exact variant;
+  - search → filter → page 2 → scroll → product → Back restores sort, filters, page and scroll (1300 px);
+  - the migration in a rolled-back batch.
+- Follow-ups:
+  - an admin control for featured brands;
+  - move catalogue filtering into the database when it grows.
+
 ## 2026-11-03: Claude: Storefront footer revamp and policy pages
 - PR: (this PR, branch `claude/footer-revamp`)
 - Changed:

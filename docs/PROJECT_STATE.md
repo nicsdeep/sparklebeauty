@@ -215,6 +215,7 @@ Migrations, in order:
 26. `20261104120000_pos_suspended_sales.sql`: suspended POS sales. `pos_suspensions` / `pos_suspension_items` / `pos_suspension_events` (staff read only; changes via functions). `pos_suspend_sale()` holds stock in `inventory_levels.reserved` for 24 h; `pos_extend_suspension()`, `pos_release_suspension()`; `pos_complete_suspended_sale()` releases the hold and records the sale in one transaction; `expire_pos_suspensions()` runs every minute via pg_cron (and when a till lists suspensions).
 27. `20261105090000_product_combo_options_barcode.sql`: `admin_create_product()` / `admin_update_product()` accept two-part options (`colour_length`, `colour_size`; rows carry `option` + `option2`; the variant is named "Colour · Length") and an optional unique `barcode` per variant. Editing no longer clears the attributes the option type doesn't use (it used to wipe a wig's colour when saved by length).
 28. `20261105120000_social_tiktok_youtube.sql`: `store_settings.tiktok_url` and `youtube_url` (nullable), set in Admin → Settings. The footer shows a social icon only for links that are set.
+29. `20261106090000_brands_featured_rank.sql`: `brands.featured_rank` (null = not featured) orders the Shop page's "Shop by Brands" row. It is set for L'Oréal Paris, Garnier, Nivea and Maybelline (Nicholas's choice). There's no admin screen for it yet.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -309,6 +310,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 ## Known issues
 
+- **Featured brands have no admin screen.** `brands.featured_rank` is set by migration. Add a control (e.g. under Products) when Sparkle wants to change the row.
 - **Policy pages need Sparkle to confirm some terms.** An amber "to be confirmed by Sparkle" tag (`ToConfirm` in `components/shop/policy-page.tsx`) marks each unconfirmed clause on `/delivery`, `/shipping-policy`, `/returns`, `/terms`, `/privacy` and `/faqs`:
   - delivery times and failed deliveries;
   - the return window, non-returnable items, and refund timing;
@@ -324,6 +326,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
   - **Hardcoded Back links (§4):** the shop's order details and Track Order pages, and admin pages other than the POS pages, order, receipt, invoice and customer details. `components/admin/back-link.tsx` covers admin only; the storefront has no equivalent yet.
   - **Filters and search on admin lists (§3, §10):** most keep `?q=` and filters in the URL already, but they haven't all been checked against the doctrine.
   - **Searchable combobox not used everywhere yet (§22, §23, §35):** the shared `components/combobox.tsx` is used by the POS filters and the product form's category. Short fixed lists are fine as plain `<select>`s (tax type, discount type, staff role, page size, Recent Sales method and channel). Still to convert: the POS customer picker, which searches as you type but has no arrow-key navigation.
+  - **Shop catalogue filtering (§8, §36):** the Shop page has pages of 20 now, but `listProducts()` still loads every active product and filters, counts and pages them on the server in JavaScript (`lib/shop-filters.ts`). That's fine at 74 products. Move it to database queries before the catalogue gets large.
   - **Searching in the browser (§36):** the POS loads the whole catalogue into the till on purpose, so it can sell offline. The admin and shop header search (`components/search-suggest.tsx`) loads products, categories and customers once per tab. That's fine at today's size, but it needs to move to database search, debounced and with stale requests cancelled, before the catalogue or customer list grows into the thousands.
   - **Checkout town/county (§22):** free-text inputs, not a searchable list of Kenyan counties and towns.
 

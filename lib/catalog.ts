@@ -98,6 +98,16 @@ export const getCategories = cache(async (): Promise<Category[]> => {
   return (data ?? []) as Category[];
 });
 
+export type FeaturedBrand = { name: string; logo_url: string | null };
+
+/** Brands for the Shop page's "Shop by Brands" row, in brands.featured_rank order. */
+export async function getFeaturedBrands(limit = 4): Promise<FeaturedBrand[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("brands").select("name, logo_url").eq("is_active", true)
+    .not("featured_rank", "is", null).order("featured_rank").limit(limit);
+  return error ? [] : (data ?? []);
+}
+
 export type ProductFilters = { category?: string; q?: string; offers?: boolean; brand?: string; sort?: string; featured?: boolean; limit?: number; includeHidden?: boolean };
 
 export async function listProducts(filters: ProductFilters = {}): Promise<Product[]> {
@@ -119,7 +129,7 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
 
   if (filters.q) {
     const words = filters.q.toLowerCase().split(/\s+/).filter(Boolean);
-    products = products.filter((p) => { const text = `${p.name} ${p.brand ?? ""} ${p.category.name}`.toLowerCase(); return words.every((w) => text.includes(w)); });
+    products = products.filter((p) => { const text = `${p.name} ${p.brand ?? ""} ${p.category.name} ${p.variants.map((v) => v.sku).join(" ")}`.toLowerCase(); return words.every((w) => text.includes(w)); });
   }
   if (filters.brand) products = products.filter((p) => p.brand === filters.brand);
   if (filters.offers) products = products.filter((p) => p.variants.some((v) => v.compare_at));
