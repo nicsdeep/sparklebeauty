@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import { Badge, Button, Card, CardHeader, Field, cx, inputClass } from "@/components/ui";
 import { PhotoManager } from "@/components/admin/photo-manager";
+import { Combobox } from "@/components/combobox";
 import { TAX_TYPES, type TaxType } from "@/lib/tax";
 import { createProduct, updateProduct, type ProductInput } from "../actions";
 
@@ -54,6 +55,7 @@ export function ProductForm({ categories, brands, initial = EMPTY_PRODUCT, initi
 
   function submit() {
     setError(null);
+    if (!p.category_slug) { setError("Choose a category."); return; }
     const product = { ...p, benefits: p.benefits.map((b) => b.trim()).filter(Boolean), hair_texture: isHair ? p.hair_texture : "", hair_type: isHair ? p.hair_type : "" };
     const variants = (p.option_type === "none" ? rows.slice(0, Math.max(1, existing)) : rows)
       .map(({ onHand: _onHand, ...r }) => ({ ...r, option: p.option_type === "none" ? "" : r.option }));
@@ -82,17 +84,11 @@ export function ProductForm({ categories, brands, initial = EMPTY_PRODUCT, initi
         )} />
         <div className="grid gap-5 p-5 sm:grid-cols-2">
           <div className="sm:col-span-2"><Field label="Product name"><input value={p.name} onChange={(e) => set({ name: e.target.value })} required className={inputClass} placeholder="e.g. Body Wave Lace Front Wig" /></Field></div>
-          <Field label="Category">
-            <select value={p.category_slug} onChange={(e) => set({ category_slug: e.target.value })} required className={inputClass}>
-              <option value="" disabled>Choose a category</option>
-              {parents.map((c) => {
-                const kids = categories.filter((k) => k.parent === c.slug);
-                return kids.length ? (
-                  <optgroup key={c.slug} label={c.name}>{kids.map((k) => <option key={k.slug} value={k.slug}>{k.name}</option>)}</optgroup>
-                ) : <option key={c.slug} value={c.slug}>{c.name}</option>;
-              })}
-            </select>
-          </Field>
+          <Combobox label="Category" required value={p.category_slug} onChange={(v) => set({ category_slug: v })} allLabel="Choose a category"
+            options={parents.flatMap((c) => {
+              const kids = categories.filter((k) => k.parent === c.slug);
+              return kids.length ? kids.map((k) => ({ value: k.slug, label: k.name, hint: c.name })) : [{ value: c.slug, label: c.name }];
+            })} />
           <Field label="Brand" hint="Pick one or type a new brand.">
             <input value={p.brand} onChange={(e) => set({ brand: e.target.value })} list="brand-list" className={inputClass} autoComplete="off" />
             <datalist id="brand-list">{brands.map((b) => <option key={b} value={b} />)}</datalist>
