@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/admin/back-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Mail, MessageCircle, Phone } from "lucide-react";
@@ -31,7 +32,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
 
   return (
     <div>
-      <Link href="/admin/orders" className="text-sm font-semibold text-brand-700">← Orders</Link>
+      <BackLink fallback="/admin/orders" label="Orders" />
       <div className="mb-6 mt-2 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">Order {order.order_number}</h1>
         <StatusBadge status={status} />

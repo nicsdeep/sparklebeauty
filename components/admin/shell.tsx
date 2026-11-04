@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { SubmitButton } from "@/components/submit-button";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BarChart3, Bell, Boxes, Briefcase, ChevronDown, ExternalLink, FolderTree, Gift, Headset, LayoutDashboard, LogOut, Menu, Package,
   Percent, ReceiptText, Search, Settings, ShoppingCart, Sparkles, Store, Tags, Users, X,
 } from "lucide-react";
 import { LiveRefresh } from "@/components/live-refresh";
+import { NavTrail } from "@/components/admin/back-link";
 import { Logo } from "@/components/logo";
 import { SearchSuggest } from "@/components/search-suggest";
 import { cx } from "@/components/ui";
@@ -188,6 +189,7 @@ export function AdminShell({ user, newOrders, lowStock, alerts, supportHref, chi
           </div>
         </header>
         <LiveRefresh staff />
+        <Suspense><NavTrail /></Suspense>
         <main className="mx-auto max-w-[1440px] px-4 py-6 lg:px-8">{children}</main>
       </div>
     </div>

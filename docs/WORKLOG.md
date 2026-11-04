@@ -15,6 +15,31 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: POS lists and details as pages, not popups
+- PR: (this PR, branch `claude/pos-pages`)
+- Rule (Nicholas): pages for information, small dialogs only for confirmations.
+- New pages inside the admin shell:
+  - `/admin/pos/sales`: Recent Sales. Search covers order, customer and payment reference. Filters: date from/to, payment method, walk-in/registered customer, channel, min/max amount. Paged in the database (10/20/50, default 20), showing e.g. "Showing 1–20 of 30 sales".
+  - `/admin/pos/sales/[number]`: Sale details. Customer, cashier, items, discount, VAT, payments and references, with Print Receipt, View Invoice and Order record.
+  - `/admin/pos/suspended`: Active (soonest expiry first) and History tabs, search, the columns asked for, a live countdown, Resume / Extend / Release / View, and paging.
+  - `/admin/pos/suspended/[reference]`: items held, customer, note and history, plus the actions.
+- Small dialogs only for Extend (new expiry shown first) and Release, in `app/admin/pos/suspension-actions.tsx`. The POS's Recent Sales and Suspended Sales popups are removed (`suspended-sales.tsx` deleted).
+- Back:
+  - `components/admin/back-link.tsx`: `NavTrail` in the admin shell records this tab's pages. `BackLink` reads "← Back to <previous page>" and uses browser history, so search, filters, page and scroll return as they were. Opened directly, it goes to the page's parent.
+  - Used on the new pages and on order, receipt, invoice and customer details.
+- POS cart: kept in sessionStorage (`sparkle-pos-cart-v1`) across pages: lines, customer, discount and the resumed suspension. Resume from the Suspended Sales page opens `/admin/pos?resume=<id>`.
+- Shared: `components/admin/list-controls.tsx` (FilterSelect, FilterInput, Pagination) and `lib/pagination.ts`. `LiveSearch` now resets `?page` when the search changes.
+- Not added: Refund/Return on the sale page, because there's no refund function for completed sales.
+- Tested in the local preview, signed in as admin:
+  - POS (with 1 item in the cart) → Recent Sales → page 2 → sale SPK-1022 → Back landed on `?page=2`.
+  - Search "SPK-1099" → sale → invoice ("Back to Sale SPK-1099") → Back → Back to the POS, with the cart intact.
+  - Suspend → Suspended Sales page (Active (1), countdown) → Resume restored the cart with the "Resumed SUS-001004" note.
+  - Detail page → Release dialog → Released.
+  - Found and fixed two bugs: search kept the old page number; the cart was overwritten as empty on return.
+  - `tsc --noEmit` passes.
+- Earlier PR #51, now confirmed: after its migration was applied, suspend, extend, resume and pay (SPK-1099), automatic expiry by pg_cron, and release were all checked on the live database, with stock correct throughout.
+- Follow-ups: none.
+
 ## 2026-11-04: Claude: POS refinement, suspended sales and search-first
 - PR: (this PR, branch `claude/pos-suspended-sales`)
 - **Suspended sales**, in the database. Migration `20261104120000_pos_suspended_sales.sql`:

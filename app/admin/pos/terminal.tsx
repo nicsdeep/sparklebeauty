@@ -7,9 +7,9 @@ import {
   Banknote, BadgePercent, CheckCircle2, ChevronDown, CircleAlert, Clock, CreditCard, History, Mail, Minus, PackagePlus, PauseCircle, Plus,
   Landmark, Printer, RefreshCw, ScanBarcode, Search, ShoppingCart, Smartphone, Trash2, UserPlus, UserRound, WifiOff, X,
 } from "lucide-react";
-import { Badge, Button, cx, inputClass } from "@/components/ui";
+import { Badge, Button, buttonClass, cx, inputClass } from "@/components/ui";
 import { ProductImage } from "@/components/shop/product-image";
-import { channelMeta, formatDateTime, kes, maskPhone, PAYMENT_LABEL } from "@/lib/format";
+import { formatDateTime, kes, maskPhone, PAYMENT_LABEL } from "@/lib/format";
 import { useLiveTopic } from "@/lib/live";
 import { orderTax, type TaxType } from "@/lib/tax";
 import { vatHeading } from "@/lib/invoices";
@@ -20,11 +20,10 @@ import { breakFor, ruleLabel, type PriceBreak, type PriceRule, type QuoteLine } 
 import { incentives } from "@/lib/incentives";
 import type { StoreSettings } from "@/lib/store-types";
 import {
-  completeSale, extendSuspension, listSuspensions, posPriceSheet, posQuote, releaseSuspension, suspendSale,
+  completeSale, listSuspensions, posPriceSheet, posQuote, releaseSuspension, suspendSale,
   type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment, type PosSaleResult, type PosSuspension,
 } from "../actions";
 import { loadQueue, newClientRef, saveQueue, type QueuedSale } from "./offline-queue";
-import { SuspendedSales } from "./suspended-sales";
 import { ProductFinder } from "./product-finder";
 
 export type PosItem = {
@@ -37,7 +36,6 @@ export type PosItem = {
 };
 export type PosCustomer = { id: string; name: string; phone: string; email: string; points: number; business: string | null };
 export type PosCategory = { slug: string; name: string };
-export type PosRecentSale = { id: string; number: string; customer: string; channel: string; total: number; at: string; methods: string[] };
 
 type Line = { variantId: string; qty: number };
 /** One part of the payment. amount "" means "whatever is left to pay" (for M-Pesa, card or bank). */
@@ -47,6 +45,7 @@ type Receipt = ReceiptData & { customerRef: PosCustomer | null };
 type Sheet = Record<string, PriceBreak[]>;
 
 const MAX_TENDERS = 5;
+const CART_KEY = "sparkle-pos-cart-v1";
 const METHODS = [["mpesa", Smartphone], ["cash", Banknote], ["card", CreditCard], ["bank_transfer", Landmark]] as const;
 const SHORT_LABEL: Record<PosPaymentMethod, string> = { mpesa: "M-Pesa", cash: "Cash", card: "Card", bank_transfer: "Bank" };
 const isMpesaCode = (v: string) => /^[A-Z0-9]{8,12}$/i.test(v.trim());
@@ -65,9 +64,9 @@ function settle(tenders: Tender[], total: number) {
 }
 const isNetworkError = (e: unknown) => e instanceof TypeError || /fetch|network|failed to fetch/i.test(String((e as Error)?.message ?? e));
 
-export function PosTerminal({ items, categories, customers, walkInSheet, threshold, recentSales, store, cashier, activity }: {
+export function PosTerminal({ items, categories, customers, walkInSheet, threshold, store, cashier, activity }: {
   items: PosItem[]; categories: PosCategory[]; customers: PosCustomer[]; walkInSheet: Sheet; threshold: number;
-  recentSales: PosRecentSale[]; store: StoreSettings; cashier: string | null;
+  store: StoreSettings; cashier: string | null;
   /** Variant ids by real sales: best sellers (90 days), fast movers (7 days), this cashier's recent sales. */
   activity: { quick: string[]; fast: string[]; recent: string[] };
 }) {
@@ -88,7 +87,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   // Browsing
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerOpen, setCustomerOpen] = useState(false);
-  const [panel, setPanel] = useState<null | "recent" | "suspended" | "suspend" | "manual" | "sync">(null);
+  const [panel, setPanel] = useState<null | "suspend" | "manual" | "sync">(null);
   // Below the lg breakpoint the sale panel is a drawer opened from the bar at the bottom.
   const [cartOpen, setCartOpen] = useState(false);
   const [added, setAdded] = useState<string | null>(null);
@@ -341,9 +340,10 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const refreshSuspensions = useCallback(async () => {
     try {
       const res = await listSuspensions();
-      if (res.ok) setSuspensions(res.data);
+      if (res.ok) { setSuspensions(res.data); setSuspensionsLoaded(true); }
     } catch (e) { if (isNetworkError(e)) setServerOk(false); }
   }, []);
+  const [suspensionsLoaded, setSuspensionsLoaded] = useState(false);
   useEffect(() => { refreshSuspensions(); }, [refreshSuspensions]);
   // Another till suspended, resumed or released one: re-read the list.
   useLiveTopic("admin", () => refreshSuspensions());
@@ -352,11 +352,11 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   useEffect(() => { if (nextExpiry <= now.getTime()) refreshSuspensions(); }, [now, nextExpiry, refreshSuspensions]);
   // The suspension in the cart ended elsewhere (released, expired): its stock is no longer held.
   useEffect(() => {
-    if (resumed && !suspensions.some((s) => s.id === resumed.id)) {
+    if (suspensionsLoaded && resumed && !suspensions.some((s) => s.id === resumed.id)) {
       setResumed(null);
       setError(`${resumed.reference} has ended; its items are no longer held. Check stock before taking payment.`);
     }
-  }, [suspensions, resumed]);
+  }, [suspensions, suspensionsLoaded, resumed]);
   /** Units of this product the resumed suspension already holds (they count as available for it). */
   const heldFor = (id: string) => resumed?.items.find((i) => i.variantId === id)?.quantity ?? 0;
 
@@ -382,26 +382,51 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     } finally { setPending(false); }
   }
   function resume(s: PosSuspension) {
-    if (lines.length && resumed?.id !== s.id && !window.confirm("Replace the current cart with this suspended sale?")) return;
     setLines(s.items.filter((i) => itemsBy.has(i.variantId)).map((i) => ({ variantId: i.variantId, qty: i.quantity })));
     setDiscountPct(s.discountPct ? String(s.discountPct) : "");
     const c = customers.find((x) => x.id === s.customerId) ?? null;
     setCustomer(c); setTenders([newTender("mpesa", c?.phone ?? s.customerPhone ?? "")]);
     setResumed(s); setMpesaSent(false); setConfirmed(null); setError(null); setPanel(null);
   }
-  async function release(s: PosSuspension) {
-    if (!window.confirm(`Release ${s.reference}? Its items go back on sale.`)) return;
-    const res = await releaseSuspension(s.id);
-    if (!res.ok) { setError(res.error); return; }
-    if (resumed?.id === s.id) { setResumed(null); resetSale(); }
-    refreshSuspensions(); router.refresh();
-  }
-  async function extend(s: PosSuspension, until: string) {
-    const res = await extendSuspension(s.id, until);
-    if (!res.ok) { setError(res.error); return false; }
-    refreshSuspensions();
-    return true;
-  }
+
+  // The sale being built survives going to another page (Recent Sales, a sale, Suspended Sales)
+  // and back: kept for this browser tab only. Stock and prices are re-read from the database.
+  // Saving starts only after the saved cart has been applied (else the empty first render overwrites it).
+  const [restored, setRestored] = useState(false);
+  const [pendingResume, setPendingResume] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(CART_KEY) ?? "null") as { lines: Line[]; customerId: string | null; discountPct: string; resumedId: string | null } | null;
+      if (saved) {
+        setLines(saved.lines.filter((l) => itemsBy.has(l.variantId)));
+        setDiscountPct(saved.discountPct);
+        const c = customers.find((x) => x.id === saved.customerId) ?? null;
+        setCustomer(c);
+        if (c?.phone) setTenders([newTender("mpesa", c.phone)]);
+        if (saved.resumedId) setPendingResume(saved.resumedId);
+      }
+    } catch { /* storage unavailable: start empty */ }
+    // Resume chosen on the Suspended Sales page (/admin/pos?resume=<id>).
+    const fromLink = new URLSearchParams(window.location.search).get("resume");
+    if (fromLink) { setPendingResume(fromLink); router.replace("/admin/pos", { scroll: false }); }
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!restored) return;
+    try { sessionStorage.setItem(CART_KEY, JSON.stringify({ lines, customerId: customer?.id ?? null, discountPct, resumedId: resumed?.id ?? null })); } catch { /* ignore */ }
+  }, [restored, lines, customer, discountPct, resumed]);
+  // Once the suspended sales are loaded, resume the one asked for (or keep the one already in the cart).
+  useEffect(() => {
+    if (!pendingResume || !suspensionsLoaded) return;
+    const s = suspensions.find((x) => x.id === pendingResume);
+    setPendingResume(null);
+    if (!s) { setError("That suspended sale has ended."); return; }
+    if (resumed?.id === s.id) return;
+    if (lines.length && !resumed && !window.confirm(`Replace the current cart with ${s.reference}?`)) return;
+    resume(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingResume, suspensionsLoaded, suspensions]);
 
   // Keyboard shortcuts (shown on the quick-action buttons).
   const actions = {
@@ -410,7 +435,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     F4: () => discountRef.current?.focus(),
     F5: () => window.open("/admin/customers/new", "_blank"),
     F6: () => lines.length && setPanel("suspend"),
-    F7: () => setPanel("suspended"),
+    F7: () => router.push("/admin/pos/suspended"),
   } as Record<string, () => void>;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (actions[e.key]) { e.preventDefault(); actions[e.key](); } };
@@ -459,10 +484,10 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
         <section className="min-w-0 space-y-4">
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={newSale}><Plus className="size-4" /> New Sale</Button>
-            <Button variant="ghost" className="border border-line bg-white" onClick={() => setPanel("recent")}><History className="size-4" /> Recent Sales</Button>
-            <Button variant="ghost" className={cx("border bg-white", suspensions.length ? "border-brand-200 text-brand-700" : "border-line")} onClick={() => setPanel("suspended")}>
+            <Link href="/admin/pos/sales" className={cx(buttonClass({ variant: "ghost" }), "border border-line bg-white")}><History className="size-4" /> Recent Sales</Link>
+            <Link href="/admin/pos/suspended" className={cx(buttonClass({ variant: "ghost" }), "border bg-white", suspensions.length ? "border-brand-200 text-brand-700" : "border-line")}>
               <PauseCircle className="size-4" /> Suspended Sales ({suspensions.length})
-            </Button>
+            </Link>
           </div>
 
           <ProductFinder items={items} categories={categories} sheet={sheet} activity={activity} online={online} searchRef={searchRef} qtyOf={qtyOf} onAdd={(i) => addItem(i)} />
@@ -615,24 +640,9 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
         <div className="fixed inset-0 z-40 flex items-start justify-center bg-ink/40 p-4 pt-20" role="dialog" aria-modal="true" onClick={() => setPanel(null)}>
           <div className="w-full max-w-lg rounded-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">{{ recent: "Recent Sales", suspended: `Suspended Sales (${suspensions.length})`, suspend: "Suspend Sale", manual: "Manual Product", sync: "Till Connection" }[panel]}</h2>
+              <h2 className="text-lg font-bold">{{ suspend: "Suspend Sale", manual: "Manual Product", sync: "Till Connection" }[panel]}</h2>
               <button onClick={() => setPanel(null)} aria-label="Close" className="p-1"><X className="size-5" /></button>
             </div>
-            {panel === "recent" && (
-              <ul className="max-h-96 divide-y divide-line overflow-y-auto">
-                {recentSales.map((s) => (
-                  <li key={s.id}><Link href={`/admin/orders/${s.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:bg-surface">
-                    <span><span className="font-semibold text-brand-700">{s.number}</span> <Badge tone={channelMeta(s.channel).tone}>{channelMeta(s.channel).label}</Badge>
-                      <span className="block text-sm text-ink-muted">{s.customer} · {formatDateTime(s.at)}{s.methods.length ? ` · ${s.methods.map((m) => PAYMENT_LABEL[m as PosPaymentMethod] ?? m).join(" + ")}` : ""}</span></span>
-                    <span className="font-bold">{kes(s.total)}</span></Link></li>
-                ))}
-                {!recentSales.length && <li className="py-6 text-center text-ink-muted">No till sales yet.</li>}
-              </ul>
-            )}
-            {panel === "suspended" && (
-              <SuspendedSales list={suspensions} now={now} itemsBy={itemsBy} resumedId={resumed?.id ?? null}
-                onResume={resume} onRelease={release} onExtend={extend} />
-            )}
             {panel === "suspend" && (
               <div className="space-y-3 text-[15px]">
                 <p className="text-ink-muted">

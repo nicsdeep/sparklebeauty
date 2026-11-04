@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/admin/back-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Cake, Mail, MessageCircle, Phone, Tag, PackageCheck } from "lucide-react";
@@ -47,7 +48,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/customers" className="text-sm font-semibold text-brand-700">← Customers</Link>
+      <BackLink fallback="/admin/customers" label="Customers" />
       <Card className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>

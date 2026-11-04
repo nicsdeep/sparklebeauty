@@ -27,6 +27,7 @@ export function LiveSearch({ placeholder, param = "q", className, autoFocus }: {
     const t = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
       if (value.trim()) next.set(param, value.trim()); else next.delete(param);
+      next.delete("page"); // a new search starts on the first page of results
       startTransition(() => router.replace(`${pathname}${next.size ? `?${next}` : ""}`, { scroll: false }));
       typing.current = false;
     }, 250);
