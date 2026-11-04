@@ -119,6 +119,7 @@ Set these in `.env.local` locally and in Vercel → Settings → Environment Var
 | `NEXT_PUBLIC_SUPABASE_URL` | client + server | No |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server (the project's publishable key) | No: RLS and the database functions protect data |
 | `DEMO_PASSWORD` | server only | **Yes**: shared password of the demo accounts, used by the one-click demo sign-in. Never prefix with `NEXT_PUBLIC_` |
+| `CRON_SECRET` | server only (Vercel Production) | **Yes**: protects `/api/health`, the daily keep-alive check. Vercel Cron sends it as `Authorization: Bearer …`. Never prefix with `NEXT_PUBLIC_` |
 
 The app does **not** use the Supabase service-role key.
 
@@ -224,6 +225,7 @@ Migrations, in order:
 29. `20261106090000_brands_featured_rank.sql`: `brands.featured_rank` (null = not featured) orders the Shop page's "Shop by Brands" row. It is set for L'Oréal Paris, Garnier, Nivea and Maybelline (Nicholas's choice). There's no admin screen for it yet.
 30. `20261107090000_announcements.sql`: `announcements` holds the storefront's rotating top bar. Columns: `text`, `mobile_text`, `icon` (a checked list), `href`, `is_active`, `sort_order`. In the text, `*phrase*` is highlighted and `{free_threshold}` becomes the free-delivery amount. Anyone can read active rows, and only admins can change them (Admin → Settings → Announcement bar). It is seeded with 4 messages.
 31. `20261107120000_announcements_updated_by_index.sql`: indexes `announcements.updated_by`. It was the only unindexed foreign key.
+32. `20261108090000_health_ping.sql`: `public.ping()` returns `now()`, reads no tables and is executable by anon and authenticated. The daily keep-alive check calls it (`docs/supabase-keep-alive.md`).
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -315,6 +317,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 | 2026-10-29 | The O2C demo migrations were applied to the live database before their PR merged, to build and test the demo in time. The database held no real data | Nicholas approved |
 | 2026-11-04 | `UX_NAVIGATION_DOCTRINE.md` is a binding standard: pages for major work, drawers for context, tabs for related sections, inline for small actions, modals only for short confirmations; Back follows the real path; state is preserved; large lists are paged in the database. Every PR that changes user interaction answers its UX review (PR template) | Nicholas |
 | 2026-11-04 | Doctrine rules 22–38 added: large lists are searchable comboboxes (one shared component), filter values come from the database and depend on each other, active filters show as chips, product search and POS cards are variant-first (variant, SKU, price, compact stock), large-dataset search runs in the database | Nicholas |
+| 2026-11-03 | While on the Supabase free tier, a daily Vercel Cron job calls a read-only health check (`/api/health` → `ping()`) so the project isn't paused. It never writes data. Upgrade the plan when Sparkle is production-critical | Nicholas |
 
 ## Known issues
 
