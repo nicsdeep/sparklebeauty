@@ -104,6 +104,12 @@ No chart library: charts are simple components in `components/admin/charts.tsx`.
 - PDF: `lib/invoice-pdf.tsx`, made in the browser when someone clicks View PDF (opens in a new tab, where it can be printed) or Download PDF (`INV-…_Sparkle.pdf`), by `components/invoice-actions.tsx`. Same layout as the screen. The page loads the data through `lib/invoice-data.ts`; RLS decides who can open which invoice. Server-side generation was tried first and failed on Vercel (500) while working locally; making it in the browser avoids that.
 - **Dependency:** `@react-pdf/renderer` 4.9.0, added 2026-10-31 to make real A4 PDFs (the browser's print-to-PDF depends on the user's browser and printer settings). It is loaded only when a PDF is requested.
 
+### Checks
+
+- `npm run typecheck`: TypeScript.
+- `npm run lint`: ESLint 9 with the Next.js rules (`eslint-config-next`, core web vitals and TypeScript), in `eslint.config.mjs`. `next build` also runs it, so a lint error fails the Vercel build. Dev dependencies `eslint`, `eslint-config-next` and `@eslint/eslintrc` were added for this (2026-11-03).
+- Database performance: the Supabase advisor tool isn't available to agents, so the equivalent checks are run with SQL. They cover unindexed foreign keys, RLS policies that re-evaluate `auth.uid()` per row, multiple permissive policies, and duplicate indexes. All were clean on 2026-11-03 after the index above.
+
 ## Environment variables
 
 Set these in `.env.local` locally and in Vercel → Settings → Environment Variables:
@@ -217,6 +223,7 @@ Migrations, in order:
 28. `20261105120000_social_tiktok_youtube.sql`: `store_settings.tiktok_url` and `youtube_url` (nullable), set in Admin → Settings. The footer shows a social icon only for links that are set.
 29. `20261106090000_brands_featured_rank.sql`: `brands.featured_rank` (null = not featured) orders the Shop page's "Shop by Brands" row. It is set for L'Oréal Paris, Garnier, Nivea and Maybelline (Nicholas's choice). There's no admin screen for it yet.
 30. `20261107090000_announcements.sql`: `announcements` holds the storefront's rotating top bar. Columns: `text`, `mobile_text`, `icon` (a checked list), `href`, `is_active`, `sort_order`. In the text, `*phrase*` is highlighted and `{free_threshold}` becomes the free-delivery amount. Anyone can read active rows, and only admins can change them (Admin → Settings → Announcement bar). It is seeded with 4 messages.
+31. `20261107120000_announcements_updated_by_index.sql`: indexes `announcements.updated_by`. It was the only unindexed foreign key.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -311,6 +318,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 ## Known issues
 
+- **`npm audit` (production): 2 advisories inside Next.js's own dependencies.** They are a `postcss` copy bundled with `next`, rated high, and `minimatch`, rated moderate. npm's only fix is a forced major upgrade, so they are left for a planned Next.js upgrade. The other dev-only advisories come from ESLint tooling and don't ship to the site.
 - **Featured brands have no admin screen.** `brands.featured_rank` is set by migration. Add a control (e.g. under Products) when Sparkle wants to change the row.
 - **Policy pages need Sparkle to confirm some terms.** An amber "to be confirmed by Sparkle" tag (`ToConfirm` in `components/shop/policy-page.tsx`) marks each unconfirmed clause on `/delivery`, `/shipping-policy`, `/returns`, `/terms`, `/privacy` and `/faqs`:
   - delivery times and failed deliveries;

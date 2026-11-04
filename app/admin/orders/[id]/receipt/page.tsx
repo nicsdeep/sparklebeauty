@@ -1,5 +1,4 @@
 import { BackLink } from "@/components/admin/back-link";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReceiptActions } from "@/components/receipt-actions";
 import { ReceiptDocument } from "@/components/receipt-document";

@@ -90,7 +90,7 @@ export function Combobox({ label, value, options, onChange, allLabel, placeholde
           onKeyDown={(e) => { if (e.key === "ArrowDown" || (e.key.length === 1 && !e.metaKey && !e.ctrlKey)) { e.preventDefault(); openList(); if (e.key.length === 1) setQuery(e.key); } }}
           aria-haspopup="listbox" aria-expanded={open} aria-labelledby={`${id}-label ${id}-value`}
           className={cx("flex w-full items-center gap-2 rounded-xl border bg-white pl-3 text-left transition", variant === "form" ? "h-11 text-[15px]" : "h-10 text-sm", value ? "pr-16" : "pr-9",
-            error ? "border-rose-fg" : open ? "border-ink/40" : "border-line hover:border-ink/30")} aria-invalid={!!error}>
+            error ? "border-rose-fg" : open ? "border-ink/40" : "border-line hover:border-ink/30")} aria-describedby={error ? `${id}-error` : undefined}>
           <span id={`${id}-value`} className={cx("truncate", !selected && "text-ink-muted")}>{selected ? selected.label : allLabel ?? "Choose…"}</span>
         </button>
         {value && !required && (
@@ -124,7 +124,7 @@ export function Combobox({ label, value, options, onChange, allLabel, placeholde
           </ul>
         </div>
       )}
-      {error && <p className="mt-1 text-xs text-rose-fg" role="alert">{error}</p>}
+      {error && <p id={`${id}-error`} className="mt-1 text-xs text-rose-fg" role="alert">{error}</p>}
     </div>
   );
 }

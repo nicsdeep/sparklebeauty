@@ -1,5 +1,4 @@
 import { BackLink } from "@/components/admin/back-link";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InvoiceActions } from "@/components/invoice-actions";
 import { InvoiceDocument } from "@/components/invoice-document";
