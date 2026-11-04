@@ -15,6 +15,30 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: Two-part product options and barcodes
+- PR: (this PR, branch `claude/combo-options-barcode`)
+- Changed:
+  - Migration `20261105090000_product_combo_options_barcode.sql` redefines `admin_update_product()` and `admin_create_product()`:
+    - option types `colour_length` and `colour_size`: rows carry `option` (the colour) and `option2` (the length or size), and the variant name is "Colour · Length";
+    - an optional `barcode` per variant, checked as unique;
+    - **fix:** editing no longer clears the attributes the option type doesn't use. Before, saving a seeded wig by length wiped its colour; 41 variants have both a colour and a length.
+  - `app/admin/products/product-form.tsx`:
+    - "Colour + Length" and "Colour + Size" option types, each row with a searchable Colour and Length/Size, using catalogue values or new ones;
+    - a Barcode column with validation (4–32 letters or digits);
+    - Pricing shows the SKU and barcode;
+    - the preview and labels show "Colour · Length".
+  - Edit page: loads barcodes and recognises two-part options (name = "colour · length").
+  - `ProductInput` gains `option2` and `barcode`.
+- Why: Nicholas asked for Colour + Length combinations and barcodes, after the product workspace PR.
+- Tested:
+  - **Migration, on the live database in one batch that rolled back** (checked afterwards: no test products left):
+    - a Colour + Length product saved its variants as "Brown · 18"" (color Brown, length 18", barcode ZZTEST0001) and "Black · 22"";
+    - saving Body Wave Lace Front Wig by length kept "Natural Black" on all 3 variants;
+    - a duplicate barcode was refused.
+  - **Form, in the local preview:** Colour + Length shows Colour and Length columns, with lengths from the catalogue (10"–24"). Body Wave's edit page loads its barcodes. `tsc --noEmit` passes.
+  - **Not tested yet:** saving from the form with the new types (it needs the migration applied after merge).
+- Follow-ups: apply the migration after merge.
+
 ## 2026-11-04: Claude: Products list redesign
 - PR: (this PR, branch `claude/products-list`)
 - Changed:

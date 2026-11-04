@@ -354,7 +354,8 @@ export type ProductInput = {
     /** KRA eTIMS tax type (B = VAT 16%). Saved to products.tax_type after the product itself. */
     tax_type: TaxType;
   };
-  variants: { id?: string; option: string; sku: string; retail: string; wholesale: string; stock: string; reorder_level: string; active: boolean }[];
+  /** option2: the second part of a two-part option (colour_length, colour_size); barcode is optional. */
+  variants: { id?: string; option: string; option2?: string; sku: string; barcode?: string; retail: string; wholesale: string; stock: string; reorder_level: string; active: boolean }[];
 };
 
 export async function createProduct(input: ProductInput): Promise<ActionResult<{ id: string }>> {

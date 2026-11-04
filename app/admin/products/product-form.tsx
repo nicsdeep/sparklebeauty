@@ -23,15 +23,21 @@ type Category = { slug: string; name: string; parent: string | null };
 export type ProductRow = ProductInput["variants"][number] & { onHand?: number };
 export type ProductFormValues = Omit<ProductInput["product"], "option_type"> & { option_type: string };
 
-const emptyRow = (): ProductRow => ({ option: "", sku: "", retail: "", wholesale: "", stock: "0", reorder_level: "5", active: true });
-// The option types the database functions support (one per product).
+const emptyRow = (): ProductRow => ({ option: "", option2: "", sku: "", barcode: "", retail: "", wholesale: "", stock: "0", reorder_level: "5", active: true });
+// The option types the database functions support. Two-part types (colour + length / size) give each
+// variant both values, e.g. "Natural Black · 18\"".
 const OPTION_TYPES = [
   { value: "none", label: "No options", hint: "One item" },
   { value: "colour", label: "Colour", hint: "e.g. Natural Black" },
   { value: "length", label: "Length", hint: "e.g. 18\"" },
   { value: "shade", label: "Shade", hint: "e.g. 230 Natural Buff" },
   { value: "size", label: "Size / pack size", hint: "e.g. 100ml" },
+  { value: "colour_length", label: "Colour + Length", hint: "e.g. Brown · 18\"" },
+  { value: "colour_size", label: "Colour + Size", hint: "e.g. Rose · 50ml" },
 ];
+/** The second part of a two-part option type, and where its values come from. */
+const SECOND: Record<string, { label: string; values: string }> = { colour_length: { label: "Length", values: "length" }, colour_size: { label: "Size", values: "size" } };
+const optionLabel = (kind: string, r: { option: string; option2?: string }) => (SECOND[kind] ? [r.option.trim(), (r.option2 ?? "").trim()].filter(Boolean).join(" · ") : r.option.trim());
 export const EMPTY_PRODUCT: ProductFormValues = {
   name: "", category_slug: "", brand: "", description: "", images: [], is_featured: false, is_active: true,
   benefits: [], how_to_use: "", ingredients: "", option_type: "none", hair_texture: "", hair_type: "", tax_type: "B",
@@ -55,11 +61,14 @@ function validate(p: ProductFormValues, rows: ProductRow[]): Errors {
   const seen = new Set<string>();
   rows.forEach((r, i) => {
     if (p.option_type !== "none") {
-      const o = r.option.trim().toLowerCase();
-      if (!o) e[`variants.${i}.option`] = "Enter the option, e.g. 18\" or Natural Black";
+      const second = SECOND[p.option_type];
+      const o = optionLabel(p.option_type, r).toLowerCase();
+      if (!r.option.trim()) e[`variants.${i}.option`] = second ? "Choose the colour" : "Enter the option, e.g. 18\" or Natural Black";
+      else if (second && !(r.option2 ?? "").trim()) e[`variants.${i}.option2`] = `Choose the ${second.label.toLowerCase()}`;
       else if (seen.has(o)) e[`variants.${i}.option`] = "This option is already listed";
       seen.add(o);
     }
+    if (r.barcode && !/^[0-9A-Za-z-]{4,32}$/.test(r.barcode.trim())) e[`variants.${i}.barcode`] = "Use 4–32 letters or digits";
     const retail = num(r.retail), wholesale = num(r.wholesale);
     if (!(retail > 0)) e[`pricing.${i}.retail`] = "Retail price is required";
     if (!(wholesale > 0)) e[`pricing.${i}.wholesale`] = "Wholesale price is required";
@@ -168,7 +177,7 @@ export function ProductForm({ categories, brands, optionValues, initial = EMPTY_
   }
 
   const visibleRows = rows.map((r, i) => ({ r, i })).filter(({ r }) => !variantQuery.trim() || `${r.option} ${r.sku}`.toLowerCase().includes(variantQuery.trim().toLowerCase()));
-  const label = (r: ProductRow, i: number) => (p.option_type === "none" ? "Single item" : r.option.trim() || `Option ${i + 1}`);
+  const label = (r: ProductRow, i: number) => (p.option_type === "none" ? "Single item" : optionLabel(p.option_type, r) || `Option ${i + 1}`);
   const pr = rows[Math.min(previewRow, rows.length - 1)] ?? rows[0];
   const previewStock = pr ? (pr.id ? pr.onHand ?? 0 : Math.max(0, num(pr.stock) || 0)) : 0;
   const stock = stockText(previewStock, previewStock > 0 && previewStock <= (num(pr?.reorder_level ?? "0") || 0));
@@ -181,7 +190,7 @@ export function ProductForm({ categories, brands, optionValues, initial = EMPTY_
         <div className="min-w-0">
           <p className="line-clamp-2 font-semibold leading-snug">{p.name || <span className="text-ink-muted">Product name</span>}</p>
           {p.brand && <p className="text-sm text-ink-muted">{p.brand}</p>}
-          {p.option_type !== "none" && pr?.option && <p className="text-sm">{pr.option}</p>}
+          {p.option_type !== "none" && pr?.option && <p className="text-sm">{optionLabel(p.option_type, pr)}</p>}
           <p className="mt-1 text-lg font-bold text-brand-700 tabular-nums">{num(pr?.retail ?? "") > 0 ? kes(num(pr!.retail)) : "KES –"}</p>
           <p className={cx("text-xs font-medium", stock.className)}>{stock.text}</p>
         </div>
@@ -302,21 +311,33 @@ export function ProductForm({ categories, brands, optionValues, initial = EMPTY_
                 <table className="w-full text-left text-sm">
                   <thead className="bg-surface text-xs text-ink-muted"><tr>
                     <th className="px-3 py-2 font-medium">#</th>
-                    {p.option_type !== "none" && <th className="px-3 py-2 font-medium">{OPTION_TYPES.find((o) => o.value === p.option_type)?.label}</th>}
-                    <th className="px-3 py-2 font-medium">SKU</th><th className="px-3 py-2 font-medium">Status</th><th className="px-3 py-2" /></tr></thead>
+                    {p.option_type !== "none" && <th className="px-3 py-2 font-medium">{SECOND[p.option_type] ? "Colour" : OPTION_TYPES.find((o) => o.value === p.option_type)?.label}</th>}
+                    {SECOND[p.option_type] && <th className="px-3 py-2 font-medium">{SECOND[p.option_type].label}</th>}
+                    <th className="px-3 py-2 font-medium">SKU</th><th className="px-3 py-2 font-medium">Barcode</th><th className="px-3 py-2 font-medium">Status</th><th className="px-3 py-2" /></tr></thead>
                   <tbody>
                     {visibleRows.map(({ r, i }) => (
                       <tr key={r.id ?? `new-${i}`} className={cx("border-t border-line align-top", !r.active && "bg-surface/70")}>
                         <td className="px-3 py-2.5 text-ink-muted">{i + 1}</td>
                         {p.option_type !== "none" && (
                           <td className="min-w-48 px-3 py-2">
-                            <Combobox label={`Option ${i + 1}`} hideLabel value={r.option} onChange={(v) => setRow(i, { option: v })} allowCustom allLabel="Choose or type"
-                              options={(optionValues[p.option_type] ?? []).map((v) => ({ value: v, label: v }))} error={err(`variants.${i}.option`)} />
+                            <Combobox label={SECOND[p.option_type] ? `Colour for option ${i + 1}` : `Option ${i + 1}`} hideLabel value={r.option} onChange={(v) => setRow(i, { option: v })} allowCustom allLabel="Choose or type"
+                              options={(optionValues[SECOND[p.option_type] ? "colour" : p.option_type] ?? []).map((v) => ({ value: v, label: v }))} error={err(`variants.${i}.option`)} />
+                          </td>
+                        )}
+                        {SECOND[p.option_type] && (
+                          <td className="min-w-36 px-3 py-2">
+                            <Combobox label={`${SECOND[p.option_type].label} for option ${i + 1}`} hideLabel value={r.option2 ?? ""} onChange={(v) => setRow(i, { option2: v })} allowCustom allLabel="Choose or type"
+                              options={(optionValues[SECOND[p.option_type].values] ?? []).map((v) => ({ value: v, label: v }))} error={err(`variants.${i}.option2`)} />
                           </td>
                         )}
                         <td className="min-w-40 px-3 py-2">
                           <input value={r.sku} onChange={(e) => setRow(i, { sku: e.target.value })} aria-label={`SKU for ${label(r, i)}`}
                             placeholder={r.id ? undefined : "Made for you if empty"} className={cx(inputClass, "h-10 font-mono text-xs")} />
+                        </td>
+                        <td className="min-w-36 px-3 py-2">
+                          <input value={r.barcode ?? ""} onChange={(e) => setRow(i, { barcode: e.target.value })} aria-label={`Barcode for ${label(r, i)}`} placeholder="Optional"
+                            inputMode="numeric" aria-invalid={!!err(`variants.${i}.barcode`)} className={cx(inputClass, "h-10 font-mono text-xs", err(`variants.${i}.barcode`) && "border-rose-fg")} />
+                          {err(`variants.${i}.barcode`) && <p className="mt-1 text-[11px] text-rose-fg">{err(`variants.${i}.barcode`)}</p>}
                         </td>
                         <td className="px-3 py-2.5">{r.id ? (r.active ? <Badge tone="mint">Active</Badge> : <Badge tone="amber">Hidden</Badge>) : <Badge tone="brand">New</Badge>}</td>
                         <td className="px-3 py-2 text-right">
@@ -349,7 +370,7 @@ export function ProductForm({ categories, brands, optionValues, initial = EMPTY_
                   <thead className="bg-surface text-xs text-ink-muted"><tr>
                     <th className="px-3 py-2 font-medium">Option</th><th className="px-3 py-2 text-right font-medium">Retail (KES) *</th><th className="px-3 py-2 text-right font-medium">Wholesale (KES) *</th>
                     <th className="px-3 py-2 text-right font-medium">{existing ? "Stock" : "Opening stock"}</th><th className="px-3 py-2 text-right font-medium">Reorder at</th>
-                    <th className="px-3 py-2 font-medium">SKU</th><th className="px-3 py-2 font-medium">Status</th></tr></thead>
+                    <th className="px-3 py-2 font-medium">SKU / barcode</th><th className="px-3 py-2 font-medium">Status</th></tr></thead>
                   <tbody>
                     {rows.map((r, i) => {
                       const cell = (key: string, value: string, onChange: (v: string) => void, aria: string, step = "any") => (
@@ -370,7 +391,7 @@ export function ProductForm({ categories, brands, optionValues, initial = EMPTY_
                               : cell(`pricing.${i}.stock`, r.stock, (v) => setRow(i, { stock: v }), `Opening stock for ${label(r, i)}`, "1")}
                           </td>
                           <td className="px-3 py-2">{cell(`pricing.${i}.reorder`, r.reorder_level, (v) => setRow(i, { reorder_level: v }), `Reorder level for ${label(r, i)}`, "1")}</td>
-                          <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-ink-muted">{r.sku || "Made on save"}</td>
+                          <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-ink-muted">{r.sku || "Made on save"}{r.barcode && <span className="block">{r.barcode}</span>}</td>
                           <td className="px-3 py-3">{r.active ? <Badge tone="mint">Active</Badge> : <Badge tone="amber">Hidden</Badge>}</td>
                         </tr>
                       );
@@ -378,7 +399,7 @@ export function ProductForm({ categories, brands, optionValues, initial = EMPTY_
                   </tbody>
                 </table>
               </div>
-              <p className="mt-2 text-xs text-ink-muted">{existing ? "Stock for saved options changes through Inventory (Adjust), so every movement is recorded." : "Opening stock is recorded as the first stock movement."} SKUs are edited in Options & Variants.</p>
+              <p className="mt-2 text-xs text-ink-muted">{existing ? "Stock for saved options changes through Inventory (Adjust), so every movement is recorded." : "Opening stock is recorded as the first stock movement."} SKUs and barcodes are edited in Options & Variants.</p>
             </Card>
           )}
 
