@@ -18,6 +18,7 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
+// /api/health is left out: the keep-alive check needs no session (docs/supabase-keep-alive.md).
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)"],
+  matcher: ["/((?!api/health|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)"],
 };

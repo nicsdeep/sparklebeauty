@@ -15,6 +15,26 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: Supabase keep-alive health check
+- PR: (this PR, branch `claude/supabase-keep-alive`)
+- Changed:
+  - Migration `20261108090000_health_ping.sql` adds `public.ping()`.
+  - `app/api/health/route.ts`:
+    - GET only, checked against `CRON_SECRET` with `timingSafeEqual`;
+    - one `rpc("ping")` with the anon key and no retries;
+    - one JSON log line per event (started, ok, failed, unauthorized, not_configured).
+  - `vercel.json` cron `0 3 * * *`.
+  - `middleware.ts` skips `/api/health`.
+  - `CRON_SECRET` added to `.env.example`.
+  - A README section, and the portable guide `docs/supabase-keep-alive.md`, which has all the code inline so Nicholas can reuse it in other Supabase projects.
+- Why: keep the free-tier project from pausing during development and demos, without fake data or load.
+- Tested:
+  - locally: no header → 401, wrong secret → 401, POST → 405, right secret → 503 before the migration (the log shows "Could not find the function public.ping"), and the log lines contain no secrets;
+  - the migration in a rolled-back batch, calling `ping()` as the anon role;
+  - lint and typecheck.
+  - After merge: production returns 401 without the secret. The 200 run needs `CRON_SECRET` set in Vercel.
+- Follow-ups: Nicholas adds `CRON_SECRET` in Vercel (Production) and redeploys.
+
 ## 2026-11-03: Claude: ESLint and database performance checks
 - PR: (this PR, branch `claude/eslint-db-checks`)
 - Changed:
