@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/admin/back-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InvoiceActions } from "@/components/invoice-actions";
@@ -13,7 +14,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/admin/invoices" className="font-semibold text-brand-700">← All invoices</Link>
+        <BackLink fallback="/admin/invoices" label="Invoices" />
         <InvoiceActions bundles={[bundle]} />
       </div>
       <InvoiceDocument bundle={bundle} />

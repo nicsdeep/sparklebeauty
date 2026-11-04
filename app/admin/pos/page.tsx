@@ -4,7 +4,7 @@ import { getStoreSettings } from "@/lib/store";
 import { getProfile } from "@/lib/auth";
 import type { TaxType } from "@/lib/tax";
 import { posPriceSheet } from "../actions";
-import { PosTerminal, type PosCategory, type PosCustomer, type PosItem, type PosRecentSale } from "./terminal";
+import { PosTerminal, type PosCategory, type PosCustomer, type PosItem } from "./terminal";
 
 export const metadata = { title: "POS" };
 
@@ -15,14 +15,12 @@ export const metadata = { title: "POS" };
  */
 export default async function PosPage() {
   const supabase = await createClient();
-  const [products, { data: customers }, { data: wholesale }, { data: tier }, { data: cats }, { data: recent }, sheet, store, { data: rates }] = await Promise.all([
+  const [products, { data: customers }, { data: wholesale }, { data: tier }, { data: cats }, sheet, store, { data: rates }] = await Promise.all([
     listProducts(),
     supabase.from("profiles").select("id, full_name, phone, email, loyalty_points").eq("role", "customer").order("full_name"),
     supabase.from("wholesale_accounts").select("profile_id, business_name"),
     supabase.from("pricing_tiers").select("min_order_quantity").eq("code", "wholesale").single(),
     supabase.from("categories").select("slug, name, sort_order, parent:parent_id(slug)").eq("is_active", true).order("sort_order"),
-    supabase.from("orders").select("id, order_number, customer_name, channel, total_amount, created_at, payments(method)")
-      .not("created_by", "is", null).neq("channel", "online").order("created_at", { ascending: false }).limit(10),
     posPriceSheet(null),
     getStoreSettings(),
     supabase.rpc("variant_tax_rates"),
@@ -86,13 +84,8 @@ export default async function PosPage() {
     id: c.id, name: c.full_name ?? "", phone: c.phone ?? "", email: c.email ?? "", points: c.loyalty_points,
     business: wholesaleBy.get(c.id) ?? null,
   }));
-  const recentSales: PosRecentSale[] = (recent ?? []).map((o) => ({
-    id: o.id, number: o.order_number, customer: o.customer_name ?? "Walk-in customer", channel: o.channel, total: Number(o.total_amount),
-    at: o.created_at, methods: [...new Set(((o.payments as { method: string }[] | null) ?? []).map((p) => p.method))],
-  }));
-
   return (
     <PosTerminal items={items} categories={categories} customers={posCustomers} walkInSheet={sheet.ok ? sheet.data : {}}
-      threshold={tier?.min_order_quantity ?? 10} recentSales={recentSales} store={store} cashier={cashier} activity={activity} />
+      threshold={tier?.min_order_quantity ?? 10} store={store} cashier={cashier} activity={activity} />
   );
 }
