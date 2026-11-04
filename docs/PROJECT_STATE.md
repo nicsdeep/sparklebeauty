@@ -302,6 +302,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 | 2026-10-31 | Sparkle is VAT registered. Prices are VAT-exclusive: VAT is added on top at the till and checkout. Tax invoices are built now; the KRA eTIMS connection is added when the KRA credentials are available | Nicholas |
 | 2026-10-29 | The O2C demo migrations were applied to the live database before their PR merged, to build and test the demo in time. The database held no real data | Nicholas approved |
 | 2026-11-04 | `UX_NAVIGATION_DOCTRINE.md` is a binding standard: pages for major work, drawers for context, tabs for related sections, inline for small actions, modals only for short confirmations; Back follows the real path; state is preserved; large lists are paged in the database. Every PR that changes user interaction answers its UX review (PR template) | Nicholas |
+| 2026-11-04 | Doctrine rules 22–38 added: large lists are searchable comboboxes (one shared component), filter values come from the database and depend on each other, active filters show as chips, product search and POS cards are variant-first (variant, SKU, price, compact stock), large-dataset search runs in the database | Nicholas |
 
 ## Known issues
 
@@ -311,6 +312,14 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
   - **Large dialogs that show records (§2):** the POS receipt after a sale (ReceiptDialog in `app/admin/pos/terminal.tsx`) and the checkout "Thank you" confirmation (`components/shop/order-confirmed-modal.tsx`).
   - **Hardcoded Back links (§4):** the shop's order details and Track Order pages, and admin pages other than the POS pages, order, receipt, invoice and customer details. `components/admin/back-link.tsx` covers admin only; the storefront has no equivalent yet.
   - **Filters and search on admin lists (§3, §10):** most keep `?q=` and filters in the URL already, but they haven't all been checked against the doctrine.
+  - **No shared searchable combobox yet (§22, §23, §35):** long lists are plain `<select>`s. The POS filters have 12–33 options each (`app/admin/pos/product-finder.tsx`), and so does the product form's category (`app/admin/products/product-form.tsx`). Short fixed lists (tax type, discount type, staff role, page size, Recent Sales method and channel) are fine as they are. The POS customer picker searches as you type but has no arrow-key navigation.
+  - **POS filters (§27, §28):** values come from the database and narrow each other (§24, §25 met). But they're plain dropdowns with no active-filter chips. They live in component state, so they reset when the cashier goes to Recent Sales and back; the cart does survive.
+  - **POS search results and cards aren't variant-first yet (§26, §29–§34):**
+    - Search suggestions are one row per product, followed by the variant picker. The doctrine wants one row per exact variant, with SKU, price and stock, added in one click.
+    - Cards show the product and variant name, but no SKU, and stock is a coloured pill rather than compact text ("24 available", "Low · 4 left").
+    - Search with no match shows nothing until Enter is pressed, instead of a "No products found" state with Clear filters (§37).
+  - **Searching in the browser (§36):** the POS loads the whole catalogue into the till on purpose, so it can sell offline. The admin and shop header search (`components/search-suggest.tsx`) loads products, categories and customers once per tab. That's fine at today's size, but it needs to move to database search, debounced and with stale requests cancelled, before the catalogue or customer list grows into the thousands.
+  - **Checkout town/county (§22):** free-text inputs, not a searchable list of Kenyan counties and towns.
 
 - **KRA eTIMS isn't connected yet.** Tax invoices and credit notes are issued and kept in order with `etims_status = 'pending'`; nothing is sent to KRA. Connecting needs Sparkle's eTIMS (OSCU) registration from KRA: the shop's KRA PIN, branch ID, device serial and communication key (server-only secret). Then a server job sends pending invoices and stores KRA's reply (`etims_receipt_number`, `etims_signature`, `etims_internal_data`, `etims_sent_at`). Admin → Invoices shows how many are waiting.
 - **Orders from before VAT** (including the demo seed) have no VAT lines and no tax invoice. Reports and dashboard revenue use order totals, which now include VAT for new orders.

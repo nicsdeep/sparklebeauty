@@ -4,11 +4,13 @@ Navigation, context preservation and continuous user experience for the whole Sp
 
 This doctrine is mandatory. Every developer, AI agent and coding assistant working on Sparkle treats these rules as architectural UX requirements. Don't override them casually. If a request conflicts with this doctrine, flag the conflict before changing the architecture (see [Enforcement](#enforcement)).
 
-Adopted by Nicholas on 2026-11-04. Its place among the project's sources of truth is set in `AGENTS.md` §2.
+Adopted by Nicholas on 2026-11-04: rules 1–21 first, then rules 22–38 on search, selection, filters and POS product presentation, the same day. Its place among the project's sources of truth is set in `AGENTS.md` §2.
 
 ---
 
 ## Contents
+
+**Navigation and context**
 
 1. [Core principle](#1-core-principle)
 2. [Choose the right interaction type](#2-choose-the-right-interaction-type)
@@ -31,12 +33,43 @@ Adopted by Nicholas on 2026-11-04. Its place among the project's sources of trut
 19. [Major page vs contextual action](#19-major-page-vs-contextual-action)
 20. [System-wide application](#20-system-wide-application)
 21. [Agent and developer rule](#21-agent-and-developer-rule)
+
+**Search, selection and filters**
+
+22. [All large dropdowns must be searchable](#22-all-large-dropdowns-must-be-searchable)
+23. [Autocomplete / combobox standard](#23-autocomplete--combobox-standard)
+24. [Database-driven filter values](#24-database-driven-filter-values)
+25. [Dependent filters](#25-dependent-filters)
+26. [Type-ahead search](#26-type-ahead-search)
+27. [Preserve filter state](#27-preserve-filter-state)
+28. [Filter chips and active-filter visibility](#28-filter-chips-and-active-filter-visibility)
+
+**POS product presentation**
+
+29. [Modern POS product cards](#29-modern-pos-product-cards)
+30. [Product card visual style](#30-product-card-visual-style)
+31. [Stock presentation](#31-stock-presentation)
+32. [Variant-first product cards](#32-variant-first-product-cards)
+33. [Search first, cards second](#33-search-first-cards-second)
+34. [Product result dropdown](#34-product-result-dropdown)
+
+**Building blocks**
+
+35. [System-wide component reuse](#35-system-wide-component-reuse)
+36. [Performance](#36-performance)
+37. [Empty states](#37-empty-states)
+38. [Mobile and touch](#38-mobile-and-touch)
+
+**Rules for every change**
+
 - [Enforcement](#enforcement)
 - [PR review requirement](#pr-review-requirement)
 - [Definition of done](#definition-of-done)
 - [Final doctrine](#final-doctrine)
 
 ---
+
+# Navigation and context
 
 ## 1. Core principle
 
@@ -293,6 +326,214 @@ A feature is **not** complete simply because the button works. It's complete onl
 
 ---
 
+# Search, selection and filters
+
+## 22. All large dropdowns must be searchable
+
+Don't use long static dropdowns that make users scroll through many values by hand. This applies system-wide to lists of:
+
+- categories, products, brands and suppliers;
+- colours, sizes and lengths;
+- counties, towns and locations;
+- customers, wholesale customers and staff;
+- orders, invoices and promotions;
+- statuses, and payment methods where the list is long;
+- any future long selectable list.
+
+**Required behaviour:**
+
+- When a dropdown opens, the user can type immediately.
+- Results filter with every key. Never require Enter before suggestions appear.
+- Use prefix or fuzzy matching where it helps.
+
+For example, opening Category and typing `ski` shows **Skincare**; typing `hair` shows **Hair**, **Hair Pieces** and **Hair Care**.
+
+## 23. Autocomplete / combobox standard
+
+For large datasets, use a searchable combobox instead of a plain HTML `select`. The expected experience:
+
+1. The user clicks the control.
+2. The input receives focus automatically.
+3. The user starts typing.
+4. Matching results appear immediately.
+5. Arrow keys move through the results.
+6. Enter selects.
+7. Escape closes.
+8. Mouse and touch selection work.
+9. The selected value is clearly displayed.
+10. A clear/reset option is available where appropriate.
+
+The component must be keyboard accessible (combobox and listbox roles, the active option announced).
+
+## 24. Database-driven filter values
+
+Dropdown and filter values come from real database records. Don't hardcode lists that can go stale.
+
+- If the database holds the colours Natural Black, Brown, Burgundy and Blonde, offer exactly those.
+- Filters are context-aware. With Category = Wigs, the Color and Length filters offer only values that exist for wigs.
+- Don't offer meaningless combinations. With Category = Perfumes, don't offer 14", 18" or 22" unless they genuinely apply.
+
+## 25. Dependent filters
+
+Filters react to each other:
+
+1. Category: **Wigs** → Color offers only wig colours.
+2. Color: **Brown** → Size/Length offers only lengths that exist for brown wigs.
+3. Length: **18"** → Supplier/Brand offers only suppliers that stock matching products.
+
+Results update immediately, with no full-page refresh.
+
+## 26. Type-ahead search
+
+Use type-ahead search wherever the user selects from many records. In the POS, typing `best la` immediately returns rows like these:
+
+> **Best Lady Wig — Brown**
+> Wig · Brown · 18" · Supplier: Best Lady · SKU: BL-WIG-BRN-18 · Available: 24
+>
+> **Best Lady Wig — Black**
+> Wig · Black · 22" · Supplier: Best Lady · SKU: BL-WIG-BLK-22 · Available: 17
+
+The user can select the **exact variant** directly from the search results.
+
+## 27. Preserve filter state
+
+Searchable filters follow the navigation rules (§3, §4). If a user searches, applies a category, selects a colour, goes to page 3, opens a product and comes back, the search, filters and page are exactly as they left them. Don't reset everything.
+
+## 28. Filter chips and active-filter visibility
+
+When several filters are active, show compact removable chips where helpful, for example `Wigs ×` `Brown ×` `18" ×` `Best Lady ×`, plus **Clear all**.
+
+Don't force the user to reopen every dropdown to understand what's filtered.
+
+# POS product presentation
+
+## 29. Modern POS product cards
+
+The POS is an operational tool, not a storefront. POS product cards must not look like ecommerce cards. They put first:
+
+1. the exact product;
+2. its variant;
+3. its price;
+4. its stock;
+5. a fast Add.
+
+The card hierarchy, top to bottom:
+
+> [product image]
+> **Best Lady Wig**
+> Brown · 18"
+> SKU: BL-WIG-BRN-18
+> **KES 18,500**
+> Wholesale: 10+ → KES 13,900 each
+> 24 available
+> **+ Add** (one compact button)
+
+Don't waste space, and don't overload cards with badges.
+
+## 30. Product card visual style
+
+Use a mature admin style: a white card, a very subtle border, minimal shadow, a medium radius and compact spacing.
+
+**Avoid:** pink backgrounds, giant product photos, large rounded buttons, several coloured pills, decorative extras.
+
+**Sparkle pink only for:** the price, the Add action, and selected or active states.
+
+**Semantic colours:**
+
+| Colour | Meaning |
+| --- | --- |
+| Green | Available |
+| Amber | Low stock |
+| Red | Out of stock |
+| Grey | Neutral information |
+
+## 31. Stock presentation
+
+Don't use large, bright stock badges everywhere. Prefer compact text: **24 available**, **Low · 4 left** or **Out of stock**.
+
+The visual emphasis stays on identifying the product and its price.
+
+## 32. Variant-first product cards
+
+When the database stores variants separately, a POS card represents **the exact sellable SKU**.
+
+- Don't show only "Best Lady Wig". Show "Best Lady Wig, Brown · 18"".
+- Different colours and lengths may appear as separate results when they're separate SKUs.
+
+This prevents the cashier selling the wrong variant.
+
+## 33. Search first, cards second
+
+Don't make POS users browse dozens of cards to find a product. The workflow is **Search / Scan → Exact match → Add**. Cards are secondary.
+
+By default, the POS shows only useful subsets:
+
+- Quick Picks;
+- Recent Products;
+- Fast-Moving;
+- Low Stock, where useful.
+
+**Don't** render the full product catalogue by default.
+
+## 34. Product result dropdown
+
+Typing in the POS search shows a rich result dropdown. Each result row contains:
+
+> [thumbnail] **Best Lady Wig — Brown**
+> Wig · 18" · Best Lady
+> SKU: BL-WIG-BRN-18 · **KES 18,500** · 24 available
+
+- Clicking a result adds or selects it immediately.
+- The dropdown must be faster than browsing cards.
+
+# Building blocks
+
+## 35. System-wide component reuse
+
+Build shared, reusable components for:
+
+- the searchable combobox;
+- the multi-select filter;
+- active filter chips;
+- async database search;
+- paginated search;
+- the product result row;
+- the variant selector.
+
+Don't build a different dropdown implementation in each module. One consistent interaction pattern is used across Sparkle.
+
+## 36. Performance
+
+For large datasets:
+
+- Don't load thousands of values into the browser; search in the database.
+- Debounce type-ahead requests, around 200–300 ms.
+- Cancel stale requests when the user keeps typing.
+- Return a small, relevant result set first.
+- Use pagination or "load more" where needed.
+
+## 37. Empty states
+
+When nothing matches, say so clearly, for example **No products found for “Best laa”**. Then offer:
+
+- **Clear filters**;
+- **Try another search**.
+
+Never leave a blank dropdown.
+
+## 38. Mobile and touch
+
+Searchable dropdowns must work on mobile too. Don't rely on tiny hover interactions. On small screens:
+
+- use full-width search;
+- make tap targets large enough;
+- keep keyboard use working;
+- keep dropdown content on screen (it must not run off the edge).
+
+---
+
+# Rules for every change
+
 ## Enforcement
 
 This document is a mandatory project doctrine. Review it before implementing or approving any change that affects:
@@ -301,7 +542,8 @@ This document is a mandatory project doctrine. Review it before implementing or 
 - pages, drawers and modals;
 - forms;
 - lists and tables;
-- search, filters and pagination;
+- search, filters, dropdowns, comboboxes and pagination;
+- product cards and product search results;
 - workflow state;
 - realtime updates;
 - user interaction flows.
@@ -333,7 +575,10 @@ Don't:
 - destroy unsaved workflow state;
 - duplicate business state in frontend components;
 - create endless scrolling record lists;
-- do full-page reloads for normal application actions.
+- do full-page reloads for normal application actions;
+- use a long static `select` where a searchable combobox belongs, or build another dropdown when the shared one exists;
+- hardcode filter values that the database holds;
+- sell or show a product without its exact variant (SKU).
 
 If a requested implementation conflicts with this doctrine, flag the conflict before changing the architecture.
 
@@ -352,6 +597,10 @@ Any PR that changes user interaction must include a **UX Doctrine review**. The 
 9. Are business records still sourced from the shared database?
 10. Do relevant changes propagate without an unnecessary page refresh?
 11. Have desktop and mobile navigation paths been tested?
+12. Are long selectable lists searchable comboboxes (type immediately, keyboard, Escape, clear) built from the shared component?
+13. Do filter values come from the database, react to each other, show active-filter chips with Clear all, and survive going away and back?
+14. Do product search results and POS cards identify the exact variant (variant, SKU, price, stock) with stock shown as compact text?
+15. Is large-dataset search done in the database, debounced, with stale requests cancelled and a clear empty state?
 
 If any answer is **No**, the PR must explain why. A UX change isn't merged just because it technically works.
 
@@ -373,5 +622,13 @@ Technical completion without workflow continuity isn't complete.
 - Back follows the real navigation chain.
 - The database remains the source of truth.
 - No unnecessary full-page refreshes.
+
+And for search and selection:
+
+- For any large list: **search before scroll**.
+- For any filter: **type before hunting manually**.
+- For any product: **exact variant before sale**.
+- For any navigation: **preserve state**.
+- For all data: **the database remains the source of truth**.
 
 Every future Sparkle feature respects these rules by default.

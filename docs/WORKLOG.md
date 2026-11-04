@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: Doctrine rules 22–38 (search, selection, filters, POS cards)
+- PR: (this PR, branch `claude/doctrine-search-rules`)
+- Changed:
+  - `UX_NAVIGATION_DOCTRINE.md`: added Nicholas's rules 22–38 in three groups (search, selection and filters; POS product presentation; building blocks) and the final system rule ("search before scroll…"). The contents and section headings are grouped to match.
+  - Enforcement now also covers dropdowns, comboboxes and product cards. Three more agent "don'ts". Review questions 12–15 added.
+  - `.github/pull_request_template.md`: four matching checklist items.
+  - `docs/PROJECT_STATE.md`: a decision row, and the Known issues audit extended with where the system falls short of the new rules. The main gaps:
+    - there's no shared combobox, so long lists are still plain selects;
+    - the POS filters have no chips and reset when you leave the POS;
+    - POS search shows one row per product rather than per exact variant, and cards lack the SKU and compact stock text;
+    - there's no empty state when search finds nothing;
+    - search runs in the browser (deliberate for the offline POS);
+    - checkout town and county are free text.
+- Why: Nicholas made these rules mandatory system-wide.
+- Tested: documentation only. I read the files back and checked the anchors and links.
+- Follow-ups: rule 29 asks to revamp the POS cards. That's code, so it's a separate PR, together with the shared combobox (§35) that the POS filters will use first.
+
 ## 2026-11-04: Claude: UX Navigation Doctrine
 - PR: (this PR, branch `claude/ux-navigation-doctrine`)
 - Changed:
