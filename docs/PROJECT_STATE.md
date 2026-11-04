@@ -213,6 +213,7 @@ Migrations, in order:
 24. `20261102120000_receipt_links.sql`: `orders.receipt_token` (random, unique) and `public_receipt(token)` (anyone with the link; paid or refunded orders only), for the private receipt link sent on WhatsApp.
 25. `20261103120000_order_tracking_eta_live.sql`: `orders.estimated_delivery_at` (staff set it at dispatch through `set_delivery_estimate()`, staff only), and live tracking for customers: the trigger `orders_broadcast_customer` broadcasts on the private topic `order:<id>`, which only that order's customer and staff may receive (policy on `realtime.messages`).
 26. `20261104120000_pos_suspended_sales.sql`: suspended POS sales. `pos_suspensions` / `pos_suspension_items` / `pos_suspension_events` (staff read only; changes via functions). `pos_suspend_sale()` holds stock in `inventory_levels.reserved` for 24 h; `pos_extend_suspension()`, `pos_release_suspension()`; `pos_complete_suspended_sale()` releases the hold and records the sale in one transaction; `expire_pos_suspensions()` runs every minute via pg_cron (and when a till lists suspensions).
+27. `20261105090000_product_combo_options_barcode.sql`: `admin_create_product()` / `admin_update_product()` accept two-part options (`colour_length`, `colour_size`; rows carry `option` + `option2`; the variant is named "Colour · Length") and an optional unique `barcode` per variant. Editing no longer clears the attributes the option type doesn't use (it used to wipe a wig's colour when saved by length).
 
 Tables in `public`, all with RLS on:
 - **People:**
