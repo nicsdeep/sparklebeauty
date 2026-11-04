@@ -54,6 +54,8 @@ export type PosSaleInput = {
   clientRef: string;
   /** Set when the sale was taken while the till was offline. */
   offlineAt?: string;
+  /** Set when paying for a resumed suspended sale: its stock hold is released as the sale is recorded. */
+  suspensionId?: string;
 };
 
 /** cash: amount received (change comes out of it); other methods: amount charged to them. */
@@ -73,14 +75,16 @@ export type PosSaleResult = {
 /** Completes a till sale; the database prices every line with the shared engine and deducts stock atomically. */
 export async function completeSale(input: PosSaleInput): Promise<ActionResult<PosSaleResult>> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("pos_complete_sale", {
+  const sale = {
     p_customer_id: input.customerId,
     p_items: input.items,
     p_discount: input.discount || 0,
     p_payments: input.payments.map((p) => ({ method: p.method, amount: p.amount, phone: p.phone || null, reference: p.reference || null })),
     p_client_ref: input.clientRef,
-    p_offline_at: input.offlineAt ?? null,
-  });
+  };
+  const { data, error } = input.suspensionId
+    ? await supabase.rpc("pos_complete_suspended_sale", { p_suspension_id: input.suspensionId, ...sale })
+    : await supabase.rpc("pos_complete_sale", { ...sale, p_offline_at: input.offlineAt ?? null });
   if (error) return fail(error);
   const row = (data as { order_id: string; order_number: string; total_amount: number; change_due: number; payments: PosRecordedPayment[]; duplicate: boolean }[])[0];
   const [{ data: lines }, { data: order }, { data: invoice }] = await Promise.all([
@@ -100,6 +104,61 @@ export async function completeSale(input: PosSaleInput): Promise<ActionResult<Po
         rule: (l.price_rule ?? "retail") as PriceRule })),
     },
   };
+}
+
+// Suspended sales: held in the database with their stock for 24 hours (see migration 20261104120000).
+
+export type PosSuspension = {
+  id: string; reference: string; customerId: string | null; customerName: string | null; customerPhone: string | null;
+  discountPct: number; notes: string | null; expiresAt: string; createdAt: string;
+  items: { variantId: string; name: string; quantity: number; unitPrice: number }[];
+};
+
+/** Active suspended sales, newest first. Releases any whose time has run out before reading. */
+export async function listSuspensions(): Promise<ActionResult<PosSuspension[]>> {
+  const supabase = await createClient();
+  await supabase.rpc("expire_pos_suspensions");
+  const { data, error } = await supabase.from("pos_suspensions")
+    .select("id, reference, customer_id, customer_name, customer_phone, discount_pct, notes, expires_at, created_at, pos_suspension_items(variant_id, name, quantity, unit_price)")
+    .eq("status", "active").order("created_at", { ascending: false });
+  if (error) return fail(error);
+  return {
+    ok: true,
+    data: (data ?? []).map((s) => ({
+      id: s.id, reference: s.reference, customerId: s.customer_id, customerName: s.customer_name, customerPhone: s.customer_phone,
+      discountPct: Number(s.discount_pct), notes: s.notes, expiresAt: s.expires_at, createdAt: s.created_at,
+      items: (s.pos_suspension_items as { variant_id: string; name: string; quantity: number; unit_price: number }[])
+        .map((i) => ({ variantId: i.variant_id, name: i.name, quantity: i.quantity, unitPrice: Number(i.unit_price) })),
+    })),
+  };
+}
+
+/** Suspends the cart: saves it and holds its stock (Available drops on every channel at once). */
+export async function suspendSale(input: { customerId: string | null; items: { variant_id: string; quantity: number }[]; discountPct: number; notes?: string }): Promise<ActionResult<{ reference: string; expiresAt: string }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("pos_suspend_sale", {
+    p_customer_id: input.customerId, p_items: input.items, p_discount_pct: input.discountPct || 0, p_notes: input.notes || null,
+  });
+  if (error) return fail(error);
+  const row = (data as { reference: string; expires_at: string }[])[0];
+  revalidatePath("/admin", "layout");
+  return { ok: true, data: { reference: row.reference, expiresAt: row.expires_at } };
+}
+
+export async function extendSuspension(id: string, expiresAt: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("pos_extend_suspension", { p_id: id, p_expires_at: expiresAt });
+  if (error) return fail(error);
+  return { ok: true, data: undefined };
+}
+
+/** Ends a suspension and returns its held stock to Available. */
+export async function releaseSuspension(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("pos_release_suspension", { p_id: id });
+  if (error) return fail(error);
+  revalidatePath("/admin", "layout");
+  return { ok: true, data: undefined };
 }
 
 /** Price breaks from the pricing engine for every product, for the selected customer (null = walk-in). */

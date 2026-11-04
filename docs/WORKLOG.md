@@ -15,6 +15,39 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: POS refinement, suspended sales and search-first
+- PR: (this PR, branch `claude/pos-suspended-sales`)
+- **Suspended sales**, in the database. Migration `20261104120000_pos_suspended_sales.sql`:
+  - tables `pos_suspensions` (`SUS-001001`…), `pos_suspension_items` and `pos_suspension_events`; staff read them, and changes go only through functions;
+  - `pos_suspend_sale()` holds stock in `inventory_levels.reserved`, the same hold as online orders, so Available drops on the website and every till at once;
+  - `pos_extend_suspension()` moves the expiry (within 7 days);
+  - `pos_release_suspension()` returns the stock;
+  - `pos_complete_suspended_sale()` releases the hold and records the sale through `pos_complete_sale()` in one transaction, so stock is deducted once;
+  - `expire_pos_suspensions()` runs every minute through pg_cron (scheduled in the migration; if pg_cron isn't available the migration still applies), and on every till list as a backup;
+  - every suspend, extend, release, expiry and completion is logged in events, and the list broadcasts on the admin topic.
+- POS changes for suspensions:
+  - Suspend (F6) with an optional note. The browser-only "Park" feature is removed.
+  - A Suspended Sales (n) button and panel (`app/admin/pos/suspended-sales.tsx`): reference, customer, phone, items, total, note and a countdown (grey, amber under 6 h, red under 1 h).
+  - Resume restores the cart, customer and discount; the stock stays held until payment. Extend offers +30 min to +24 h or a custom Nairobi time, showing the new expiry first. Release asks to confirm.
+  - Paying a resumed sale goes through `pos_complete_suspended_sale`.
+- **Search-first product area**, in `app/admin/pos/product-finder.tsx`:
+  - The full catalogue no longer shows by default; instead there are tabs for Quick Picks (best sellers, 90 days), Recent Products (this cashier's sales), Fast-Moving (7 days) and Low Stock, all from real `order_items` and stock.
+  - Search suggests as you type, across name, brand, category, colour, length and SKU, with image, attributes, brand and stock. Enter adds an exact SKU or barcode.
+  - Filters: Category, Color, Size/Length, Brand/Supplier and Stock. They combine and only offer values that exist with the others.
+  - A variant picker selects the exact variant (its SKU and stock record) by colour, shade, length and size.
+  - Cards are compact and neutral.
+  - Cart actions are now Clear, Suspend and Pay Now. Pink is kept for actions, active states and the total.
+- Other: `lib/nairobi-time.ts`, shared with the order-estimate field.
+- Left out: a separate supplier field (there's no suppliers table, so Brand is used); suspending while offline (the hold lives in the database).
+- Tested in the local preview, signed in as admin:
+  - the default tabs with real best sellers, and filter options from data;
+  - "body wa" suggested 4 products with lengths, colour, brand and stock;
+  - the picker showed 18" (BODYWAVELA-2) as out of stock with Add disabled, and added 14" to the cart;
+  - Wigs narrowed colours, sizes and brands (22 matches);
+  - `tsc --noEmit` passes.
+- **Not tested yet:** suspend, extend, release, resume, pay, and expiry against the database. They need the migration, which is applied after merge.
+- Follow-ups: apply the migration; check that pg_cron scheduled the job.
+
 ## 2026-11-04: Claude: Shopping incentives, and the cart and checkout redesign
 - PR: (this PR, branch `claude/smart-incentives`)
 - Decision (Nicholas, 2026-11-04): wholesale stays **per product at 10+ units of that product**. The cart total never triggers wholesale. A cart-value threshold applies only to free delivery (`store_settings.free_delivery_threshold`).

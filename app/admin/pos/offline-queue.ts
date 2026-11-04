@@ -39,23 +39,3 @@ export function saveQueue(queue: QueuedSale[]) {
 /** A random, collision-safe reference for one sale. */
 export const newClientRef = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-// Parked (suspended) sales: a cart put aside to serve another customer.
-export type ParkedSale = { id: string; at: string; customerId: string | null; customerName: string | null; lines: { variantId: string; qty: number }[]; discountPct: string };
-const PARK_KEY = "sparkle-pos-parked-v1";
-
-export function loadParked(): ParkedSale[] {
-  try {
-    return JSON.parse(localStorage.getItem(PARK_KEY) ?? "[]") as ParkedSale[];
-  } catch {
-    return [];
-  }
-}
-
-export function saveParked(list: ParkedSale[]) {
-  try {
-    localStorage.setItem(PARK_KEY, JSON.stringify(list));
-  } catch {
-    // Ignore: parking is a convenience.
-  }
-}

@@ -27,7 +27,29 @@ export default async function PosPage() {
     getStoreSettings(),
     supabase.rpc("variant_tax_rates"),
   ]);
-  const cashier = (await getProfile())?.full_name ?? null;
+  const me = await getProfile();
+  const cashier = me?.full_name ?? null;
+
+  // Product activity for the default view (real sales, not cancelled): Quick Picks = best sellers over
+  // 90 days, Fast-Moving = best sellers over the last 7 days, Recent = what this cashier sold last.
+  const since = new Date(Date.now() - 90 * 86400000).toISOString();
+  const { data: sold } = await supabase.from("order_items")
+    .select("variant_id, quantity, order:orders!inner(created_at, created_by, status)")
+    .gte("order.created_at", since).neq("order.status", "cancelled").not("variant_id", "is", null)
+    .order("created_at", { referencedTable: "order", ascending: false }).limit(3000);
+  const week = Date.now() - 7 * 86400000;
+  const tally = (rows: typeof sold) => {
+    const m = new Map<string, number>();
+    for (const r of rows ?? []) m.set(r.variant_id!, (m.get(r.variant_id!) ?? 0) + r.quantity);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id).slice(0, 12);
+  };
+  const order = (r: NonNullable<typeof sold>[number]) => r.order as unknown as { created_at: string; created_by: string | null };
+  const activity = {
+    quick: tally(sold),
+    fast: tally((sold ?? []).filter((r) => new Date(order(r).created_at).getTime() >= week)),
+    recent: [...new Set((sold ?? []).filter((r) => me && order(r).created_by === me.id)
+      .sort((a, b) => order(b).created_at.localeCompare(order(a).created_at)).map((r) => r.variant_id!))].slice(0, 12),
+  };
   const rateBy = new Map(((rates ?? []) as { variant_id: string; tax_type: TaxType; tax_rate: number }[]).map((r) => [r.variant_id, r]));
   const stock = await getStock(products.flatMap((p) => p.variants.map((v) => v.id)));
   const wholesaleBy = new Map((wholesale ?? []).map((w) => [w.profile_id, w.business_name]));
@@ -35,9 +57,12 @@ export default async function PosPage() {
   const items: PosItem[] = products.flatMap((p) =>
     p.variants.map((v) => ({
       variantId: v.id,
+      productId: p.id,
       sku: v.sku,
       name: p.name,
       variantName: v.name ?? v.size ?? v.shade ?? v.hair_length ?? v.color ?? null,
+      brand: p.brand ?? null,
+      color: v.color, shade: v.shade, size: v.size, length: v.hair_length,
       image: p.image,
       category: p.category.slug,
       group: p.category.parentSlug ?? p.category.slug,
@@ -68,6 +93,6 @@ export default async function PosPage() {
 
   return (
     <PosTerminal items={items} categories={categories} customers={posCustomers} walkInSheet={sheet.ok ? sheet.data : {}}
-      threshold={tier?.min_order_quantity ?? 10} recentSales={recentSales} store={store} cashier={cashier} />
+      threshold={tier?.min_order_quantity ?? 10} recentSales={recentSales} store={store} cashier={cashier} activity={activity} />
   );
 }
