@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Banknote, BadgePercent, CheckCircle2, ChevronDown, CircleAlert, Clock, CreditCard, History, Mail, Minus, PackagePlus, PauseCircle, Plus,
   Landmark, Printer, RefreshCw, ScanBarcode, Search, ShoppingCart, Smartphone, Trash2, UserPlus, UserRound, WifiOff, X,
@@ -16,15 +16,22 @@ import { vatHeading } from "@/lib/invoices";
 import type { ReceiptData } from "@/lib/receipt";
 import { ReceiptActions } from "@/components/receipt-actions";
 import { ReceiptDocument } from "@/components/receipt-document";
-import { breakFor, nextBreak, ruleLabel, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
+import { breakFor, ruleLabel, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
 import { incentives } from "@/lib/incentives";
 import type { StoreSettings } from "@/lib/store-types";
-import { completeSale, posPriceSheet, posQuote, type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment, type PosSaleResult } from "../actions";
-import { loadParked, loadQueue, newClientRef, saveParked, saveQueue, type ParkedSale, type QueuedSale } from "./offline-queue";
+import {
+  completeSale, extendSuspension, listSuspensions, posPriceSheet, posQuote, releaseSuspension, suspendSale,
+  type PosPaymentMethod, type PosReceiptLine, type PosRecordedPayment, type PosSaleResult, type PosSuspension,
+} from "../actions";
+import { loadQueue, newClientRef, saveQueue, type QueuedSale } from "./offline-queue";
+import { SuspendedSales } from "./suspended-sales";
+import { ProductFinder } from "./product-finder";
 
 export type PosItem = {
-  variantId: string; sku: string; name: string; variantName: string | null; image: string | null;
+  variantId: string; productId: string; sku: string; name: string; variantName: string | null; image: string | null;
   category: string; group: string; retail: number; available: number; low: boolean;
+  /** Brand (used as supplier) and the variant's attributes, for search, filters and the variant picker. */
+  brand: string | null; color: string | null; shade: string | null; size: string | null; length: string | null;
   /** eTIMS tax type and VAT % (prices are VAT-exclusive; VAT is added on top). */
   taxType: TaxType; taxRate: number;
 };
@@ -39,7 +46,6 @@ type Tender = { id: string; method: PosPaymentMethod; amount: string; phone: str
 type Receipt = ReceiptData & { customerRef: PosCustomer | null };
 type Sheet = Record<string, PriceBreak[]>;
 
-const RECENT_KEY = "sparkle-pos-recent-v1";
 const MAX_TENDERS = 5;
 const METHODS = [["mpesa", Smartphone], ["cash", Banknote], ["card", CreditCard], ["bank_transfer", Landmark]] as const;
 const SHORT_LABEL: Record<PosPaymentMethod, string> = { mpesa: "M-Pesa", cash: "Cash", card: "Card", bank_transfer: "Bank" };
@@ -57,12 +63,13 @@ function settle(tenders: Tender[], total: number) {
   const nonCash = paid - cash;
   return { amounts, paid, cash, nonCash, balance: Math.max(0, total - paid), change: Math.max(0, paid - total), overCharged: nonCash > total };
 }
-const VISIBLE_CHIPS = 8;
 const isNetworkError = (e: unknown) => e instanceof TypeError || /fetch|network|failed to fetch/i.test(String((e as Error)?.message ?? e));
 
-export function PosTerminal({ items, categories, customers, walkInSheet, threshold, recentSales, store, cashier }: {
+export function PosTerminal({ items, categories, customers, walkInSheet, threshold, recentSales, store, cashier, activity }: {
   items: PosItem[]; categories: PosCategory[]; customers: PosCustomer[]; walkInSheet: Sheet; threshold: number;
   recentSales: PosRecentSale[]; store: StoreSettings; cashier: string | null;
+  /** Variant ids by real sales: best sellers (90 days), fast movers (7 days), this cashier's recent sales. */
+  activity: { quick: string[]; fast: string[]; recent: string[] };
 }) {
   const router = useRouter();
   const itemsBy = useMemo(() => new Map(items.map((i) => [i.variantId, i])), [items]);
@@ -79,17 +86,16 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const [lastReceipt, setLastReceipt] = useState<Receipt | null>(null);
 
   // Browsing
-  const [query, setQuery] = useState("");
-  const [cat, setCat] = useState("all");
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerOpen, setCustomerOpen] = useState(false);
-  const [panel, setPanel] = useState<null | "recent" | "parked" | "manual" | "sync">(null);
+  const [panel, setPanel] = useState<null | "recent" | "suspended" | "suspend" | "manual" | "sync">(null);
   // Below the lg breakpoint the sale panel is a drawer opened from the bar at the bottom.
   const [cartOpen, setCartOpen] = useState(false);
   const [added, setAdded] = useState<string | null>(null);
   useEffect(() => { if (!added) return; const t = setTimeout(() => setAdded(null), 1800); return () => clearTimeout(t); }, [added]);
-  const [recentIds, setRecentIds] = useState<string[]>([]);
-  const [parked, setParked] = useState<ParkedSale[]>([]);
+  // Suspended sales (database) and the one loaded into the cart, if any.
+  const [suspensions, setSuspensions] = useState<PosSuspension[]>([]);
+  const [resumed, setResumed] = useState<PosSuspension | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const discountRef = useRef<HTMLInputElement>(null);
 
@@ -109,8 +115,6 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
 
   useEffect(() => {
     setQueue(loadQueue());
-    setParked(loadParked());
-    try { setRecentIds(JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")); } catch { /* storage unavailable */ }
     const up = () => { setNavOnline(true); setServerOk(true); };
     const down = () => setNavOnline(false);
     setNavOnline(navigator.onLine);
@@ -178,12 +182,6 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const nudges = incentives(priced.map((l) => ({ name: l.item.name, quantity: l.qty, breaks: sheet?.[l.variantId], available: l.price.available })));
   const allConfirmed = !online || priced.every((l) => confirmed?.key.startsWith(cartKey) && confirmed.lines[l.variantId]?.quantity === l.qty);
 
-  // Product list
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return items.filter((i) => (cat === "all" || i.group === cat || i.category === cat)
-      && (!q || `${i.name} ${i.variantName ?? ""} ${i.sku}`.toLowerCase().includes(q))).slice(0, 80);
-  }, [items, query, cat]);
   const matchingCustomers = useMemo(() => {
     const q = customerQuery.trim().toLowerCase();
     return customers.filter((c) => !q || `${c.name} ${c.phone} ${c.business ?? ""}`.toLowerCase().includes(q)).slice(0, 8);
@@ -193,32 +191,20 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   function addItem(item: PosItem, qty = 1) {
     setError(null);
     const want = qtyOf(item.variantId) + qty;
-    if (want > item.available) { setError(`Only ${item.available} of ${item.name} in stock${online ? "" : " (last known)"}.`); return; }
+    const max = item.available + heldFor(item.variantId);
+    if (want > max) { setError(`Only ${max} of ${item.name} in stock${online ? "" : " (last known)"}.`); return; }
     setLines((prev) => (prev.some((l) => l.variantId === item.variantId)
       ? prev.map((l) => (l.variantId === item.variantId ? { ...l, qty: want } : l))
       : [...prev, { variantId: item.variantId, qty }]));
     setAdded(`Added ${item.name}${item.variantName ? ` (${item.variantName})` : ""}`);
-    setRecentIds((r) => {
-      const next = [item.variantId, ...r.filter((x) => x !== item.variantId)].slice(0, 8);
-      try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
   }
   const setQty = (id: string, qty: number) => setLines((prev) => prev.flatMap((l) => {
     if (l.variantId !== id) return [l];
     if (qty <= 0) return [];
-    const max = itemsBy.get(id)?.available ?? qty;
+    const max = (itemsBy.get(id)?.available ?? qty) + heldFor(id);
     if (qty > max) setError(`Only ${max} in stock${online ? "" : " (last known)"}.`);
     return [{ ...l, qty: Math.min(qty, max, 500) }];
   }));
-
-  function scan(e: FormEvent) {
-    e.preventDefault();
-    const code = query.trim().toLowerCase();
-    const hit = items.find((i) => i.sku.toLowerCase() === code) ?? (shown.length === 1 ? shown[0] : null);
-    if (hit) { addItem(hit); setQuery(""); }
-    else if (code) setError(`No product with code “${query.trim()}”.`);
-  }
 
   function pickCustomer(c: PosCustomer | null) {
     if (c && !online && !sheets[c.id]) { setError("Offline: this customer's prices aren't loaded on this till, so they can't be selected until the connection returns."); return; }
@@ -244,7 +230,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   }
 
   function resetSale() {
-    setLines([]); setDiscountPct(""); setMpesaSent(false); setError(null); setCustomer(null);
+    setLines([]); setDiscountPct(""); setMpesaSent(false); setError(null); setCustomer(null); setResumed(null);
     setTenders([newTender(online ? "mpesa" : "cash")]); setConfirmed(null);
   }
   function newSale() {
@@ -299,13 +285,14 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
       const res = await completeSale({
         customerId: customer?.id ?? null,
         items: lines.map((l) => ({ variant_id: l.variantId, quantity: l.qty })),
-        discount, clientRef,
+        discount, clientRef, suspensionId: resumed?.id,
         payments: tenders.map((t, i) => ({ method: t.method, amount: pay.amounts[i], phone: t.method === "mpesa" ? t.phone : undefined, reference: t.reference.trim() || undefined }))
           .filter((p) => p.amount > 0),
       });
       setMpesaSent(false);
       if (!res.ok) { setError(res.error); return; }
       setReceipt(receiptFromCart(res.data.orderNumber, false, res.data.payments, res.data));
+      setResumed(null);
     } catch (e) {
       if (!isNetworkError(e)) { setError("Something went wrong. Please try again."); return; }
       setServerOk(false);
@@ -350,20 +337,70 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     return () => clearInterval(t);
   }, [online, queue, syncNow]);
 
-  // Park / resume
-  function park() {
+  // Suspended sales: held in the database with their stock (24 h by default, see the migration).
+  const refreshSuspensions = useCallback(async () => {
+    try {
+      const res = await listSuspensions();
+      if (res.ok) setSuspensions(res.data);
+    } catch (e) { if (isNetworkError(e)) setServerOk(false); }
+  }, []);
+  useEffect(() => { refreshSuspensions(); }, [refreshSuspensions]);
+  // Another till suspended, resumed or released one: re-read the list.
+  useLiveTopic("admin", () => refreshSuspensions());
+  // A countdown reached zero: the server releases it as the list is read.
+  const nextExpiry = suspensions.reduce((m, s) => Math.min(m, new Date(s.expiresAt).getTime()), Infinity);
+  useEffect(() => { if (nextExpiry <= now.getTime()) refreshSuspensions(); }, [now, nextExpiry, refreshSuspensions]);
+  // The suspension in the cart ended elsewhere (released, expired): its stock is no longer held.
+  useEffect(() => {
+    if (resumed && !suspensions.some((s) => s.id === resumed.id)) {
+      setResumed(null);
+      setError(`${resumed.reference} has ended; its items are no longer held. Check stock before taking payment.`);
+    }
+  }, [suspensions, resumed]);
+  /** Units of this product the resumed suspension already holds (they count as available for it). */
+  const heldFor = (id: string) => resumed?.items.find((i) => i.variantId === id)?.quantity ?? 0;
+
+  const [suspendNote, setSuspendNote] = useState("");
+  async function suspend() {
     if (!lines.length) return;
-    const entry: ParkedSale = { id: newClientRef(), at: new Date().toISOString(), customerId: customer?.id ?? null, customerName: customer ? customer.business ?? customer.name : null, lines, discountPct };
-    const next = [entry, ...parked].slice(0, 20);
-    setParked(next); saveParked(next); resetSale();
+    if (!online) { setError("Suspending needs a connection: the stock is held in the database."); return; }
+    setPending(true); setError(null);
+    try {
+      // A resumed sale suspended again: give back its old hold first, then hold the new cart.
+      if (resumed) {
+        const rel = await releaseSuspension(resumed.id);
+        if (!rel.ok) { setError(rel.error); return; }
+      }
+      const res = await suspendSale({ customerId: customer?.id ?? null, items: lines.map((l) => ({ variant_id: l.variantId, quantity: l.qty })),
+        discountPct: Number(discountPct) || 0, notes: suspendNote });
+      if (!res.ok) { setError(res.error); return; }
+      setAdded(`Suspended as ${res.data.reference}`);
+      setSuspendNote(""); setPanel(null); setResumed(null); resetSale(); refreshSuspensions(); router.refresh();
+    } catch (e) {
+      if (isNetworkError(e)) setServerOk(false);
+      setError("Couldn't suspend the sale. Please try again.");
+    } finally { setPending(false); }
   }
-  function resume(p: ParkedSale) {
-    const next = parked.filter((x) => x.id !== p.id);
-    setParked(next); saveParked(next);
-    setLines(p.lines.filter((l) => itemsBy.has(l.variantId)));
-    setDiscountPct(p.discountPct);
-    const c = customers.find((x) => x.id === p.customerId) ?? null;
-    setCustomer(c); setTenders([newTender(online ? "mpesa" : "cash", c?.phone ?? "")]); setPanel(null);
+  function resume(s: PosSuspension) {
+    if (lines.length && resumed?.id !== s.id && !window.confirm("Replace the current cart with this suspended sale?")) return;
+    setLines(s.items.filter((i) => itemsBy.has(i.variantId)).map((i) => ({ variantId: i.variantId, qty: i.quantity })));
+    setDiscountPct(s.discountPct ? String(s.discountPct) : "");
+    const c = customers.find((x) => x.id === s.customerId) ?? null;
+    setCustomer(c); setTenders([newTender("mpesa", c?.phone ?? s.customerPhone ?? "")]);
+    setResumed(s); setMpesaSent(false); setConfirmed(null); setError(null); setPanel(null);
+  }
+  async function release(s: PosSuspension) {
+    if (!window.confirm(`Release ${s.reference}? Its items go back on sale.`)) return;
+    const res = await releaseSuspension(s.id);
+    if (!res.ok) { setError(res.error); return; }
+    if (resumed?.id === s.id) { setResumed(null); resetSale(); }
+    refreshSuspensions(); router.refresh();
+  }
+  async function extend(s: PosSuspension, until: string) {
+    const res = await extendSuspension(s.id, until);
+    if (!res.ok) { setError(res.error); return false; }
+    refreshSuspensions();
+    return true;
   }
 
   // Keyboard shortcuts (shown on the quick-action buttons).
@@ -372,8 +409,8 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
     F3: () => setPanel("manual"),
     F4: () => discountRef.current?.focus(),
     F5: () => window.open("/admin/customers/new", "_blank"),
-    F6: park,
-    F7: () => setPanel("parked"),
+    F6: () => lines.length && setPanel("suspend"),
+    F7: () => setPanel("suspended"),
   } as Record<string, () => void>;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (actions[e.key]) { e.preventDefault(); actions[e.key](); } };
@@ -394,9 +431,6 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const canCharge = priced.length > 0 && !pending && allConfirmed && pay.balance === 0 && !paymentProblem;
   const conflicts = queue.filter((s) => s.status === "conflict").length;
   const waiting = queue.filter((s) => s.status === "pending").length;
-  const chips = categories.slice(0, VISIBLE_CHIPS);
-  const moreChips = categories.slice(VISIBLE_CHIPS);
-  const recentItems = recentIds.map((id) => itemsBy.get(id)).filter((x): x is PosItem => !!x);
 
   return (
     <div className="space-y-4">
@@ -423,90 +457,24 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
       <div className="grid grid-cols-1 gap-5 pb-20 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-0 xl:grid-cols-[minmax(0,1fr)_400px]">
         {/* Products */}
         <section className="min-w-0 space-y-4">
-          <div className="flex flex-wrap gap-3">
-            <form onSubmit={scan} className="relative min-w-60 flex-1">
-              <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-ink-muted" />
-              <input ref={searchRef} autoFocus value={query} onChange={(e) => setQuery(e.target.value)} className={cx(inputClass, "h-13 rounded-2xl pl-12 pr-12 text-base")}
-                placeholder="Search product, scan barcode or type SKU…" aria-label="Search products or scan barcode" />
-              <ScanBarcode className="absolute right-4 top-1/2 size-5 -translate-y-1/2 text-ink-muted" aria-hidden />
-            </form>
-            <Button variant="secondary" className="h-13" onClick={newSale}><Plus className="size-5" /> New Sale</Button>
-            <Button variant="ghost" className="h-13 border border-line bg-white" onClick={() => setPanel("recent")}><History className="size-5" /> Recent Sales</Button>
-          </div>
-
           <div className="flex flex-wrap gap-2">
-            {[{ slug: "all", name: "All" }, ...chips].map((c) => (
-              <button key={c.slug} onClick={() => setCat(c.slug)}
-                className={cx("rounded-full px-4 py-2 text-sm font-semibold transition", cat === c.slug ? "bg-brand-600 text-white" : "border border-line bg-white hover:border-brand-200")}>{c.name}</button>
+            <Button variant="secondary" onClick={newSale}><Plus className="size-4" /> New Sale</Button>
+            <Button variant="ghost" className="border border-line bg-white" onClick={() => setPanel("recent")}><History className="size-4" /> Recent Sales</Button>
+            <Button variant="ghost" className={cx("border bg-white", suspensions.length ? "border-brand-200 text-brand-700" : "border-line")} onClick={() => setPanel("suspended")}>
+              <PauseCircle className="size-4" /> Suspended Sales ({suspensions.length})
+            </Button>
+          </div>
+
+          <ProductFinder items={items} categories={categories} sheet={sheet} activity={activity} online={online} searchRef={searchRef} qtyOf={qtyOf} onAdd={(i) => addItem(i)} />
+
+          <div className="flex flex-wrap gap-2 border-t border-line pt-4">
+            {([["F2", "Scan Barcode", ScanBarcode], ["F3", "Manual Product", PackagePlus], ["F4", "Apply Discount", BadgePercent],
+               ["F5", "Add Customer", UserPlus], ["F6", "Suspend Sale", PauseCircle], ["F7", "Suspended Sales", History]] as const).map(([key, label, Icon]) => (
+              <button key={key} onClick={actions[key]} disabled={key === "F6" && !lines.length}
+                className="flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-ink transition hover:border-ink/30 disabled:opacity-40">
+                <Icon className="size-4" strokeWidth={1.7} />{label}<kbd className="rounded bg-surface px-1 text-[10px] text-ink-muted">{key}</kbd>
+              </button>
             ))}
-            {moreChips.length > 0 && (
-              <label className="relative">
-                <span className="sr-only">More categories</span>
-                <select value={moreChips.some((c) => c.slug === cat) ? cat : ""} onChange={(e) => e.target.value && setCat(e.target.value)}
-                  className={cx("h-full appearance-none rounded-full border py-2 pl-4 pr-9 text-sm font-semibold", moreChips.some((c) => c.slug === cat) ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-white")}>
-                  <option value="">More</option>
-                  {moreChips.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2" />
-              </label>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-            {shown.map((i) => {
-              const left = i.available - qtyOf(i.variantId);
-              const one = breakFor(sheet?.[i.variantId], 1);
-              const bulk = nextBreak(sheet?.[i.variantId], 1);
-              return (
-                <article key={i.variantId} className="flex flex-col overflow-hidden rounded-2xl border border-line bg-white">
-                  <button onClick={() => addItem(i)} disabled={left <= 0} className="block" tabIndex={-1} aria-hidden>
-                    <ProductImage category={i.category} name={i.name} image={i.image} size="sm" className="rounded-none" />
-                  </button>
-                  <div className="flex flex-1 flex-col gap-1 p-3">
-                    <p className="line-clamp-2 text-sm font-semibold leading-snug">{i.name}</p>
-                    {i.variantName && <p className="text-xs text-ink-muted">{i.variantName}</p>}
-                    <p className="mt-auto text-lg font-bold text-brand-600">{kes(one?.unit_price ?? i.retail)}</p>
-                    {bulk && <p className="text-xs text-teal-fg">{bulk.min_qty}+: {kes(bulk.unit_price)} each</p>}
-                    <span className="flex flex-wrap gap-1">
-                      <span className={cx("rounded-full px-2 py-0.5 text-xs font-semibold", i.available <= 0 ? "bg-rose-bg text-rose-fg" : i.low ? "bg-amber-bg text-amber-fg" : "bg-mint-bg text-mint-fg")}>
-                        {i.available <= 0 ? "Out of stock" : `${i.low ? "Low" : "In Stock"} (${i.available})`}{!online && " · last known"}
-                      </span>
-                      {qtyOf(i.variantId) > 0 && <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">{qtyOf(i.variantId)} in cart</span>}
-                    </span>
-                    <Button size="sm" className="mt-2 w-full" disabled={left <= 0} onClick={() => addItem(i)}><ShoppingCart className="size-4" /> {left <= 0 && i.available > 0 ? "All in cart" : "Add"}</Button>
-                  </div>
-                </article>
-              );
-            })}
-            {!shown.length && <p className="col-span-full py-10 text-center text-ink-muted">No products match.</p>}
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="rounded-2xl border border-line bg-white p-4">
-              <p className="mb-3 font-semibold">Quick Actions</p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3 2xl:grid-cols-6">
-                {([["F2", "Scan Barcode", ScanBarcode], ["F3", "Manual Product", PackagePlus], ["F4", "Apply Discount", BadgePercent],
-                   ["F5", "Add Customer", UserPlus], ["F6", "Park Sale", PauseCircle], ["F7", "View Suspended", History]] as const).map(([key, label, Icon]) => (
-                  <button key={key} onClick={actions[key]} disabled={key === "F6" && !lines.length}
-                    className="flex flex-col items-center gap-1 rounded-xl border border-line px-1 py-2.5 text-center text-xs font-medium transition hover:border-brand-200 hover:bg-brand-50 disabled:opacity-40">
-                    <Icon className="size-5 text-ink" strokeWidth={1.7} />{label}<span className="text-[10px] text-ink-muted">{key}{key === "F7" && parked.length ? ` · ${parked.length}` : ""}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-line bg-white p-4">
-              <p className="mb-3 font-semibold text-brand-700">Recent Products</p>
-              {recentItems.length ? (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {recentItems.map((i) => (
-                    <button key={i.variantId} onClick={() => addItem(i)} className="flex w-36 shrink-0 items-center gap-2 rounded-xl border border-line p-1.5 text-left hover:border-brand-200">
-                      <span className="size-10 shrink-0"><ProductImage category={i.category} name={i.name} image={i.image} size="sm" className="rounded-lg" /></span>
-                      <span className="min-w-0"><span className="block truncate text-xs">{i.name}</span><span className="text-xs font-bold text-brand-600">{kes(breakFor(sheet?.[i.variantId], 1)?.unit_price ?? i.retail)}</span></span>
-                    </button>
-                  ))}
-                </div>
-              ) : <p className="text-sm text-ink-muted">Products you add appear here for quick reuse.</p>}
-            </div>
           </div>
         </section>
 
@@ -554,9 +522,14 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
             </p>
           </div>
 
+          {resumed && (
+            <p className="flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm">
+              <PauseCircle className="size-4 shrink-0 text-ink-muted" />
+              <span className="min-w-0 flex-1">Resumed <strong>{resumed.reference}</strong>: its stock stays held until you take payment.</span>
+            </p>
+          )}
           <div className="rounded-xl bg-surface/70">
-            <div className="flex items-center justify-between px-3 pt-3"><p className="font-semibold">Cart ({units} item{units === 1 ? "" : "s"})</p>
-              {lines.length > 0 && <button onClick={() => setLines([])} className="text-sm font-semibold text-brand-700">Clear Cart</button>}</div>
+            <div className="flex items-center justify-between px-3 pt-3"><p className="font-semibold">Cart ({units} item{units === 1 ? "" : "s"})</p></div>
             <ul className="max-h-96 divide-y divide-line overflow-y-auto px-3">
               {priced.map((l) => {
                 const label = ruleLabel(l.price.rule, l.price.minQty);
@@ -587,8 +560,8 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
             </ul>
           </div>
 
-          <label className="flex items-center gap-3 rounded-xl bg-brand-50 px-3 py-2">
-            <BadgePercent className="size-5 text-brand-600" /><span className="flex-1 text-sm">Discount (%)</span>
+          <label className="flex items-center gap-3 rounded-xl border border-line px-3 py-2">
+            <BadgePercent className="size-5 text-ink-muted" /><span className="flex-1 text-sm">Discount (%)</span>
             <input ref={discountRef} value={discountPct} onChange={(e) => setDiscountPct(e.target.value.replace(/[^\d.]/g, "").slice(0, 5))} inputMode="decimal"
               className="h-9 w-20 rounded-lg border border-line bg-white px-2 text-right" placeholder="0" aria-label="Discount percent" />
             <span className="w-20 text-right text-sm">{kes(discount)}</span>
@@ -620,11 +593,16 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
           )}
           {priced.length > 0 && paymentProblem && <p className="text-sm text-amber-fg">{paymentProblem}</p>}
           {error && <p className="rounded-xl bg-rose-bg px-3 py-2 text-sm text-rose-fg" role="alert">{error}</p>}
-          <Button size="lg" className="w-full text-lg" disabled={!canCharge} onClick={charge}>
-            {pending ? "Completing…" : pay.balance > 0 && priced.length ? `${kes(pay.balance)} still to pay`
-              : !online ? `Complete Cash Sale (offline) – ${kes(total)}`
-              : needsPrompt && mpesaSent ? "Simulate M-Pesa Payment & Complete" : needsPrompt ? `Send M-Pesa Request – ${kes(promptAmount)}` : `Complete Sale – ${kes(total)}`}
-          </Button>
+          <div className="grid grid-cols-[auto_auto_1fr] gap-2">
+            <Button variant="ghost" size="lg" className="border border-line px-4" disabled={!lines.length || pending} onClick={resetSale}><Trash2 className="size-4" /> Clear</Button>
+            <Button variant="ghost" size="lg" className="border border-line px-4" disabled={!lines.length || pending || !online} onClick={() => setPanel("suspend")}
+              title={online ? "Hold this sale and its stock for 24 hours (F6)" : "Suspending needs a connection"}><PauseCircle className="size-4" /> Suspend</Button>
+            <Button size="lg" className="text-base" disabled={!canCharge} onClick={charge}>
+              {pending ? "Completing…" : pay.balance > 0 && priced.length ? `${kes(pay.balance)} still to pay`
+                : !online ? `Pay ${kes(total)} cash (offline)`
+                : needsPrompt && mpesaSent ? "Simulate M-Pesa & Complete" : needsPrompt ? `Send M-Pesa – ${kes(promptAmount)}` : `Pay Now – ${kes(total)}`}
+            </Button>
+          </div>
           {!allConfirmed && priced.length > 0 && <p className="-mt-2 text-center text-xs text-ink-muted">Confirming prices and stock…</p>}
           <div className="grid grid-cols-2 gap-2">
             <Button variant="ghost" className="border border-line" disabled={!lastReceipt} onClick={() => lastReceipt && setReceipt(lastReceipt)}><Printer className="size-4" /> Reprint Last Receipt</Button>
@@ -637,7 +615,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
         <div className="fixed inset-0 z-40 flex items-start justify-center bg-ink/40 p-4 pt-20" role="dialog" aria-modal="true" onClick={() => setPanel(null)}>
           <div className="w-full max-w-lg rounded-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">{{ recent: "Recent Sales", parked: "Suspended Sales", manual: "Manual Product", sync: "Till Connection" }[panel]}</h2>
+              <h2 className="text-lg font-bold">{{ recent: "Recent Sales", suspended: `Suspended Sales (${suspensions.length})`, suspend: "Suspend Sale", manual: "Manual Product", sync: "Till Connection" }[panel]}</h2>
               <button onClick={() => setPanel(null)} aria-label="Close" className="p-1"><X className="size-5" /></button>
             </div>
             {panel === "recent" && (
@@ -651,20 +629,20 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
                 {!recentSales.length && <li className="py-6 text-center text-ink-muted">No till sales yet.</li>}
               </ul>
             )}
-            {panel === "parked" && (
-              <ul className="max-h-96 divide-y divide-line overflow-y-auto">
-                {parked.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
-                    <span><span className="font-semibold">{p.customerName ?? "Walk-in Customer"}</span>
-                      <span className="block text-sm text-ink-muted">{p.lines.reduce((s, l) => s + l.qty, 0)} items · parked {formatDateTime(p.at)}</span></span>
-                    <span className="flex gap-2">
-                      <Button size="sm" onClick={() => resume(p)} disabled={lines.length > 0} title={lines.length ? "Finish or park the current sale first" : undefined}>Resume</Button>
-                      <Button size="sm" variant="ghost" onClick={() => { const next = parked.filter((x) => x.id !== p.id); setParked(next); saveParked(next); }}>Discard</Button>
-                    </span>
-                  </li>
-                ))}
-                {!parked.length && <li className="py-6 text-center text-ink-muted">No parked sales. Press F6 to park the current sale.</li>}
-              </ul>
+            {panel === "suspended" && (
+              <SuspendedSales list={suspensions} now={now} itemsBy={itemsBy} resumedId={resumed?.id ?? null}
+                onResume={resume} onRelease={release} onExtend={extend} />
+            )}
+            {panel === "suspend" && (
+              <div className="space-y-3 text-[15px]">
+                <p className="text-ink-muted">
+                  The cart{customer ? ` for ${customer.business ?? customer.name}` : ""} is saved and its {units} item{units === 1 ? "" : "s"} are held for <strong className="text-ink">24 hours</strong>.
+                  They stay off sale on the website and every till until the sale is paid, released or the time runs out.
+                </p>
+                <label className="block"><span className="mb-1 block text-sm font-semibold">Note (optional)</span>
+                  <input value={suspendNote} onChange={(e) => setSuspendNote(e.target.value)} className={inputClass} placeholder="e.g. Coming back after lunch with cash" maxLength={200} /></label>
+                <Button size="lg" className="w-full" onClick={suspend} disabled={pending || !lines.length}>{pending ? "Suspending…" : "Suspend Sale"}</Button>
+              </div>
             )}
             {panel === "manual" && <ManualProduct items={items} onAdd={(i, q) => { addItem(i, q); setPanel(null); }} />}
             {panel === "sync" && (
