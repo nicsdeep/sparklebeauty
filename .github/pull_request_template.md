@@ -34,3 +34,7 @@ If this PR doesn't change user interaction, write "Not applicable" and delete th
 - [ ] Business records still come from the shared database, and shared rules aren't duplicated.
 - [ ] Changes propagate without an unnecessary page refresh.
 - [ ] Desktop and mobile navigation paths were tested, including the full chain there and back.
+- [ ] Long selectable lists are searchable comboboxes from the shared component (type at once, arrow keys, Enter, Escape, clear).
+- [ ] Filter values come from the database, depend on each other, show removable chips with Clear all, and survive going away and back.
+- [ ] Product results and POS cards show the exact variant: variant, SKU, price and compact stock text.
+- [ ] Large-dataset search runs in the database, debounced (~200–300 ms), cancels stale requests and has a clear empty state.
