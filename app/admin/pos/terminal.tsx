@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Badge, Button, buttonClass, cx, inputClass } from "@/components/ui";
 import { ProductImage } from "@/components/shop/product-image";
-import { formatDateTime, kes, maskPhone, PAYMENT_LABEL } from "@/lib/format";
+import { formatDateTime, kes, maskPhone } from "@/lib/format";
 import { useLiveTopic } from "@/lib/live";
 import { orderTax, type TaxType } from "@/lib/tax";
 import { vatHeading } from "@/lib/invoices";

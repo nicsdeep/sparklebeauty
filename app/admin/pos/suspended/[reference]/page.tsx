@@ -73,7 +73,7 @@ export default async function SuspensionPage({ params }: Params) {
             {Number(s.discount_pct) > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount ({Number(s.discount_pct)}%)</dt><dd className="tabular-nums">-{kes(Math.round((sub * Number(s.discount_pct)) / 100))}</dd></div>}
             <div className="flex justify-between pt-1 text-lg font-bold"><dt>Total (with VAT)</dt><dd className="tabular-nums">{kes(suspensionTotal(s, rates))}</dd></div>
           </dl>
-          <p className="border-t border-line px-5 py-3 text-sm text-ink-muted">The sale is re-priced by the pricing engine when it's paid.</p>
+          <p className="border-t border-line px-5 py-3 text-sm text-ink-muted">The sale is re-priced by the pricing engine when it&apos;s paid.</p>
         </Card>
 
         <div className="space-y-5">

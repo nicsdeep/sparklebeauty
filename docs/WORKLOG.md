@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: ESLint and database performance checks
+- PR: (this PR, branch `claude/eslint-db-checks`)
+- Changed:
+  - Added ESLint 9 with the Next.js config (`eslint.config.mjs`, `npm run lint`). It reported 9 issues, now fixed:
+    - 2 unescaped apostrophes;
+    - 4 unused imports;
+    - `aria-invalid` on the Combobox button, replaced with `aria-describedby` pointing at the error;
+    - the anonymous default export in `postcss.config.mjs`;
+    - an intentional rest-sibling omit (rule set to `ignoreRestSiblings`).
+  - Ran the database performance checks in SQL: unindexed foreign keys, RLS init-plan, multiple permissive policies and duplicate indexes. The one finding was `announcements.updated_by`, now indexed by migration `20261107120000_announcements_updated_by_index.sql`.
+- Why: Nicholas asked for both checks to be added.
+- Tested:
+  - `eslint . --max-warnings 0` and `tsc --noEmit` pass;
+  - the migration in a rolled-back batch;
+  - lock file: no existing package version changed, and 292 dev packages were added.
+- Follow-ups: the 2 production `npm audit` advisories in Next.js's dependencies wait for a Next.js upgrade.
+
 ## 2026-11-03: Claude: Rotating announcement bar and a clearer header logo
 - PR: (this PR, branch `claude/announcement-bar`)
 - Changed:

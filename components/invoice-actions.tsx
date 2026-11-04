@@ -43,7 +43,7 @@ export function InvoiceActions({ bundles }: { bundles: InvoiceBundle[] }) {
       <Button disabled={!!busy} onClick={() => make("download")}>
         {busy === "download" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Download PDF
       </Button>
-      {error && <p className="w-full text-sm text-rose-fg" role="alert">The PDF couldn't be made. Please try again.</p>}
+      {error && <p className="w-full text-sm text-rose-fg" role="alert">The PDF couldn&apos;t be made. Please try again.</p>}
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock, RotateCw, Smartphone, X, XCircle } from "lucide-react";
-import { cx } from "@/components/ui";
 import { kes } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { payOrder } from "@/app/(shop)/actions";
