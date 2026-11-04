@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cx } from "@/components/ui";
+import { Combobox, FilterChips, type ComboOption } from "@/components/combobox";
 
 // Filters and pagination for admin list pages. Everything lives in the URL (?page=, ?size=, filters),
 // so the list is read from the database page by page, and Back, refresh and links keep the view.
@@ -90,4 +91,20 @@ export function Pagination({ page, size, total, noun }: { page: number; size: nu
       </div>
     </nav>
   );
+}
+
+/** A searchable filter (shared Combobox) bound to one URL parameter, for long option lists (doctrine §22). */
+export function FilterCombobox({ label, param, options, allLabel }: { label: string; param: string; options: ComboOption[]; allLabel: string }) {
+  const { params, set } = useSetParams();
+  return <Combobox label={label} value={params.get(param) ?? ""} options={options} allLabel={allLabel} onChange={(v) => set({ [param]: v || null })} />;
+}
+
+/** The URL filters in use as removable chips, with Clear all (doctrine §28). `labels` names each value. */
+export function UrlFilterChips({ params: names, labels }: { params: string[]; labels: Record<string, Record<string, string>> }) {
+  const { params, set } = useSetParams();
+  const chips = names.filter((n) => params.get(n)).map((n) => {
+    const v = params.get(n)!;
+    return { key: n, label: labels[n]?.[v] ?? v, onRemove: () => set({ [n]: null }) };
+  });
+  return <FilterChips chips={chips} onClearAll={() => set(Object.fromEntries(names.map((n) => [n, null])))} />;
 }

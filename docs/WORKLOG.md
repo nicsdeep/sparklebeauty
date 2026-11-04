@@ -15,6 +15,31 @@ Entry format:
 
 ---
 
+## 2026-11-04: Claude: Products list redesign
+- PR: (this PR, branch `claude/products-list`)
+- Changed:
+  - `app/admin/products/page.tsx`, rebuilt to Nicholas's design:
+    - the header with icon, count and KES note, and Add Product;
+    - **summary cards** (Total, Low Stock, Out of Stock, Featured) that open the list with that filter. Each card's note is real (e.g. "20 added in the last 30 days"); no trend lines are invented, because there's no stock history to draw them from;
+    - **search** by name, brand, category or SKU;
+    - a **Filter** panel opened in place: Category, Brand/Supplier, Stock and Shop (featured / hidden / visible), all searchable comboboxes, with removable chips and Clear all;
+    - **Sort**: featured first, name, price both ways, lowest stock, newest;
+    - **Export CSV**: one row per SKU, using the same filters;
+    - a table with photo, name, brand, Featured and Hidden, category, options, retail and wholesale ranges, available stock, status, and Edit plus a ⋯ menu (View in shop, Stock in Inventory);
+    - **pagination**, 20 per page.
+  - `app/admin/products/list-data.ts`: shared filtering and sorting for the page and the export. `app/admin/products/toolbar.tsx`: the toolbar and row menu. `app/admin/products/export/route.ts`: the CSV (staff only).
+  - `components/admin/list-controls.tsx`: `FilterCombobox` (URL-bound searchable filter) and `UrlFilterChips`.
+- Why: Nicholas asked for the Products page to look like his design.
+- Tested in the local preview, signed in as admin:
+  - 74 products, "Showing 1–20 of 74".
+  - The Low Stock card gave 5 products and a chip; Export with that filter returned a CSV of those 5, one row per SKU.
+  - Category "wig" + Enter gave 8 Wigs and a chip, and reset to page 1.
+  - The ⋯ menu works.
+  - Page 2 → product → Back returned to `?page=2`.
+  - 375 px: no sideways scroll.
+  - `tsc --noEmit` passes.
+- Follow-ups: move the filtering into the database when the catalogue grows (Known issues).
+
 ## 2026-11-04: Claude: POS revamp to doctrine §22–§38 (variant-first, searchable filters)
 - PR: (this PR, branch `claude/pos-variant-first`)
 - Changed:
