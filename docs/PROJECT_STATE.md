@@ -214,6 +214,7 @@ Migrations, in order:
 25. `20261103120000_order_tracking_eta_live.sql`: `orders.estimated_delivery_at` (staff set it at dispatch through `set_delivery_estimate()`, staff only), and live tracking for customers: the trigger `orders_broadcast_customer` broadcasts on the private topic `order:<id>`, which only that order's customer and staff may receive (policy on `realtime.messages`).
 26. `20261104120000_pos_suspended_sales.sql`: suspended POS sales. `pos_suspensions` / `pos_suspension_items` / `pos_suspension_events` (staff read only; changes via functions). `pos_suspend_sale()` holds stock in `inventory_levels.reserved` for 24 h; `pos_extend_suspension()`, `pos_release_suspension()`; `pos_complete_suspended_sale()` releases the hold and records the sale in one transaction; `expire_pos_suspensions()` runs every minute via pg_cron (and when a till lists suspensions).
 27. `20261105090000_product_combo_options_barcode.sql`: `admin_create_product()` / `admin_update_product()` accept two-part options (`colour_length`, `colour_size`; rows carry `option` + `option2`; the variant is named "Colour · Length") and an optional unique `barcode` per variant. Editing no longer clears the attributes the option type doesn't use (it used to wipe a wig's colour when saved by length).
+28. `20261105120000_social_tiktok_youtube.sql`: `store_settings.tiktok_url` and `youtube_url` (nullable), set in Admin → Settings. The footer shows a social icon only for links that are set.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -308,6 +309,14 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 ## Known issues
 
+- **Policy pages need Sparkle to confirm some terms.** An amber "to be confirmed by Sparkle" tag (`ToConfirm` in `components/shop/policy-page.tsx`) marks each unconfirmed clause on `/delivery`, `/shipping-policy`, `/returns`, `/terms`, `/privacy` and `/faqs`:
+  - delivery times and failed deliveries;
+  - the return window, non-returnable items, and refund timing;
+  - the liability limit;
+  - marketing consent and data retention;
+  - loyalty point expiry.
+  Confirm or change each clause, remove its tag, and update `POLICIES_UPDATED`. Fees, the address and opening hours come from `store_settings`.
+- **TikTok and YouTube links aren't set.** Their footer icons appear once an admin adds the links in Settings.
 - **Not yet compliant with `UX_NAVIGATION_DOCTRINE.md`** (audit of 2026-11-04; fix these as each area is next touched, or in dedicated PRs):
   - **No paging on large lists (§8):** Admin Orders and Invoices load up to 200 rows; Customers, Wholesale and the shop catalogue have no limit or pages. POS Recent Sales and Suspended Sales use database paging (`components/admin/list-controls.tsx`). Admin Products is paged (20 per page), but it still reads the whole catalogue to filter it, through `listProducts` and `app/admin/products/list-data.ts`; move that into the database before the catalogue grows into the thousands.
   - **No drawers or master–detail yet (§2, §7, §11):** order, customer, product and sale details open as full pages (with real Back). There's no shared drawer component with its own history yet. The doctrine prefers drawers for these; Nicholas asked for POS sale details as a page (PR #52) before the doctrine, so check with him before converting.

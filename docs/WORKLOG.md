@@ -15,6 +15,32 @@ Entry format:
 
 ---
 
+## 2026-11-03: Claude: Storefront footer revamp and policy pages
+- PR: (this PR, branch `claude/footer-revamp`)
+- Changed:
+  - `components/shop/footer.tsx` replaces the inline footer in `app/(shop)/layout.tsx`:
+    - a white-to-pink gradient with light waves and line-art cosmetics bottom-left;
+    - the full-colour logo (`tone="brand"`), the tagline, and icon-only social links;
+    - five columns on desktop (Brand, Shop, Customer Care, Policies, Get in Touch), three on tablet, accordions on mobile;
+    - one WhatsApp action (the main WhatsApp contact, shown as +254), instead of every phone number;
+    - a bottom bar with the copyright and "We accept": M-PESA, Visa, Mastercard and Cash, the methods checkout offers.
+  - New pages, sharing `components/shop/policy-page.tsx`:
+    - `/delivery`, `/shipping-policy`, `/returns`, `/terms`, `/privacy`, `/cookies` and `/faqs`;
+    - the shared layout has the updated date, a help and policies menu, and a `ToConfirm` tag for terms Sparkle hasn't confirmed;
+    - fees, free-delivery rules, the address and hours come from `store_settings`.
+  - `components/shop/shop-back-link.tsx`: `ShopTrail` (in the shop layout) and `ShopBackLink`. Back returns to the shop page the customer came from, or home.
+  - Migration `20261105120000_social_tiktok_youtube.sql` adds `store_settings.tiktok_url` and `youtube_url`, with Settings fields and https:// validation.
+  - The WhatsApp logo moved to `components/shop/social-icons.tsx` so the footer and the chat button share it.
+- Why: Nicholas asked for a softer, more complete footer with working policy links.
+- Tested:
+  - typecheck;
+  - in the browser at 1366 px, 779 px and 375 px: every footer link, the mobile accordions, and no horizontal scroll;
+  - all seven pages and the perfumes and accessories categories return 200;
+  - Back from `/terms` returns to `/shop?category=perfumes`.
+- Follow-ups:
+  - Sparkle to confirm the tagged policy terms;
+  - add the TikTok and YouTube links in Settings.
+
 ## 2026-11-04: Claude: Two-part product options and barcodes
 - PR: (this PR, branch `claude/combo-options-barcode`)
 - Changed:

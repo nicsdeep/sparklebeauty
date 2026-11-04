@@ -230,7 +230,9 @@ export async function saveStoreSettings(formData: FormData): Promise<ActionResul
   if (directions && !directions.startsWith("https://")) return { ok: false, error: "The directions link must start with https://" };
   const facebook = text(formData, "facebook_url");
   const instagram = text(formData, "instagram_url");
-  if ([facebook, instagram].some((u) => u && !u.startsWith("https://"))) return { ok: false, error: "Social media links must start with https://" };
+  const tiktok = text(formData, "tiktok_url");
+  const youtube = text(formData, "youtube_url");
+  if ([facebook, instagram, tiktok, youtube].some((u) => u && !u.startsWith("https://"))) return { ok: false, error: "Social media links must start with https://" };
 
   const kraPin = text(formData, "kra_pin").toUpperCase();
   if (kraPin && !KRA_PIN.test(kraPin)) return { ok: false, error: "A KRA PIN is a letter, 9 digits and a letter, e.g. P051234567X." };
@@ -249,6 +251,8 @@ export async function saveStoreSettings(formData: FormData): Promise<ActionResul
     directions_url: directions || null,
     facebook_url: facebook || null,
     instagram_url: instagram || null,
+    tiktok_url: tiktok || null,
+    youtube_url: youtube || null,
     delivery_fee_nairobi: fees.nairobi,
     delivery_fee_other: fees.other,
     free_delivery_threshold: fees.free,
