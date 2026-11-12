@@ -326,6 +326,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 | 2026-10-30 | One pricing engine in the database for every channel: negotiated, then wholesale account, then 10+ units, then retail. Wholesale sales are their own channel. The till works offline for cash only and never forces a sale past real stock | Nicholas |
 | 2026-10-31 | Sparkle is VAT registered. Prices are VAT-exclusive: VAT is added on top at the till and checkout. Tax invoices are built now; the KRA eTIMS connection is added when the KRA credentials are available | Nicholas |
 | 2026-11-11 | **Prices include VAT** (replaces the 2026-10-31 VAT-exclusive rule). Sparkle's shelf prices already include VAT, so customers pay the shelf price, and receipts and invoices show the VAT inside it. Orders from before the switch keep their amounts | Nicholas |
+| 2026-11-12 | Product photos come from Sparkle's own photography (bulk upload matched by shelf-label code), not from scraping other websites (copyright and accuracy). Until then each product shows its category's licensed picture | Claude, on Nicholas's request for photos |
 | 2026-10-29 | The O2C demo migrations were applied to the live database before their PR merged, to build and test the demo in time. The database held no real data | Nicholas approved |
 | 2026-11-04 | `UX_NAVIGATION_DOCTRINE.md` is a binding standard: pages for major work, drawers for context, tabs for related sections, inline for small actions, modals only for short confirmations; Back follows the real path; state is preserved; large lists are paged in the database. Every PR that changes user interaction answers its UX review (PR template) | Nicholas |
 | 2026-11-04 | Doctrine rules 22–38 added: large lists are searchable comboboxes (one shared component), filter values come from the database and depend on each other, active filters show as chips, product search and POS cards are variant-first (variant, SKU, price, compact stock), large-dataset search runs in the database | Nicholas |
@@ -338,7 +339,8 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
   - every variant has **10 units of demo stock at Main Store**: not real quantities, so replace them with a stock count before go-live;
   - the 74 demo products are hidden, not deleted, because old orders refer to them;
   - **every Excel product is shown** (Nicholas, 2026-11-12): all 1,686 products are in the shop and the till. 40 have a hand-chosen category (`MANUAL_CATEGORIES`) to confirm. 6 likely prescription-only or injectable items (Diproson ×2, Epiderm, Lemonvate, Movate, Glutathione injection) are shown at Nicholas's request; their compliance warnings stay in the review workbook;
-  - there are no images (the shop shows category pictures), no descriptions, and no wholesale prices;
+  - there are no product photos yet: the shop shows each category's picture (licensed Unsplash photos, now including Nails, Makeup, Personal Care and Health & Wellness). Staff add real photos in bulk at Admin → Products → Add Photos, by naming each file with the shelf-label code (barcode), SKU or product code. Photos are **not** scraped from other websites: that would copy others' copyrighted images and often show the wrong item;
+  - there are no descriptions and no wholesale prices;
   - the old POS SKU is each variant's barcode;
   - new categories: Nails, Makeup, Personal Care, Health & Wellness.
   - The review workbook still lists the open checks: uncertain groupings, brands, compliance wording.

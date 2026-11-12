@@ -15,6 +15,24 @@ Entry format:
 
 ---
 
+## 2026-11-12: Claude: Bulk product photos and category pictures
+- PR: (this PR, branch `claude/bulk-product-photos`)
+- Changed:
+  - New page `/admin/products/photos`, linked as "Add Photos" on Products:
+    - drop many photos at once; each is matched by file name (shelf-label code / barcode, SKU or product code, with `-2`, `-3` for extra photos) and previewed before upload;
+    - unmatched files are listed with a rename hint;
+    - uploads go to the `product-images` bucket (resized to 1,600 px) and attach through the new `addProductPhotos` action, which accepts only our bucket, removes duplicates and keeps at most 10 photos.
+  - `/admin/products/photos/missing`: CSV shot list of products without photos and the file name to use.
+  - Category pictures for Nails, Makeup, Personal Care and Health & Wellness (Unsplash licence, no other brands visible), plus icon fallbacks.
+  - `shrink()` exported from the photo manager and reused.
+- Why: Nicholas asked for a good photo on every product. Scraping other sites' photos was not done: copyright, downloads from unvetted sites, and wrong-item risk for local hair lines with no reliable photo online.
+- Tested:
+  - browser: `2155.jpg` matched "Angels Kali Curls · 1/27" by barcode, and `NOPE-9999.jpg` was rejected with a hint;
+  - the upload stored the file and attached it; it showed on the live product page;
+  - test photo removed afterwards (storage object deleted, product back to 0 photos);
+  - tsc and eslint pass.
+- Follow-ups: Sparkle staff photograph products and upload them.
+
 ## 2026-11-12: Claude: Every Excel product shown
 - PR: (this PR, branch `claude/show-all-excel-products`)
 - Changed:

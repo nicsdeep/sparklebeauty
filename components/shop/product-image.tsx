@@ -1,4 +1,4 @@
-import { Brush, Droplets, Gem, Scissors, Sparkles, SprayCan, Waves, type LucideIcon } from "lucide-react";
+import { Brush, Droplets, Gem, HeartPulse, Paintbrush, Scissors, ShowerHead, Sparkles, SprayCan, Waves, type LucideIcon } from "lucide-react";
 import { cx } from "@/components/ui";
 import { productImageUrl, sized } from "@/lib/images";
 
@@ -12,6 +12,10 @@ const ICONS: Record<string, LucideIcon> = {
   skincare: Droplets,
   perfumes: SprayCan,
   accessories: Gem,
+  nails: Paintbrush,
+  makeup: Brush,
+  "personal-care": ShowerHead,
+  "health-wellness": HeartPulse,
 };
 
 const WIDTH = { sm: 240, md: 480, lg: 900 };

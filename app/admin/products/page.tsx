@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Box, Check, PackageX, Pencil, Plus, Star } from "lucide-react";
+import { AlertTriangle, Box, Check, PackageX, Pencil, Plus, Star, ImagePlus } from "lucide-react";
 import { Pagination } from "@/components/admin/list-controls";
 import { ProductImage } from "@/components/shop/product-image";
 import { Badge, ButtonLink, Card, cx } from "@/components/ui";
@@ -47,7 +47,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
             <p className="text-sm text-ink-muted">{totals.products} products · Retail & wholesale prices in KES (Kenyan Shilling)</p>
           </div>
         </div>
-        <ButtonLink href="/admin/products/new"><Plus className="size-4" /> Add Product</ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/admin/products/photos" variant="secondary"><ImagePlus className="size-4" /> Add Photos</ButtonLink>
+          <ButtonLink href="/admin/products/new"><Plus className="size-4" /> Add Product</ButtonLink>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
