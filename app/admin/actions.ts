@@ -416,6 +416,24 @@ export async function createProduct(input: ProductInput): Promise<ActionResult<{
 
 const PHOTO_PREFIX = "/storage/v1/object/public/product-images/";
 
+/**
+ * Adds uploaded photos to a product (Admin → Products → Add Photos). Only files in our bucket are
+ * accepted; existing photos stay first, duplicates are skipped, and a product keeps at most 10.
+ */
+export async function addProductPhotos(productId: string, urls: string[]): Promise<ActionResult<{ count: number }>> {
+  const prefix = process.env.NEXT_PUBLIC_SUPABASE_URL + PHOTO_PREFIX;
+  if (!urls.length || urls.some((u) => !u.startsWith(prefix))) return { ok: false, error: "Only photos uploaded here can be added." };
+  const supabase = await createClient();
+  const { data: product, error } = await supabase.from("products").select("image_urls").eq("id", productId).maybeSingle();
+  if (error) return fail(error);
+  if (!product) return { ok: false, error: "Product not found." };
+  const photos = [...new Set([...(product.image_urls ?? []), ...urls])].slice(0, 10);
+  const { data, error: saveError } = await supabase.from("products").update({ image_urls: photos, updated_at: new Date().toISOString() }).eq("id", productId).select("id");
+  if (saveError) return fail(saveError);
+  if (!data?.length) return { ok: false, error: "Only staff can add product photos." };
+  return { ok: true, data: { count: photos.length } };
+}
+
 /** Saves a product; afterwards deletes uploaded photos that were removed from it (only files in our bucket). */
 export async function updateProduct(id: string, input: ProductInput, previousPhotos: string[]): Promise<ActionResult> {
   const supabase = await createClient();

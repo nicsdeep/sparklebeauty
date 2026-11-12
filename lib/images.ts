@@ -18,6 +18,11 @@ export const CATEGORY_IMAGES: Record<string, string> = {
   skincare: `${U}1586212653598-40f9046fe5e3`,
   perfumes: `${U}1676347929093-6614fb45bd90`,
   accessories: `${U}1776969824686-f3ccd3f53649`,
+  // Categories added with the real catalogue (2026-11-12); chosen with no other brand visible.
+  nails: `${U}1610992015732-2449b76344bc`,
+  makeup: `${U}1596462502278-27bfdc403348`,
+  "personal-care": `${U}1576426863848-c21f53c60b19`,
+  "health-wellness": `${U}1608571423902-eed4a5ad8108`,
 };
 
 /** Unsplash CDN URL at a given width (it crops and compresses on the fly). */
