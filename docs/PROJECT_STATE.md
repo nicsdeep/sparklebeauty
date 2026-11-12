@@ -333,7 +333,17 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 ## Known issues
 
-- **Product migration is waiting on decisions.** The review workbook (2026-11-11) covers 3,603 old-POS rows, proposed as 1,686 products (507 with variants). Before any import, Sparkle needs to decide:
+- **The catalogue is Sparkle's real product list, with DEMO STOCK** (imported 2026-11-11 from the UltimatePOS export, `scripts/migration/`):
+  - 1,686 products and 3,595 variants;
+  - every variant has **10 units of demo stock at Main Store**: not real quantities, so replace them with a stock count before go-live;
+  - the 74 demo products are hidden, not deleted, because old orders refer to them;
+  - 40 products with no category are hidden from the shop until they are sorted;
+  - 6 likely prescription or injectable products are hidden;
+  - there are no images (the shop shows category pictures), no descriptions, and no wholesale prices;
+  - the old POS SKU is each variant's barcode;
+  - new categories: Nails, Makeup, Personal Care, Health & Wellness.
+  - The review workbook still lists the open checks: uncertain groupings, brands, compliance wording.
+- **Product migration: decisions still open** (the import is done; see the previous point). The review workbook (2026-11-11) covers 3,603 old-POS rows, proposed as 1,686 products (507 with variants). Before any import, Sparkle needs to decide:
   - whether today's shelf prices include VAT (prices are unchanged until then);
   - how per-ml refill perfumes are sold;
   - wholesale prices;

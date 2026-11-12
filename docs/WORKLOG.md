@@ -15,6 +15,33 @@ Entry format:
 
 ---
 
+## 2026-11-11: Claude: Real Sparkle products imported (demo stock)
+- PR: (this PR, branch `claude/real-products-import`)
+- Changed:
+  - `scripts/migration/ultimatepos-proposal.mjs` holds the cleaning, grouping and warning rules, split out of the review script with identical output.
+  - `ultimatepos-import.mjs` writes a dry-run SQL file and an apply SQL file into the git-ignored `products/`.
+  - Home page: "Featured Products" shows only when products are featured (the real catalogue has none yet).
+  - Review workbook text: VAT is settled.
+- The data import (run after merge, not a migration, since it is data):
+  - 1,686 products (1,680 visible) and 3,595 variants with retail prices, copied unchanged because they include VAT;
+  - old POS SKU as the barcode on 3,576 variants;
+  - **demo stock of 10 per variant**;
+  - new categories (Nails, Makeup, Personal Care, Health & Wellness) and new brands;
+  - the 74 demo products hidden;
+  - featured brands: Garnier, Nivea, Vaseline, Dark & Lovely;
+  - 8 non-product rows skipped.
+- Why: Nicholas asked to use the real products instead of the demo ones, to start experiencing them.
+- Tested:
+  - dry run on the live database (rolled back): every count and total equalled the script's expectation, with selling prices KES 1,432,693.24 and costs KES 1,179,002.45;
+  - eslint and tsc pass;
+  - after the import: see the PR.
+- Follow-ups:
+  - real stock count;
+  - images and descriptions;
+  - wholesale prices;
+  - staff review of the workbook's flags;
+  - an admin control for featured brands.
+
 ## 2026-11-11: Claude: Prices include VAT
 - PR: (this PR, branch `claude/vat-inclusive-pricing`)
 - Changed:
