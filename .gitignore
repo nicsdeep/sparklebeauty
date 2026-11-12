@@ -15,3 +15,6 @@ supabase/.temp/
 next-env.d.ts
 *.tsbuildinfo
 .claude/launch.json
+
+# Real product exports and migration workbooks: business data (cost prices), never committed
+products/

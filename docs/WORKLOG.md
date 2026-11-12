@@ -15,6 +15,34 @@ Entry format:
 
 ---
 
+## 2026-11-11: Claude: Product migration review workbook (no import)
+- PR: (this PR, branch `claude/product-migration-review`)
+- Changed:
+  - `scripts/migration/ultimatepos-review.mjs` and `xlsx.mjs` (with a README) build a review workbook from the UltimatePOS export. Its sheets:
+    - Read me;
+    - Review (all rows);
+    - Proposed products;
+    - Needs attention;
+    - Non-product rows;
+    - Brands;
+    - Categories;
+    - the untouched Original export.
+  - `products/` is git-ignored, and `fflate` is declared as a dev dependency.
+  - No database changes, no import, no price changes, no stock and no images.
+- Why: Nicholas asked for a human-reviewable migration workbook before any production import.
+- Result for `products-export-2026-11-08.xlsx`:
+  - 3,603 rows → 1,686 proposed products, 507 of them with variants (2,416 rows);
+  - grouping confidence: 458 High, 38 Medium, 11 Low;
+  - rows by worst severity: Blocker 153, Check 836, Info 1,075, OK 1,539;
+  - brand identified for 3,149 of 3,595 products, and a category for 3,550.
+- Tested:
+  - the script checks that every row, name, SKU, cost and selling price is preserved;
+  - opened in Excel: no repair prompt, 3,603 rows, and selling (KES 1,434,325.24) and cost (KES 1,179,734.45) totals equal the original;
+  - groupings and categories spot-checked by hand;
+  - eslint and tsc pass.
+  - A first run had a bug: the selling-price column was matched to "Selling Price Tax Type". It was caught in Excel, fixed, and is now guarded by the price check.
+- Follow-ups: Sparkle answers the open decisions and reviews the workbook. The next stage is a staging import.
+
 ## 2026-11-03: Claude: CRON_SECRET set in Vercel; keep-alive switched on
 - PR: (this PR, branch `claude/keep-alive-enabled`)
 - Changed:
