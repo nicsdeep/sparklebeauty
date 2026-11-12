@@ -104,6 +104,12 @@ No chart library: charts are simple components in `components/admin/charts.tsx`.
 - PDF: `lib/invoice-pdf.tsx`, made in the browser when someone clicks View PDF (opens in a new tab, where it can be printed) or Download PDF (`INV-…_Sparkle.pdf`), by `components/invoice-actions.tsx`. Same layout as the screen. The page loads the data through `lib/invoice-data.ts`; RLS decides who can open which invoice. Server-side generation was tried first and failed on Vercel (500) while working locally; making it in the browser avoids that.
 - **Dependency:** `@react-pdf/renderer` 4.9.0, added 2026-10-31 to make real A4 PDFs (the browser's print-to-PDF depends on the user's browser and printer settings). It is loaded only when a PDF is requested.
 
+### Product migration from UltimatePOS
+
+- `scripts/migration/` holds scripts that read the old POS export and build a **review workbook**. They never touch the database. See `scripts/migration/README.md`.
+- Real exports and workbooks go in `products/`, which is git-ignored because they hold cost prices.
+- Dev dependency `fflate` (already installed through `@react-pdf/renderer`) is now declared, because the scripts use it to read and write .xlsx files.
+
 ### Checks
 
 - `npm run typecheck`: TypeScript.
@@ -321,6 +327,14 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 
 ## Known issues
 
+- **Product migration is waiting on decisions.** The review workbook (2026-11-11) covers 3,603 old-POS rows, proposed as 1,686 products (507 with variants). Before any import, Sparkle needs to decide:
+  - whether today's shelf prices include VAT (prices are unchanged until then);
+  - how per-ml refill perfumes are sold;
+  - wholesale prices;
+  - four new categories (Nails, Makeup, Personal care, Health & wellness);
+  - compliance: designer-named refills, skin-lightening products, supplements, and 5 likely prescription steroid creams.
+
+  Staff also need to review the 153 Blocker rows (duplicate old SKUs, below-cost prices, duplicates, no category, non-products) and the uncertain groupings. Stock comes from a count at go-live, and images are a later step.
 - **`npm audit` (production): 2 advisories inside Next.js's own dependencies.** They are a `postcss` copy bundled with `next`, rated high, and `minimatch`, rated moderate. npm's only fix is a forced major upgrade, so they are left for a planned Next.js upgrade. The other dev-only advisories come from ESLint tooling and don't ship to the site.
 - **Featured brands have no admin screen.** `brands.featured_rank` is set by migration. Add a control (e.g. under Products) when Sparkle wants to change the row.
 - **Policy pages need Sparkle to confirm some terms.** An amber "to be confirmed by Sparkle" tag (`ToConfirm` in `components/shop/policy-page.tsx`) marks each unconfirmed clause on `/delivery`, `/shipping-policy`, `/returns`, `/terms`, `/privacy` and `/faqs`:
