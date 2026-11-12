@@ -63,7 +63,7 @@ export type PosSaleInput = {
 export type PosPayment = { method: PosPaymentMethod; amount: number; phone?: string; reference?: string };
 export type PosPaymentMethod = Exclude<PaymentMethod, "other">;
 export type PosRecordedPayment = { method: PosPaymentMethod; amount: number; reference: string };
-/** lineTotal is before VAT and discount; amount is what the customer pays for the line (with VAT). */
+/** lineTotal is before discount; amount is what the customer pays for the line (VAT included). */
 export type PosReceiptLine = { name: string; sku: string; quantity: number; unitPrice: number; lineTotal: number; amount: number; rule: PriceRule };
 export type PosSaleResult = {
   orderId: string; orderNumber: string; total: number; tax: number; change: number; payments: PosRecordedPayment[]; duplicate: boolean; lines: PosReceiptLine[];
@@ -90,7 +90,7 @@ export async function completeSale(input: PosSaleInput): Promise<ActionResult<Po
   const row = (data as { order_id: string; order_number: string; total_amount: number; change_due: number; payments: PosRecordedPayment[]; duplicate: boolean }[])[0];
   const [{ data: lines }, { data: order }, { data: invoice }] = await Promise.all([
     supabase.from("order_items").select("product_name, sku, quantity, unit_price, line_total, discount_amount, tax_amount, price_rule").eq("order_id", row.order_id),
-    supabase.from("orders").select("tax_amount, receipt_token").eq("id", row.order_id).single(),
+    supabase.from("orders").select("tax_amount, receipt_token, prices_include_vat").eq("id", row.order_id).single(),
     supabase.from("invoices").select("invoice_number").eq("order_id", row.order_id).eq("kind", "invoice").maybeSingle(),
   ]);
   revalidatePath("/admin", "layout");
@@ -101,7 +101,7 @@ export async function completeSale(input: PosSaleInput): Promise<ActionResult<Po
       tax: Number(order?.tax_amount ?? 0), invoiceNumber: invoice?.invoice_number ?? null, receiptToken: order?.receipt_token ?? null,
       payments: row.payments.map((p) => ({ ...p, amount: Number(p.amount) })), duplicate: row.duplicate,
       lines: (lines ?? []).map((l) => ({ name: l.product_name, sku: l.sku ?? "", quantity: l.quantity, unitPrice: Number(l.unit_price),
-        lineTotal: Number(l.line_total), amount: Math.round((Number(l.line_total) - Number(l.discount_amount) + Number(l.tax_amount)) * 100) / 100,
+        lineTotal: Number(l.line_total), amount: Math.round((Number(l.line_total) - Number(l.discount_amount) + (order?.prices_include_vat ? 0 : Number(l.tax_amount))) * 100) / 100,
         rule: (l.price_rule ?? "retail") as PriceRule })),
     },
   };

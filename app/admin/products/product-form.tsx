@@ -268,7 +268,7 @@ export function ProductForm({ categories, brands, optionValues, initial = EMPTY_
                     <Field label="Hair type (optional)"><input value={p.hair_type} onChange={(e) => set({ hair_type: e.target.value })} className={inputClass} placeholder="e.g. 100% Human Hair" /></Field>
                   </>
                 )}
-                <Field label="VAT (KRA tax type)" hint="Standard-rated goods are VAT 16%. Prices are entered before VAT.">
+                <Field label="VAT (KRA tax type)" hint="Standard-rated goods are VAT 16%. Prices are entered including VAT, as on the shelf.">
                   <select value={p.tax_type} onChange={(e) => set({ tax_type: e.target.value as TaxType })} className={inputClass}>
                     {(Object.keys(TAX_TYPES) as TaxType[]).map((t) => <option key={t} value={t}>{t} · {TAX_TYPES[t]}</option>)}
                   </select>
@@ -364,7 +364,7 @@ export function ProductForm({ categories, brands, optionValues, initial = EMPTY_
           {tab === "pricing" && (
             <Card className="p-5">
               <p className="flex items-center gap-2 font-semibold"><Tag className="size-4 text-brand-600" /> Pricing & Stock</p>
-              <p className="mt-1 text-sm text-ink-muted">Prices in KES, before VAT. Wholesale price applies automatically at 10+ units of the same product.</p>
+              <p className="mt-1 text-sm text-ink-muted">Prices in KES, including VAT. Wholesale price applies automatically at 10+ units of the same product.</p>
               <div className="mt-4 overflow-x-auto rounded-xl border border-line">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-surface text-xs text-ink-muted"><tr>

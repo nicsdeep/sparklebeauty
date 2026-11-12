@@ -31,7 +31,7 @@ export type PosItem = {
   category: string; group: string; retail: number; available: number; low: boolean;
   /** Brand (used as supplier) and the variant's attributes, for search, filters and the variant picker. */
   brand: string | null; color: string | null; shade: string | null; size: string | null; length: string | null;
-  /** eTIMS tax type and VAT % (prices are VAT-exclusive; VAT is added on top). */
+  /** eTIMS tax type and VAT % (prices include VAT; the VAT inside them goes on the receipt and invoice). */
   taxType: TaxType; taxRate: number;
 };
 export type PosCustomer = { id: string; name: string; phone: string; email: string; points: number; business: string | null };
@@ -171,7 +171,7 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   const subtotal = priced.reduce((s, l) => s + l.price.unit * l.qty, 0);
   const pct = Math.min(100, Math.max(0, Number(discountPct) || 0));
   const discount = Math.round((subtotal * pct) / 100);
-  // VAT on top of the (VAT-exclusive) prices, to the cent as the server will record it.
+  // VAT inside the (VAT-inclusive) prices, to the cent as the server will record it.
   const vat = orderTax(priced.map((l) => ({ amount: l.price.unit * l.qty, rate: l.item.taxRate })), discount);
   const total = vat.total;
   const units = priced.reduce((s, l) => s + l.qty, 0);
@@ -244,14 +244,14 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
   function receiptFromCart(number: string, offline: boolean, payments: PosRecordedPayment[], server?: PosSaleResult): Receipt {
     // The server's lines when the sale is recorded; the till's own (same VAT rule) when offline.
     const ls: PosReceiptLine[] = server?.lines ?? priced.map((l, i) => ({ name: l.item.name + (l.item.variantName ? ` – ${l.item.variantName}` : ""), sku: l.item.sku,
-      quantity: l.qty, unitPrice: l.price.unit, lineTotal: l.price.unit * l.qty, amount: l.price.unit * l.qty - vat.lines[i].discount + vat.lines[i].tax, rule: l.price.rule }));
+      quantity: l.qty, unitPrice: l.price.unit, lineTotal: l.price.unit * l.qty, amount: l.price.unit * l.qty - vat.lines[i].discount, rule: l.price.rule }));
     const grand = server?.total ?? total;
     return {
       number, offline, issuedAt: new Date().toISOString(), cashier, channel: "till", customerRef: customer,
       customer: customer ? customer.business ?? customer.name : "Walk-in customer",
       lines: ls.map((l) => ({ quantity: l.quantity, name: l.name, sku: l.sku || null, amount: l.amount })),
       subtotal: ls.reduce((s, l) => s + l.lineTotal, 0), discount: vat.discount, delivery: 0, tax: server?.tax ?? vat.tax,
-      vatLabel: vatHeading(priced.map((l) => l.item.taxRate)), total: grand, payments,
+      vatLabel: vatHeading(priced.map((l) => l.item.taxRate)), vatIncluded: true, total: grand, payments,
       cashReceived: pay.cash > 0 ? pay.cash : undefined, change: server?.change ?? pay.change, invoiceNumber: server?.invoiceNumber ?? null,
       pointsEarned: customer && !customer.business && !offline ? Math.floor(grand / 100) : undefined,
       token: server?.receiptToken ?? null,
@@ -595,9 +595,9 @@ export function PosTerminal({ items, categories, customers, walkInSheet, thresho
           <dl className="space-y-1.5 text-[15px]">
             <div className="flex justify-between"><dt>Subtotal ({units} item{units === 1 ? "" : "s"})</dt><dd>{kes(subtotal)}</dd></div>
             <div className="flex justify-between"><dt>Discount</dt><dd>{kes(discount)}</dd></div>
-            {store.vat_registered && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(vat.tax)}</dd></div>}
             <div className="flex items-end justify-between pt-1"><dt className="text-xl font-bold">Total</dt>
               <dd className={cx("text-3xl font-extrabold text-brand-600 transition-opacity", allConfirmed ? "" : "opacity-60")}>{kes(total)}</dd></div>
+            {store.vat_registered && vat.tax > 0 && <div className="flex justify-between text-sm text-ink-muted"><dt>Includes VAT</dt><dd>{kes(vat.tax)}</dd></div>}
           </dl>
           {(nudges.wholesale || nudges.wholesaleUnlocked.length > 0) && (
             <div className="space-y-1 text-xs" aria-live="polite">

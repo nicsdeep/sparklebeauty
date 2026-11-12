@@ -68,12 +68,12 @@ export function StoreSettingsForm({ settings, canEdit }: { settings: StoreSettin
         </Card>
 
         <Card>
-          <CardHeader title="Tax and KRA" subtitle="Printed on every tax invoice. Prices are VAT-exclusive: VAT is added on top at the till and checkout." />
+          <CardHeader title="Tax and KRA" subtitle="Printed on every tax invoice. Prices include VAT: the VAT inside each price is shown on receipts and invoices." />
           <div className="grid gap-4 p-5 sm:grid-cols-2">
             <Field label="Shop KRA PIN" hint="11 characters, e.g. P051234567X."><input name="kra_pin" defaultValue={settings.kra_pin ?? ""} className={cx(inputClass, "uppercase")} maxLength={11} placeholder="P051234567X" /></Field>
             <label className="flex items-start gap-3 self-end rounded-xl border border-line p-3">
               <input type="checkbox" name="vat_registered" defaultChecked={settings.vat_registered} className="mt-1 size-4 accent-brand-600" />
-              <span><span className="block font-semibold">VAT registered</span><span className="text-sm text-ink-muted">Adds VAT by each product&apos;s tax type (16% standard). Untick if the shop is not registered for VAT.</span></span>
+              <span><span className="block font-semibold">VAT registered</span><span className="text-sm text-ink-muted">Works out the VAT inside each price by the product&apos;s tax type (16% standard). Untick if the shop is not registered for VAT.</span></span>
             </label>
           </div>
         </Card>

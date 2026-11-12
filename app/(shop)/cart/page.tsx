@@ -158,12 +158,12 @@ export default function CartPage() {
             <div className="flex justify-between"><dt>Subtotal</dt><dd className={cx("tabular-nums", pricing && "opacity-60")}>{kes(subtotal)}</dd></div>
             {discount > 0 && <div className="flex justify-between text-[#15803D]"><dt>Discount</dt><dd className="tabular-nums">-{kes(discount)}</dd></div>}
             <div className="flex justify-between"><dt>Delivery <span className="text-[#6B7280]">({city})</span></dt><dd className="tabular-nums">{fee ? kes(fee) : "Free"}</dd></div>
-            {store.vat_registered && <div className="flex justify-between"><dt>VAT (16%)</dt><dd className={cx("tabular-nums", pricing && "opacity-60")}>{kes(vat.tax)}</dd></div>}
           </dl>
           <div className="flex items-center justify-between rounded-2xl bg-[#FCE7F3] px-4 py-3.5">
             <span className="text-[20px] font-extrabold" style={{ color: NAVY }}>Total</span>
             <span className="text-[22px] font-extrabold tabular-nums" style={{ color: PINK }}>{kes(vat.total)}</span>
           </div>
+          {store.vat_registered && vat.tax > 0 && <p className={cx("-mt-2 text-right text-sm text-[#6B7280] tabular-nums", pricing && "opacity-60")}>Includes VAT (16%): {kes(vat.tax)}</p>}
           <SavingsNudge value={nudges} />
           <ButtonLink href="/checkout" size="lg" className={cx("h-14 w-full gap-3 text-[17px]", problems.length > 0 && "pointer-events-none opacity-50")} aria-disabled={problems.length > 0}>
             <Lock className="size-5" /> Proceed to Checkout <ArrowRight className="size-5" />

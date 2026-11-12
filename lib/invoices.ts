@@ -29,6 +29,8 @@ export type Invoice = {
   delivery_amount: number;
   tax_amount: number;
   total_amount: number;
+  /** True for invoices of VAT-inclusive orders (from 2026-11-11): the VAT is inside the prices, not added. */
+  prices_include_vat: boolean;
   etims_status: EtimsStatus;
   etims_receipt_number: string | null;
   etims_signature: string | null;
@@ -68,8 +70,13 @@ export function toInvoice(r: Record<string, unknown>): Invoice {
     lines: (row.lines ?? []).map((l) => ({ ...l, quantity: n(l.quantity), unit_price: n(l.unit_price), amount: n(l.amount), discount: n(l.discount),
       taxable: n(l.taxable), tax_rate: n(l.tax_rate), tax: n(l.tax), total: n(l.total) })),
     subtotal: n(row.subtotal), discount_amount: n(row.discount_amount), delivery_amount: n(row.delivery_amount),
-    tax_amount: n(row.tax_amount), total_amount: n(row.total_amount),
+    tax_amount: n(row.tax_amount), total_amount: n(row.total_amount), prices_include_vat: row.prices_include_vat === true,
   };
+}
+
+/** "Includes VAT (16%)" for VAT-inclusive orders, where the VAT is inside the prices and not added to the total. */
+export function vatIncludedLabel(rates: number[]) {
+  return `Includes ${vatHeading(rates)}`;
 }
 
 /** VAT column title: "VAT (16%)" when every line has the same rate, else "VAT" (rates shown per line). */

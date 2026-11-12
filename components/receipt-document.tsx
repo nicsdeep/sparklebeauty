@@ -103,15 +103,16 @@ export function ReceiptDocument({ receipt: r, store, className }: { receipt: Rec
 
         {/* Totals */}
         <dl className="mt-3 space-y-0.5">
-          <Row label="Subtotal (excl. VAT)" value={kes(r.subtotal)} strong />
+          <Row label={r.vatIncluded ? "Subtotal" : "Subtotal (excl. VAT)"} value={kes(r.subtotal)} strong />
           {r.discount > 0 && <Row label="Discount" value={`-${kes(r.discount)}`} strong />}
           {r.delivery > 0 && <Row label="Delivery" value={kes(r.delivery)} strong />}
-          {r.tax > 0 && <Row label={r.vatLabel} value={kes(r.tax)} strong />}
+          {r.tax > 0 && !r.vatIncluded && <Row label={r.vatLabel} value={kes(r.tax)} strong />}
         </dl>
         <div className="mt-3 flex items-center justify-between rounded-[5px] px-3 py-2.5" style={{ background: C.pinkSoft }}>
           <span className="text-[21px] font-bold uppercase" style={{ color: C.navy }}>Total</span>
           <span className="text-[24px] font-bold" style={{ ...money, color: C.pink }}>{kes(r.total)}</span>
         </div>
+        {r.vatIncluded && r.tax > 0 && <p className="mt-1 text-right text-[11px]" style={{ color: C.muted }}>{r.vatLabel.replace("VAT", "Includes VAT")}: {kes(r.tax)}</p>}
 
         {/* Payment */}
         <Solid />

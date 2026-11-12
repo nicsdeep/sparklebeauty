@@ -15,6 +15,25 @@ Entry format:
 
 ---
 
+## 2026-11-11: Claude: Prices include VAT
+- PR: (this PR, branch `claude/vat-inclusive-pricing`)
+- Changed:
+  - Migration `20261111120000_vat_inclusive_prices.sql`: VAT is worked out from inside prices, with an `orders`/`invoices.prices_include_vat` flag for history.
+  - `lib/tax.ts` uses the same rule.
+  - Cart, checkout and the till show the total plus a muted "Includes VAT" line.
+  - Receipts (screen and PDF), tax invoices (screen and PDF), and the shop, admin and till order pages label VAT by each order's flag.
+  - The till's receipt line amounts no longer add VAT.
+  - Product form, Settings and Terms wording updated.
+- Why: Nicholas confirmed that today's shelf prices are VAT-inclusive (2026-11-11), so the 2026-10-31 VAT-exclusive rule would have charged customers 16% more.
+- Tested:
+  - live database, rolled-back batch running the real `apply_order_tax` and invoice trigger on a test order of 2 × KES 600 + KES 300 delivery:
+    - total 1,500.00; VAT 206.90 (165.52 on the items, 41.38 on delivery);
+    - invoice marked inclusive, with taxable 1,034.48 and line total 1,200;
+    - existing orders flagged false; nothing left behind;
+  - `orderTax()` gives the same figures, including a mixed-rate order with a discount (total 2,449, VAT 230.12);
+  - tsc and eslint pass.
+- Follow-ups: apply the migration straight after merge. Until then, pages that read `prices_include_vat` fail.
+
 ## 2026-11-11: Claude: Product migration review workbook (no import)
 - PR: (this PR, branch `claude/product-migration-review`)
 - Changed:

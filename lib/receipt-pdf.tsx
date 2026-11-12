@@ -89,15 +89,16 @@ function ReceiptPdf({ r, store, origin }: { r: ReceiptData; store: StoreSettings
 
         {/* Totals */}
         <View style={{ marginTop: 6 }}>
-          <View style={s.row}><Text>Subtotal (excl. VAT)</Text>{money(kes(r.subtotal))}</View>
+          <View style={s.row}><Text>{r.vatIncluded ? "Subtotal" : "Subtotal (excl. VAT)"}</Text>{money(kes(r.subtotal))}</View>
           {r.discount > 0 ? <View style={s.row}><Text>Discount</Text>{money(`-${kes(r.discount)}`)}</View> : null}
           {r.delivery > 0 ? <View style={s.row}><Text>Delivery</Text>{money(kes(r.delivery))}</View> : null}
-          {r.tax > 0 ? <View style={s.row}><Text>{r.vatLabel}</Text>{money(kes(r.tax))}</View> : null}
+          {r.tax > 0 && !r.vatIncluded ? <View style={s.row}><Text>{r.vatLabel}</Text>{money(kes(r.tax))}</View> : null}
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 7, backgroundColor: C.pinkSoft, borderRadius: 3, paddingHorizontal: 7, paddingVertical: 6 }}>
           <Text style={{ fontSize: 15, fontWeight: 700, color: C.navy }}>TOTAL</Text>
           <Text style={{ fontSize: 17, fontWeight: 700, color: C.pink }}>{kes(r.total)}</Text>
         </View>
+        {r.vatIncluded && r.tax > 0 ? <Text style={{ marginTop: 3, textAlign: "right", fontSize: 7.5, color: C.muted }}>{r.vatLabel.replace("VAT", "Includes VAT")}: {kes(r.tax)}</Text> : null}
 
         {/* Payment */}
         <View style={s.solid} />

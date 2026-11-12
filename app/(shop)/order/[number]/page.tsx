@@ -11,7 +11,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { cx } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { getStoreSettings } from "@/lib/store";
-import { vatHeading } from "@/lib/invoices";
+import { vatHeading, vatIncludedLabel } from "@/lib/invoices";
 import { formatDateTimeFull, kes, PAYMENT_LABEL, PAYMENT_STATUS_META, type OrderStatus } from "@/lib/format";
 import { signOut } from "@/app/login/actions";
 import { customerStages, InfoRow, loadCustomerOrder, NAVY, Panel, PINK, stageTimes, statusLabel, statusTone, variantTags } from "./order-data";
@@ -169,13 +169,14 @@ export default async function OrderPage({ params }: Params) {
               <dl className="space-y-2 border-t border-[#EEF0F3] px-1 pt-4 text-[16px] sm:px-4">
                 <div className="flex justify-between"><dt className="text-[#111827]">Subtotal</dt><dd className="tabular-nums text-[#111827]">{kes(order.subtotal)}</dd></div>
                 {Number(order.discount_amount) > 0 && <div className="flex justify-between"><dt className="text-[#111827]">Discount</dt><dd className="tabular-nums text-[#15803D]">– {kes(order.discount_amount)}</dd></div>}
-                {Number(order.tax_amount) > 0 && <div className="flex justify-between"><dt className="text-[#111827]">{vatHeading(items.map((i) => Number(i.tax_rate)))}</dt><dd className="tabular-nums text-[#111827]">{kes(order.tax_amount)}</dd></div>}
+                {Number(order.tax_amount) > 0 && !order.prices_include_vat && <div className="flex justify-between"><dt className="text-[#111827]">{vatHeading(items.map((i) => Number(i.tax_rate)))}</dt><dd className="tabular-nums text-[#111827]">{kes(order.tax_amount)}</dd></div>}
                 {!pickup && <div className="flex justify-between"><dt className="text-[#111827]">Delivery Fee</dt><dd className="tabular-nums text-[#111827]">{Number(order.delivery_amount) ? kes(order.delivery_amount) : "Free"}</dd></div>}
               </dl>
               <div className="mt-4 flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#FCE7F3] to-[#FDF2F8] px-4 py-3.5 sm:px-5">
                 <span className="text-[20px] font-bold sm:text-[22px]" style={{ color: PINK }}>{paid ? "Total Paid" : "Total"}</span>
                 <span className="text-[22px] font-extrabold tabular-nums sm:text-[24px]" style={{ color: NAVY }}>{kes(order.total_amount)}</span>
               </div>
+              {Number(order.tax_amount) > 0 && order.prices_include_vat && <p className="mt-2 px-1 text-right text-sm text-[#6B7280] tabular-nums sm:px-4">{vatIncludedLabel(items.map((i) => Number(i.tax_rate)))}: {kes(order.tax_amount)}</p>}
             </Panel>
 
             <Panel className="flex flex-wrap items-center justify-between gap-4 p-5">
