@@ -15,6 +15,21 @@ Entry format:
 
 ---
 
+## 2026-11-12: Claude: Every Excel product shown
+- PR: (this PR, branch `claude/show-all-excel-products`)
+- Changed:
+  - `ultimatepos-proposal.mjs`: `MANUAL_CATEGORIES` gives the 40 products no rule matched a hand-chosen category. It is applied after codes are assigned, so no code changes, and each is flagged "Category chosen by hand: confirm". `CATEGORY_SLUG` and `productSlug` moved there.
+  - `ultimatepos-import.mjs` no longer hides anything.
+  - New `ultimatepos-sync.mjs` brings imported products' category and visibility in line with the rules. It matches products by code and refuses to run unless all are found. It was run after merge.
+- Why: Nicholas asked for all Excel products to be shown.
+- Tested:
+  - dry run on the live database: all 1,686 found, 46 to change (40 without a category, 6 hidden), and afterwards 1,686 visible;
+  - review regenerated: 3,595 of 3,595 rows have a category, 109 Blockers;
+  - eslint passes.
+- Follow-ups:
+  - staff confirm the 40 hand-chosen categories;
+  - compliance decision on the 6 likely prescription or injectable items.
+
 ## 2026-11-12: Claude: Fixes found with the real catalogue
 - PR: (this PR, branch `claude/fix-1000-row-cap`)
 - Changed:

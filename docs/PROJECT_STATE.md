@@ -337,8 +337,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
   - 1,686 products and 3,595 variants;
   - every variant has **10 units of demo stock at Main Store**: not real quantities, so replace them with a stock count before go-live;
   - the 74 demo products are hidden, not deleted, because old orders refer to them;
-  - 40 products with no category are hidden from the shop until they are sorted;
-  - 6 likely prescription or injectable products are hidden;
+  - **every Excel product is shown** (Nicholas, 2026-11-12): all 1,686 products are in the shop and the till. 40 have a hand-chosen category (`MANUAL_CATEGORIES`) to confirm. 6 likely prescription-only or injectable items (Diproson ×2, Epiderm, Lemonvate, Movate, Glutathione injection) are shown at Nicholas's request; their compliance warnings stay in the review workbook;
   - there are no images (the shop shows category pictures), no descriptions, and no wholesale prices;
   - the old POS SKU is each variant's barcode;
   - new categories: Nails, Makeup, Personal Care, Health & Wellness.
