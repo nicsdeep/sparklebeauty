@@ -80,7 +80,8 @@ export default async function HomePage() {
         ))}
       </section>
 
-      {/* Featured */}
+      {/* Featured: only when staff have featured products (Admin → Products) */}
+      {featured.length > 0 && (
       <section aria-labelledby="featured-title">
         <div className="mb-5 flex items-end justify-between">
           <div>
@@ -91,6 +92,7 @@ export default async function HomePage() {
         </div>
         <ProductGrid products={featured} stock={stock} wishlist={wishlist} columns={6} />
       </section>
+      )}
 
       {/* Promotions from the database */}
       {promos && promos.length > 0 && (
