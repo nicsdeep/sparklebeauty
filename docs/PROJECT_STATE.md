@@ -232,6 +232,11 @@ Migrations, in order:
 30. `20261107090000_announcements.sql`: `announcements` holds the storefront's rotating top bar. Columns: `text`, `mobile_text`, `icon` (a checked list), `href`, `is_active`, `sort_order`. In the text, `*phrase*` is highlighted and `{free_threshold}` becomes the free-delivery amount. Anyone can read active rows, and only admins can change them (Admin → Settings → Announcement bar). It is seeded with 4 messages.
 31. `20261107120000_announcements_updated_by_index.sql`: indexes `announcements.updated_by`. It was the only unindexed foreign key.
 32. `20261108090000_health_ping.sql`: `public.ping()` returns `now()`, reads no tables and is executable by anon and authenticated. The daily keep-alive check calls it (`docs/supabase-keep-alive.md`).
+33. `20261111120000_vat_inclusive_prices.sql`: **prices include VAT**.
+  - `apply_order_tax()` works out the VAT inside each line as amount × rate ÷ (100 + rate), and the delivery VAT the same way. The total is the lines less the discount, plus delivery.
+  - New column `orders.prices_include_vat` and `invoices.prices_include_vat`: true for new orders; existing orders and invoices are set false and keep their amounts.
+  - `issue_tax_documents()` and `public_receipt()` read the flag.
+  - `lib/tax.ts` matches this rule to the cent.
 
 Tables in `public`, all with RLS on:
 - **People:**
@@ -320,6 +325,7 @@ The seed uses fixed IDs and a fixed random seed. The newest seeded orders are ti
 | 2026-10-29 | Stack: Next.js 15 + Supabase on Vercel. Money and stock changes only through database functions; no service-role key in the app | Claude, for the CEO demo |
 | 2026-10-30 | One pricing engine in the database for every channel: negotiated, then wholesale account, then 10+ units, then retail. Wholesale sales are their own channel. The till works offline for cash only and never forces a sale past real stock | Nicholas |
 | 2026-10-31 | Sparkle is VAT registered. Prices are VAT-exclusive: VAT is added on top at the till and checkout. Tax invoices are built now; the KRA eTIMS connection is added when the KRA credentials are available | Nicholas |
+| 2026-11-11 | **Prices include VAT** (replaces the 2026-10-31 VAT-exclusive rule). Sparkle's shelf prices already include VAT, so customers pay the shelf price, and receipts and invoices show the VAT inside it. Orders from before the switch keep their amounts | Nicholas |
 | 2026-10-29 | The O2C demo migrations were applied to the live database before their PR merged, to build and test the demo in time. The database held no real data | Nicholas approved |
 | 2026-11-04 | `UX_NAVIGATION_DOCTRINE.md` is a binding standard: pages for major work, drawers for context, tabs for related sections, inline for small actions, modals only for short confirmations; Back follows the real path; state is preserved; large lists are paged in the database. Every PR that changes user interaction answers its UX review (PR template) | Nicholas |
 | 2026-11-04 | Doctrine rules 22–38 added: large lists are searchable comboboxes (one shared component), filter values come from the database and depend on each other, active filters show as chips, product search and POS cards are variant-first (variant, SKU, price, compact stock), large-dataset search runs in the database | Nicholas |

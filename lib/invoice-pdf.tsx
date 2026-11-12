@@ -166,14 +166,15 @@ function InvoicePage({ bundle: { invoice: inv, payments, paymentStatus, store },
             </View>
           </View>
           <View style={{ flex: 1, backgroundColor: C.brandSoft, borderRadius: 8, padding: 14, alignSelf: "flex-start" }}>
-            <View style={s.between}><Text style={{ fontSize: 10 }}>Subtotal (excl. VAT)</Text><Text style={{ fontSize: 10 }}>{kes(inv.subtotal)}</Text></View>
+            <View style={s.between}><Text style={{ fontSize: 10 }}>{inv.prices_include_vat ? "Subtotal (incl. VAT)" : "Subtotal (excl. VAT)"}</Text><Text style={{ fontSize: 10 }}>{kes(inv.subtotal)}</Text></View>
             {inv.discount_amount > 0 ? <View style={[s.between, { marginTop: 5 }]}><Text style={{ fontSize: 10 }}>Discount</Text><Text style={{ fontSize: 10 }}>-{kes(inv.discount_amount)}</Text></View> : null}
             {inv.delivery_amount > 0 ? <View style={[s.between, { marginTop: 5 }]}><Text style={{ fontSize: 10 }}>Delivery</Text><Text style={{ fontSize: 10 }}>{kes(inv.delivery_amount)}</Text></View> : null}
-            <View style={[s.between, { marginTop: 5 }]}><Text style={{ fontSize: 10 }}>{vatTitle}</Text><Text style={{ fontSize: 10 }}>{kes(inv.tax_amount)}</Text></View>
+            {!inv.prices_include_vat ? <View style={[s.between, { marginTop: 5 }]}><Text style={{ fontSize: 10 }}>{vatTitle}</Text><Text style={{ fontSize: 10 }}>{kes(inv.tax_amount)}</Text></View> : null}
             <View style={[s.between, { alignItems: "center", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.brandLine }]}>
               <Text style={{ fontSize: 15, fontWeight: 800, color: C.navy }}>{credit ? "Total credited" : "Total"}</Text>
               <Text style={{ fontSize: 18, fontWeight: 800, color: C.brand }}>{kes(inv.total_amount)}</Text>
             </View>
+            {inv.prices_include_vat ? <View style={[s.between, { marginTop: 5 }]}><Text style={{ fontSize: 9, color: C.muted }}>{vatTitle.replace("VAT", "Includes VAT")}</Text><Text style={{ fontSize: 9, color: C.muted }}>{kes(inv.tax_amount)}</Text></View> : null}
           </View>
         </View>
 

@@ -14,7 +14,7 @@ export type SuspensionRow = {
   expires_at: string; created_at: string; closed_at: string | null; pos_suspension_items: { variant_id: string; quantity: number; unit_price: number }[];
 };
 
-/** A suspended sale's total as the till shows it: its items' prices, less the discount, plus VAT. */
+/** A suspended sale's total as the till shows it: its items' prices (VAT included), less the discount. */
 export function suspensionTotal(s: Pick<SuspensionRow, "discount_pct" | "pos_suspension_items">, rates: Map<string, number>) {
   const sub = s.pos_suspension_items.reduce((n, i) => n + Number(i.unit_price) * i.quantity, 0);
   return orderTax(s.pos_suspension_items.map((i) => ({ amount: Number(i.unit_price) * i.quantity, rate: rates.get(i.variant_id) ?? 0 })),

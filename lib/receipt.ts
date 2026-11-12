@@ -14,7 +14,7 @@ export type ReceiptData = {
   /** Sold at the till or in the online shop. */
   channel: "till" | "online";
   customer: string;
-  /** Each line's amount includes its VAT, as the customer pays it. */
+  /** Each line's amount as the customer pays it (VAT included). */
   lines: { quantity: number; name: string; sku: string | null; amount: number }[];
   subtotal: number;
   discount: number;
@@ -22,6 +22,8 @@ export type ReceiptData = {
   tax: number;
   /** e.g. "VAT (16%)", or "VAT" when lines have different rates. */
   vatLabel: string;
+  /** VAT is inside the prices (orders from 2026-11-11): shown as "Includes VAT", not added to the total. */
+  vatIncluded: boolean;
   total: number;
   payments: { method: PaymentMethod; amount: number; reference: string | null }[];
   /** Cash handed over and change, known only at the till right after the sale. */
@@ -47,7 +49,7 @@ export function receiptFromPublic(j: Record<string, unknown>, token: string): Re
     number: String(j.number), issuedAt: String(j.issued_at), cashier: (j.cashier as string | null) ?? null, channel: j.channel === "online" ? "online" : "till",
     customer: String(j.customer), lines: lines.map((l) => ({ quantity: n(l.quantity), name: l.name, sku: l.sku, amount: n(l.amount) })),
     subtotal: n(j.subtotal), discount: n(j.discount), delivery: n(j.delivery), tax: n(j.tax),
-    vatLabel: vatHeading(lines.map((l) => n(l.tax_rate))), total: n(j.total),
+    vatLabel: vatHeading(lines.map((l) => n(l.tax_rate))), vatIncluded: j.prices_include_vat === true, total: n(j.total),
     payments: ((j.payments as { method: PaymentMethod; amount: number; reference: string | null }[]) ?? []).map((p) => ({ ...p, amount: n(p.amount) })),
     invoiceNumber: (j.invoice_number as string | null) ?? null, token,
   };

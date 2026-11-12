@@ -150,12 +150,12 @@ export function CheckoutWizard({ profile, addresses }: {
               <div className="flex justify-between"><dt>Subtotal</dt><dd className="tabular-nums">{kes(cart.subtotal)}</dd></div>
               {discount > 0 && <div className="flex justify-between text-[#15803D]"><dt>Discount ({state.promoCode})</dt><dd className="tabular-nums">-{kes(discount)}</dd></div>}
               <div className="flex justify-between"><dt>Delivery</dt><dd className="tabular-nums">{stepIndex < 2 ? "Next step" : fee ? kes(fee) : "Free"}</dd></div>
-              {store.vat_registered && <div className="flex justify-between"><dt>VAT</dt><dd className="tabular-nums">{kes(vat.tax)}</dd></div>}
             </dl>
             <div className="flex items-center justify-between rounded-full bg-[#FCE7F3] px-5 py-3.5">
               <span className="text-[20px] font-extrabold" style={{ color: NAVY }}>Total</span>
               <span className="text-[22px] font-extrabold tabular-nums" style={{ color: NAVY }}>{kes(placed?.total ?? total)}</span>
             </div>
+            {store.vat_registered && vat.tax > 0 && <p className="-mt-2 text-right text-sm text-[#6B7280] tabular-nums">Includes VAT: {kes(vat.tax)}</p>}
             {!placed && <SavingsNudge value={stepIndex < 2 ? { ...nudges, delivery: null } : nudges} />}
             <div className="grid grid-cols-3 divide-x divide-[#F1E8EE] pt-1 text-center text-[12px] font-medium text-[#374151] sm:text-[13px]">
               {[{ Icon: ShieldCheck, text: "Secure Checkout" }, { Icon: Truck, text: "Reliable Delivery" }, { Icon: CreditCard, text: "Multiple Payment Options" }].map(({ Icon, text }) => (

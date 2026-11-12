@@ -20,7 +20,7 @@ export default async function SalePage({ params }: Params) {
   const number = decodeURIComponent((await params).number);
   const supabase = await createClient();
   const { data: o } = await supabase.from("orders")
-    .select(`id, order_number, created_at, channel, customer_id, customer_name, customer_phone, subtotal, discount_amount, tax_amount, total_amount, payment_status, status,
+    .select(`id, order_number, created_at, channel, customer_id, customer_name, customer_phone, prices_include_vat, subtotal, discount_amount, tax_amount, total_amount, payment_status, status,
       cashier:profiles!orders_created_by_fkey(full_name),
       order_items(id, product_name, sku, quantity, unit_price, line_total, discount_amount, tax_amount, tax_rate, price_rule),
       payments(method, status, amount, provider_reference, paid_at, created_at), invoices(id, kind, invoice_number)`)
@@ -79,8 +79,9 @@ export default async function SalePage({ params }: Params) {
           <dl className="space-y-1.5 border-t border-line px-5 py-4 text-[15px]">
             <div className="flex justify-between"><dt>Subtotal</dt><dd className="tabular-nums">{kes(o.subtotal)}</dd></div>
             {Number(o.discount_amount) > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount</dt><dd className="tabular-nums">-{kes(o.discount_amount)}</dd></div>}
-            {Number(o.tax_amount) > 0 && <div className="flex justify-between"><dt>{vatHeading(items.map((i) => Number(i.tax_rate)))}</dt><dd className="tabular-nums">{kes(o.tax_amount)}</dd></div>}
+            {Number(o.tax_amount) > 0 && !o.prices_include_vat && <div className="flex justify-between"><dt>{vatHeading(items.map((i) => Number(i.tax_rate)))}</dt><dd className="tabular-nums">{kes(o.tax_amount)}</dd></div>}
             <div className="flex justify-between pt-1 text-lg font-bold"><dt>Total</dt><dd className="tabular-nums">{kes(o.total_amount)}</dd></div>
+            {Number(o.tax_amount) > 0 && o.prices_include_vat && <div className="flex justify-between text-sm text-ink-muted"><dt>Includes {vatHeading(items.map((i) => Number(i.tax_rate)))}</dt><dd className="tabular-nums">{kes(o.tax_amount)}</dd></div>}
           </dl>
         </Card>
 

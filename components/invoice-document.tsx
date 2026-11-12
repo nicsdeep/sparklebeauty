@@ -137,14 +137,15 @@ export function InvoiceDocument({ bundle: { invoice: inv, payments, paymentStatu
             </table>
           </div>
           <dl className="h-fit space-y-2 rounded-2xl bg-brand-50 p-6 text-[17px]">
-            <div className="flex justify-between"><dt>Subtotal (excl. VAT)</dt><dd>{kes(inv.subtotal)}</dd></div>
+            <div className="flex justify-between"><dt>{inv.prices_include_vat ? "Subtotal (incl. VAT)" : "Subtotal (excl. VAT)"}</dt><dd>{kes(inv.subtotal)}</dd></div>
             {inv.discount_amount > 0 && <div className="flex justify-between"><dt>Discount</dt><dd>-{kes(inv.discount_amount)}</dd></div>}
             {inv.delivery_amount > 0 && <div className="flex justify-between"><dt>Delivery</dt><dd>{kes(inv.delivery_amount)}</dd></div>}
-            <div className="flex justify-between"><dt>{vatTitle}</dt><dd>{kes(inv.tax_amount)}</dd></div>
+            {!inv.prices_include_vat && <div className="flex justify-between"><dt>{vatTitle}</dt><dd>{kes(inv.tax_amount)}</dd></div>}
             <div className="!mt-4 flex items-center justify-between border-t border-brand-200 pt-4">
               <dt className={cx(NAVY, "text-2xl font-extrabold")}>{credit ? "Total credited" : "Total"}</dt>
               <dd className="text-3xl font-extrabold text-brand-600">{kes(inv.total_amount)}</dd>
             </div>
+            {inv.prices_include_vat && <div className="flex justify-between text-[15px] text-ink-muted"><dt>{vatTitle.replace("VAT", "Includes VAT")}</dt><dd>{kes(inv.tax_amount)}</dd></div>}
           </dl>
         </section>
 

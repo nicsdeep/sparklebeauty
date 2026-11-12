@@ -23,7 +23,7 @@ export type StoreSettings = {
   free_delivery_areas: string[];
   /** Shop's KRA PIN, printed on tax invoices. */
   kra_pin: string | null;
-  /** VAT registered: VAT is added on top of prices (they are VAT-exclusive). */
+  /** VAT registered: the VAT inside each (VAT-inclusive) price is shown on receipts and invoices. */
   vat_registered: boolean;
 };
 

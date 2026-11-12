@@ -17,7 +17,7 @@ export default async function TermsPage() {
       </Section>
       <Section title="Prices and payment">
         <p>Prices are in Kenyan shillings (KES). Delivery charges are shown at checkout before you pay. We accept M-Pesa, Visa and Mastercard cards, and cash on delivery or at the shop where offered.</p>
-        {store.vat_registered && <p>VAT is added at checkout and shown on your invoice.</p>}
+        {store.vat_registered && <p>Prices include VAT. The VAT is shown on your receipt and tax invoice.</p>}
       </Section>
       <Section title="Products">
         <p>We sell original products from trusted brands. Product photos are a guide; colours can look slightly different on your screen. Always read the label and patch-test new cosmetics and skincare.</p>

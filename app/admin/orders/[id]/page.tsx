@@ -93,8 +93,9 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               <div className="flex justify-between"><dt>Subtotal</dt><dd>{kes(order.subtotal)}</dd></div>
               {Number(order.discount_amount) > 0 && <div className="flex justify-between text-mint-fg"><dt>Discount</dt><dd>-{kes(order.discount_amount)}</dd></div>}
               <div className="flex justify-between"><dt>Delivery</dt><dd>{Number(order.delivery_amount) ? kes(order.delivery_amount) : "Free"}</dd></div>
-              {Number(order.tax_amount) > 0 && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(order.tax_amount)}</dd></div>}
+              {Number(order.tax_amount) > 0 && !order.prices_include_vat && <div className="flex justify-between"><dt>VAT</dt><dd>{kes(order.tax_amount)}</dd></div>}
               <div className="flex justify-between pt-1 text-lg font-bold"><dt>Total</dt><dd>{kes(order.total_amount)}</dd></div>
+              {Number(order.tax_amount) > 0 && order.prices_include_vat && <div className="flex justify-between text-sm text-ink-muted"><dt>Includes VAT</dt><dd>{kes(order.tax_amount)}</dd></div>}
             </dl>
           </Card>
         </div>
