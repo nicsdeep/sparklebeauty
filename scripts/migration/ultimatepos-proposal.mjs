@@ -48,6 +48,22 @@ const BRANDS = {
 const HAIR_BRANDS = new Set(["Angels", "Darling", "Lush", "Olivia", "Prima", "Fashion Idol", "Sista", "Sister", "Jenny", "Labo", "La Chic"]);
 
 /** Category rules, first match wins. [regex, category, subcategory]. "(new)" = not yet in the Sparkle category list. */
+/**
+ * Categories chosen by hand for products no rule matched (Nicholas asked for every Excel product to
+ * show, 2026-11-12). Matched on the start of the cleaned name. Applied after product codes are
+ * assigned, so codes don't change. Shown as "Category chosen by hand" for staff to confirm.
+ */
+const MANUAL_CATEGORIES = [
+  [/^AER POWER POCKET\b/, "Personal care (new)", ""], [/^SOFTCARE RETAIL$/, "Personal care (new)", ""], [/^SUNNY GIRL RETAIL$/, "Personal care (new)", ""],
+  [/^AMARA FOR MEN\b/, "Skincare", ""], [/^AMERICAN DREAM\b/, "Skincare", ""], [/^BABY CARE\b/, "Skincare", ""], [/^EVEN AND LOVELY\b/, "Skincare", ""],
+  [/^GARNIER ACTIVE INT CHARCOAL\b/, "Skincare", ""], [/^GOLD TOUCH\b/, "Skincare", ""], [/^MOIKA SALICYLIC\b/, "Skincare", ""], [/^NICE & LOVELY CARROT\b/, "Skincare", ""],
+  [/^SLEEPING BABY\b/, "Skincare", ""], [/^TROPICAL SCENT FREE COCONUT\b/, "Skincare", ""], [/^LURON PRI MADONA\b/, "Skincare", ""],
+  [/^BAMSI CLASSIC\b/, "Hair & Wigs", "Hair care"], [/^DARK & LOVELY PROTECT RELIEF\b/, "Hair & Wigs", "Hair care"], [/^SUBARU\b/, "Hair & Wigs", "Hair care"],
+  [/^IMPORTED (FRENCH CURLS|PASSION TWISTS)\b/, "Hair & Wigs", "Braids"], [/^BANDIKA LINES\b/, "Hair & Wigs", "Braids"],
+  [/^RASASI\b/, "Perfumes", ""], [/^ROSELEAF\b/, "Cosmetics", "Makeup (new)"], [/^ROBIN\b/, "Accessories", ""], [/^MADURA STICKS\b/, "Accessories", ""],
+  [/^GLUTATHIONE WITH MARINE COLLAGEN\b/, "Health & wellness (new)", ""],
+];
+
 const CATEGORY_RULES = [
   [/\b(PILLS|\d+MG|ZINC|FERTILITY|PCOS|POSTPARTUM|SLIM COFFEE|TEA(?! TREE)|GUMMIES|TABLETS?|TABS|CAPSULES?|TEA BAGS|SLIM TEA|TUMMY TEA|SLIMMING|FAT BURNER|INJECTION|SUPPLEMENT)\b/, "Health & wellness (new)", ""],
   [/\b(DEO|DEO ROLL|HAIR REMOVAL|BATH BELT|DIAPERS?|SANITARY|PADS|PANTIE LINERS|LINERS|WIPES|TISSUES?|COTTON WOOL|ANTISEPTIC|SURGICAL SPIRIT|ROLL ONS?|DEODORANT|AFTER ?SHAVE|BUMP PATROL|RAZORS?)\b/, "Personal care (new)", ""],
@@ -180,6 +196,19 @@ export function otherAttributes(rest, category) {
 }
 
 
+export /** Category names in the review → Sparkle category slugs. New ones are created by the import. */
+const CATEGORY_SLUG = {
+  "Hair & Wigs|Braids": "braids", "Hair & Wigs|Wigs": "wigs", "Hair & Wigs|Extensions": "extensions", "Hair & Wigs|Hair Pieces": "hair-pieces",
+  "Hair & Wigs|Hair care": "hair-care", "Hair & Wigs|Kids Braids": "kids-braids",
+  "Cosmetics|Nails (new)": "nails", "Cosmetics|Makeup (new)": "makeup", "Cosmetics|": "cosmetics",
+  "Skincare|": "skincare", "Perfumes|": "perfumes", "Accessories|": "accessories",
+  "Personal care (new)|": "personal-care", "Health & wellness (new)|": "health-wellness",
+};
+
+export const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/** Product slug in the database: the name and the product code, e.g. "angels-kali-curls-ang-0323". */
+export const productSlug = (p) => `${slugify(p.name)}-${p.code.toLowerCase()}`;
+
 /** Reads the export and returns every row with its proposal, the parent products and the warnings. */
 export function propose(bytes) {
   // ---------------------------------------------------------------------------------------------
@@ -264,6 +293,15 @@ export function propose(bytes) {
       members, minPrice: Math.min(...prices), maxPrice: Math.max(...prices) };
   });
 
+  // Hand-chosen categories, after codes are assigned so no code changes.
+  for (const p of parents) {
+    if (p.category) continue;
+    const hit = MANUAL_CATEGORIES.find(([re]) => p.members.every((m) => re.test(m.clean)));
+    if (!hit) continue;
+    p.category = hit[1]; p.subcategory = hit[2]; p.categoryConfidence = "Medium";
+    for (const m of p.members) Object.assign(m, { category: hit[1], subcategory: hit[2], categoryConfidence: "Medium", manualCategory: true });
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Warnings
   // ---------------------------------------------------------------------------------------------
@@ -283,7 +321,8 @@ export function propose(bytes) {
     else if (r.cost > 0 && r.sell === r.cost) w("Check", "Selling price equals cost (no margin)");
     if (r.markup !== null && r.markup > 200) w("Check", `Very high markup (${Math.round(r.markup)}%): check cost and price`);
     if (!r.category) w("Blocker", "No category matched: choose one");
-    else if (r.categoryConfidence === "Medium") w("Info", "Subcategory guessed from the hair brand (no style word in the name): confirm per product");
+    else if (r.manualCategory) w("Check", "Category chosen by hand (no rule matched): confirm");
+    else if (r.categoryConfidence === "Medium" && !r.manualCategory) w("Info", "Subcategory guessed from the hair brand (no style word in the name): confirm per product");
     if (/\(new\)/.test(r.category + r.subcategory)) w("Check", `Category "${[r.category, r.subcategory].filter(Boolean).join(" › ")}" does not exist in Sparkle yet`);
     if (!r.brand) w("Check", "Brand not identified: fill in or leave unbranded");
     if (r.groupConfidence === "Medium" || r.groupConfidence === "Low") w("Check", `Grouping uncertain: ${r.groupReasons.join("; ")}`);

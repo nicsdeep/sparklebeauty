@@ -13,27 +13,20 @@
 //     replace it with a stock count before go-live;
 //   - the demo products are hidden (not deleted: old orders refer to them);
 //   - non-product rows (test item, fixtures, delivery service) are not imported;
-//   - likely prescription medicines and the injectable are imported hidden;
-//   - products with no category are imported without one, so they stay out of the shop until sorted;
+//   - every product is shown, including likely prescription medicines and the injectable (Nicholas,
+//     2026-11-12); their compliance warnings stay in the review workbook;
+//   - products no rule matched get a hand-chosen category (MANUAL_CATEGORIES in the proposal);
 //   - old POS SKU becomes the barcode (the shop's printed labels scan); the second of a duplicated
 //     old SKU gets no barcode.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { propose, title } from "./ultimatepos-proposal.mjs";
+import { CATEGORY_SLUG, productSlug, propose, title } from "./ultimatepos-proposal.mjs";
 
 const [input, outDir] = process.argv.slice(2);
 if (!input || !outDir) { console.error("usage: node scripts/migration/ultimatepos-import.mjs <export.xlsx> <out-dir>"); process.exit(1); }
 
 const DEMO_STOCK = 10;
 const REORDER_LEVEL = 2;
-/** Category names in the review → Sparkle category slugs. New ones are created by the import. */
-const CATEGORY_SLUG = {
-  "Hair & Wigs|Braids": "braids", "Hair & Wigs|Wigs": "wigs", "Hair & Wigs|Extensions": "extensions", "Hair & Wigs|Hair Pieces": "hair-pieces",
-  "Hair & Wigs|Hair care": "hair-care", "Hair & Wigs|Kids Braids": "kids-braids",
-  "Cosmetics|Nails (new)": "nails", "Cosmetics|Makeup (new)": "makeup", "Cosmetics|": "cosmetics",
-  "Skincare|": "skincare", "Perfumes|": "perfumes", "Accessories|": "accessories",
-  "Personal care (new)|": "personal-care", "Health & wellness (new)|": "health-wellness",
-};
 const NEW_CATEGORIES = [
   { slug: "nails", name: "Nails", parent: "cosmetics", sort: 1 },
   { slug: "makeup", name: "Makeup", parent: "cosmetics", sort: 2 },
@@ -43,7 +36,6 @@ const NEW_CATEGORIES = [
 /** "Shop by Brands" row: real brands with products (L'Oréal and Maybelline are not in the catalogue). */
 const FEATURED_BRANDS = ["Garnier", "Nivea", "Vaseline", "Dark & Lovely"];
 
-const slugify = (s) => s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 /** "1/BLUE" → "1/Blue", "GREEN/30/PINK" → "Green/30/Pink"; hair codes (1B, F1B, 99J) stay as they are. */
 const prettyColour = (c) => c.split(/(\/| \| | )/).map((p) => (/^[A-Z]{3,}$/.test(p) ? title(p) : p)).join("");
 
@@ -53,10 +45,9 @@ const products = [];
 const variants = [];
 for (const p of parents) {
   const members = p.members;
-  const hidden = members.some((m) => m.warnings.some(([s, t]) => s === "Blocker" && /prescription|Injectable/.test(t)));
   const categorySlug = p.category ? CATEGORY_SLUG[`${p.category}|${p.subcategory}`] : null;
   if (p.category && !categorySlug) throw new Error(`No category slug for ${p.category} | ${p.subcategory}`);
-  products.push({ code: p.code, name: p.name, slug: `${slugify(p.name)}-${p.code.toLowerCase()}`, brand: p.brand || null, category_slug: categorySlug, is_active: !hidden });
+  products.push({ code: p.code, name: p.name, slug: productSlug(p), brand: p.brand || null, category_slug: categorySlug, is_active: true });
   const labels = new Map();
   for (const m of members) {
     const colour = m.colour ? prettyColour(m.colour) : null;
