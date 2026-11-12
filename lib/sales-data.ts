@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import type { Channel, OrderStatus, PaymentMethod } from "@/lib/format";
 
 export type SaleLine = {
@@ -80,9 +81,10 @@ export async function loadSales(days: number): Promise<Sale[]> {
 
 export async function loadStock(): Promise<StockRow[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await fetchAll((from, to) => supabase
     .from("inventory_levels")
-    .select("quantity, reserved, reorder_level, variant:product_variants!inner(id, sku, name, is_active, product:products!inner(id, name, slug, category:categories(slug)))");
+    .select("quantity, reserved, reorder_level, variant:product_variants!inner(id, sku, name, is_active, product:products!inner(id, name, slug, category:categories(slug)))")
+    .order("id").range(from, to));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data ?? []).map((l: any) => ({
     variant_id: l.variant.id,

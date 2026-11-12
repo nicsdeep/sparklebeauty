@@ -7,6 +7,7 @@ import { BadgeCheck, Loader2, Package, Receipt, Search, Tag, UserRound, X } from
 import { cx } from "@/components/ui";
 import { sized } from "@/lib/images";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 
 /**
  * Search box that suggests matches as you type. Products, categories and customers are loaded
@@ -27,9 +28,12 @@ function loadIndex(scope: "shop" | "admin"): Promise<Indexed[]> {
   cache[scope] ??= (async () => {
     const supabase = createClient();
     // The shop lists only products on sale; staff also find hidden ones.
-    let productQuery = supabase.from("products").select("id, name, slug, image_urls, brand:brands(name), category:categories(name), product_variants(sku)");
-    if (scope === "shop") productQuery = productQuery.eq("is_active", true);
-    const products = productQuery.order("name").then(({ data }) => (data ?? []).map((p): Indexed => {
+    const productPage = (from: number, to: number) => {
+      let q = supabase.from("products").select("id, name, slug, image_urls, brand:brands(name), category:categories(name), product_variants(sku)");
+      if (scope === "shop") q = q.eq("is_active", true);
+      return q.order("name").order("id").range(from, to);
+    };
+    const products = fetchAll(productPage).then(({ data }) => (data ?? []).map((p): Indexed => {
         const brand = (p.brand as unknown as { name: string } | null)?.name ?? "";
         const category = (p.category as unknown as { name: string } | null)?.name ?? "";
         return { kind: "product", href: scope === "shop" ? `/product/${p.slug}` : `/admin/products/${p.id}/edit`, title: p.name,

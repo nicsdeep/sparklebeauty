@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-11-12: Claude: Fixes found with the real catalogue
+- PR: (this PR, branch `claude/fix-1000-row-cap`)
+- Changed:
+  - **1,000-row cap.** The shop showed "1000 products" instead of 1,640: Supabase returns at most 1,000 rows per request.
+    - New `lib/supabase/fetch-all.ts` (`fetchAll` reads in pages with a stable order; `chunks` splits long id lists).
+    - Now used by `listProducts` (home page sections with a limit are limited in the database), `getStock` (500 ids per request), search suggestions, `variant_tax_rates` (till, suspended sales), `pos_price_sheet`, admin low-stock counts, `loadStock` and the product form's option values.
+  - **"New" badge** shows only for products added after the catalogue was loaded (2026-11-12 01:41 UTC). Every imported product was showing "New".
+  - **Till barcodes.** Barcodes are now loaded with the catalogue (`Variant.barcode`), searched at the till, and an exact barcode followed by Enter (a scanner) adds the item. Before, the till never had barcodes, so the old POS codes on shelf labels didn't scan.
+- Why: found while checking the real products in the browser.
+- Tested:
+  - shop shows 1,640 products; wigs 16; no "New" badges;
+  - variant picker and cart: KES 1,500 wig + KES 300 delivery = KES 1,800, "Includes VAT (16%): KES 248.28";
+  - till: name search shows real items, 10 available; old code 2155 + Enter adds "Angels Kali Curls 1/27" at KES 500;
+  - test cart items removed;
+  - tsc and eslint pass.
+- Follow-ups: move shop filtering and paging into the database (performance).
+
 ## 2026-11-11: Claude: Real Sparkle products imported (demo stock)
 - PR: (this PR, branch `claude/real-products-import`)
 - Changed:

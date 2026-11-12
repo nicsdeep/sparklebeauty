@@ -33,7 +33,7 @@ const MAX_RESULTS = 10;
 
 const uniq = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 const stockOf = (i: PosItem) => (i.available <= 0 ? "out" : i.low ? "low" : "in");
-const searchText = (v: PosItem) => `${v.name} ${v.brand ?? ""} ${v.category} ${v.group} ${v.variantName ?? ""} ${v.color ?? ""} ${v.shade ?? ""} ${v.length ?? ""} ${v.size ?? ""} ${v.sku}`.toLowerCase();
+const searchText = (v: PosItem) => `${v.name} ${v.brand ?? ""} ${v.category} ${v.group} ${v.variantName ?? ""} ${v.color ?? ""} ${v.shade ?? ""} ${v.length ?? ""} ${v.size ?? ""} ${v.sku} ${v.barcode ?? ""}`.toLowerCase();
 
 export function ProductFinder({ items, categories, sheet, activity, online, searchRef, qtyOf, onAdd }: {
   items: PosItem[]; categories: PosCategory[]; sheet: Sheet | undefined;
@@ -128,7 +128,8 @@ export function ProductFinder({ items, categories, sheet, activity, online, sear
     else if (e.key === "Enter") {
       e.preventDefault();
       const code = query.trim().toLowerCase();
-      const exact = items.find((i) => i.sku.toLowerCase() === code);
+      // A scanner types the barcode and presses Enter: an exact barcode or SKU adds that item.
+      const exact = items.find((i) => i.barcode?.toLowerCase() === code) ?? items.find((i) => i.sku.toLowerCase() === code);
       const pick = exact ?? results[active];
       if (pick) add(pick);
     }

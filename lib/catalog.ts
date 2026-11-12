@@ -1,10 +1,13 @@
 import { cache } from "react";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { chunks, fetchAll } from "@/lib/supabase/fetch-all";
 
 export type Variant = {
   id: string;
   sku: string;
+  /** Printed barcode (for imported products: the old POS code on the shelf labels). */
+  barcode: string | null;
   name: string | null;
   color: string | null;
   shade: string | null;
@@ -49,7 +52,7 @@ const PRODUCT_SELECT = `id, name, slug, description, rating, review_count, is_fe
   benefits, how_to_use, ingredients,
   category:categories!inner(id, slug, name, parent:parent_id(slug)),
   brand:brands(name),
-  product_variants(id, sku, name, color, shade, size, hair_length, hair_texture, hair_type, hair_style, is_active,
+  product_variants(id, sku, barcode, name, color, shade, size, hair_length, hair_texture, hair_type, hair_style, is_active,
     product_prices(amount, compare_at_amount, tier:pricing_tiers(code)))`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,7 +84,7 @@ function toProduct(row: any): Product {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const wholesale = v.product_prices.find((p: any) => p.tier?.code === "wholesale");
         return {
-          id: v.id, sku: v.sku, name: v.name, color: v.color, shade: v.shade, size: v.size,
+          id: v.id, sku: v.sku, barcode: v.barcode ?? null, name: v.name, color: v.color, shade: v.shade, size: v.size,
           hair_length: v.hair_length, hair_texture: v.hair_texture, hair_type: v.hair_type, hair_style: v.hair_style,
           price: Number(retail?.amount ?? 0),
           compare_at: retail?.compare_at_amount ? Number(retail.compare_at_amount) : null,
@@ -112,19 +115,27 @@ export type ProductFilters = { category?: string; q?: string; offers?: boolean; 
 
 export async function listProducts(filters: ProductFilters = {}): Promise<Product[]> {
   const supabase = await createClient();
-  let query = supabase.from("products").select(PRODUCT_SELECT);
-  if (!filters.includeHidden) query = query.eq("is_active", true);
-
+  let categoryIds: string[] | null = null;
   if (filters.category) {
     const cats = await getCategories();
     const parent = cats.find((c) => c.slug === filters.category);
     if (!parent) return [];
-    const ids = [parent.id, ...cats.filter((c) => c.parent_id === parent.id).map((c) => c.id)];
-    query = query.in("category_id", ids);
+    categoryIds = [parent.id, ...cats.filter((c) => c.parent_id === parent.id).map((c) => c.id)];
   }
-  if (filters.featured) query = query.eq("is_featured", true);
+  const build = () => {
+    let query = supabase.from("products").select(PRODUCT_SELECT);
+    if (!filters.includeHidden) query = query.eq("is_active", true);
+    if (categoryIds) query = query.in("category_id", categoryIds);
+    if (filters.featured) query = query.eq("is_featured", true);
+    return query;
+  };
 
-  const { data } = await query.order("is_featured", { ascending: false }).order("name");
+  // A short list with nothing to filter in memory (home page sections) is limited in the database;
+  // anything else reads every page (PostgREST returns at most 1,000 rows per request).
+  const inDb = filters.limit && !filters.q && !filters.brand && !filters.offers && (!filters.sort || filters.sort === "newest");
+  const { data } = inDb
+    ? await (filters.sort === "newest" ? build().order("created_at", { ascending: false }) : build().order("is_featured", { ascending: false }).order("name")).order("id").limit(filters.limit!)
+    : await fetchAll((from, to) => build().order("is_featured", { ascending: false }).order("name").order("id").range(from, to));
   let products = (data ?? []).map(toProduct).filter((p) => p.variants.length > 0);
 
   if (filters.q) {
@@ -176,9 +187,10 @@ export async function reviewEligibility(productId: string, userId: string | null
 export async function getStock(variantIds: string[]): Promise<Record<string, Stock>> {
   if (variantIds.length === 0) return {};
   const supabase = await createClient();
-  const { data } = await supabase.rpc("get_variant_stock", { p_variant_ids: variantIds });
+  // In chunks: one request per 500 variants (each answer stays under the 1,000-row limit).
+  const parts = await Promise.all(chunks(variantIds).map((ids) => supabase.rpc("get_variant_stock", { p_variant_ids: ids })));
   const out: Record<string, Stock> = {};
-  for (const row of (data ?? []) as { variant_id: string; quantity_available: number; in_stock: boolean; low_stock: boolean }[]) {
+  for (const row of parts.flatMap((p) => p.data ?? []) as { variant_id: string; quantity_available: number; in_stock: boolean; low_stock: boolean }[]) {
     out[row.variant_id] = { available: row.quantity_available, inStock: row.in_stock, low: row.low_stock };
   }
   return out;

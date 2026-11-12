@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import type { PaymentMethod } from "@/lib/format";
 import { KRA_PIN, type TaxType } from "@/lib/tax";
 import { toQuoteLine, type PriceBreak, type PriceRule, type QuoteLine } from "@/lib/pricing";
@@ -165,7 +166,7 @@ export async function releaseSuspension(id: string): Promise<ActionResult> {
 /** Price breaks from the pricing engine for every product, for the selected customer (null = walk-in). */
 export async function posPriceSheet(customerId: string | null): Promise<ActionResult<Record<string, PriceBreak[]>>> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("pos_price_sheet", { p_customer_id: customerId });
+  const { data, error } = await fetchAll((from, to) => supabase.rpc("pos_price_sheet", { p_customer_id: customerId }).order("variant_id").order("min_qty").range(from, to));
   if (error) return fail(error);
   const sheet: Record<string, PriceBreak[]> = {};
   for (const r of (data ?? []) as { variant_id: string; min_qty: number; unit_price: number; rule: PriceRule }[]) {

@@ -5,13 +5,16 @@ import { kes } from "@/lib/format";
 import { productStock, type Product, type Stock } from "@/lib/catalog";
 
 const NEW_DAYS = 30;
+/** The existing range was loaded from the old POS at 2026-11-12 01:41 UTC; only products added after that are "New". */
+const CATALOGUE_LOADED = Date.parse("2026-11-12T01:45:00Z");
 
-/** Badge for a card: a discount first, then Bestseller (featured), then New (added in the last 30 days). */
+/** Badge for a card: a discount first, then Bestseller (featured), then New (added since the catalogue was loaded, in the last 30 days). */
 function badge(product: Product) {
   const v = product.variants[0];
   if (v.compare_at && v.compare_at > v.price) return `-${Math.round((1 - v.price / v.compare_at) * 100)}%`;
   if (product.is_featured) return "Bestseller";
-  if (Date.now() - new Date(product.created_at).getTime() < NEW_DAYS * 86_400_000) return "New";
+  const added = new Date(product.created_at).getTime();
+  if (added >= CATALOGUE_LOADED && Date.now() - added < NEW_DAYS * 86_400_000) return "New";
   return null;
 }
 
