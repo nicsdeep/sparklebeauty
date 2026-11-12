@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 
 /**
  * Categories (with their parent), brand names, and the option values already in use (colours,
@@ -9,7 +10,7 @@ export async function loadProductFormOptions() {
   const [{ data: cats }, { data: brands }, { data: variants }] = await Promise.all([
     supabase.from("categories").select("slug, name, sort_order, parent:parent_id(slug)").eq("is_active", true).order("sort_order"),
     supabase.from("brands").select("name").eq("is_active", true).order("name"),
-    supabase.from("product_variants").select("color, shade, size, hair_length"),
+    fetchAll((from, to) => supabase.from("product_variants").select("color, shade, size, hair_length").order("id").range(from, to)),
   ]);
   const values = (key: "color" | "shade" | "size" | "hair_length") =>
     [...new Set((variants ?? []).map((v) => v[key]).filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));

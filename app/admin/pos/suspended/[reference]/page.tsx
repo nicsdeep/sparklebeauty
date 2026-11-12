@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { BackLink } from "@/components/admin/back-link";
 import { Badge, Card, CardHeader } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { formatDateTimeFull, kes } from "@/lib/format";
 import { Countdown, SuspensionActions } from "../../suspension-actions";
 import { SUSPENSION_STATUS, suspensionTotal, type SuspensionRow } from "../../suspension-data";
@@ -28,7 +29,7 @@ export default async function SuspensionPage({ params }: Params) {
         pos_suspension_items(variant_id, name, quantity, unit_price),
         pos_suspension_events(action, expires_at, created_at, by:profiles(full_name))`)
       .eq("reference", reference).maybeSingle(),
-    supabase.rpc("variant_tax_rates"),
+    fetchAll((from, to) => supabase.rpc("variant_tax_rates").order("variant_id").range(from, to)),
   ]);
   if (!data) notFound();
   const s = data as unknown as Omit<SuspensionRow, "pos_suspension_items"> & {

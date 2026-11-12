@@ -1,6 +1,7 @@
 import { AdminShell, type AdminAlert } from "@/components/admin/shell";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { getStoreSettings } from "@/lib/store";
 import { mainWhatsapp } from "@/lib/store-types";
 import { telHref, whatsappHref } from "@/lib/store-types";
@@ -14,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const supabase = await createClient();
   const [{ count: newOrders }, { data: levels }, store] = await Promise.all([
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("inventory_levels").select("quantity, reserved, reorder_level"),
+    fetchAll((from, to) => supabase.from("inventory_levels").select("quantity, reserved, reorder_level").order("id").range(from, to)),
     getStoreSettings(),
   ]);
   const rows = levels ?? [];

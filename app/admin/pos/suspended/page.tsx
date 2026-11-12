@@ -5,6 +5,7 @@ import { Pagination } from "@/components/admin/list-controls";
 import { LiveSearch } from "@/components/live-search";
 import { Badge, Card, cx } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { formatDateTimeFull, kes } from "@/lib/format";
 import { pageParams } from "@/lib/pagination";
 import { Countdown, SuspensionActions } from "../suspension-actions";
@@ -35,7 +36,7 @@ export default async function SuspendedSalesPage({ searchParams }: { searchParam
   const [{ data, count }, { count: activeCount }, { data: rateRows }] = await Promise.all([
     query.range(from, to),
     supabase.from("pos_suspensions").select("id", { count: "exact", head: true }).eq("status", "active"),
-    supabase.rpc("variant_tax_rates"),
+    fetchAll((from, to) => supabase.rpc("variant_tax_rates").order("variant_id").range(from, to)),
   ]);
   const rows = (data ?? []) as unknown as SuspensionRow[];
   const rates = new Map(((rateRows ?? []) as { variant_id: string; tax_rate: number }[]).map((r) => [r.variant_id, Number(r.tax_rate)]));

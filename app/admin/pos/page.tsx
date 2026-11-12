@@ -1,5 +1,6 @@
 import { listProducts, getStock } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { getStoreSettings } from "@/lib/store";
 import { getProfile } from "@/lib/auth";
 import type { TaxType } from "@/lib/tax";
@@ -23,7 +24,7 @@ export default async function PosPage() {
     supabase.from("categories").select("slug, name, sort_order, parent:parent_id(slug)").eq("is_active", true).order("sort_order"),
     posPriceSheet(null),
     getStoreSettings(),
-    supabase.rpc("variant_tax_rates"),
+    fetchAll((from, to) => supabase.rpc("variant_tax_rates").order("variant_id").range(from, to)),
   ]);
   const me = await getProfile();
   const cashier = me?.full_name ?? null;
@@ -57,6 +58,7 @@ export default async function PosPage() {
       variantId: v.id,
       productId: p.id,
       sku: v.sku,
+      barcode: v.barcode,
       name: p.name,
       variantName: v.name ?? v.size ?? v.shade ?? v.hair_length ?? v.color ?? null,
       brand: p.brand ?? null,

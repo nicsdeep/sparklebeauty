@@ -27,7 +27,7 @@ import { loadQueue, newClientRef, saveQueue, type QueuedSale } from "./offline-q
 import { ProductFinder } from "./product-finder";
 
 export type PosItem = {
-  variantId: string; productId: string; sku: string; name: string; variantName: string | null; image: string | null;
+  variantId: string; productId: string; sku: string; barcode: string | null; name: string; variantName: string | null; image: string | null;
   category: string; group: string; retail: number; available: number; low: boolean;
   /** Brand (used as supplier) and the variant's attributes, for search, filters and the variant picker. */
   brand: string | null; color: string | null; shade: string | null; size: string | null; length: string | null;
