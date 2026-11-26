@@ -15,6 +15,13 @@ Entry format:
 
 ---
 
+## 2026-11-26: Codex: Variant search and filter groundwork
+- PR: not yet opened; work remains in progress.
+- Changed: `lib/catalog.ts`, `lib/shop-filters.ts`, and the storefront product cards, quick selector and add-to-cart components; quick selection and cart use variant images when present and display the selected SKU.
+- Why: Find existing parent products by variant attributes, avoid combining stock and price matches from different variants, and identify products with multiple variants.
+- Tested: TypeScript and ESLint on the changed files passed.
+- Follow-ups: Review and safely group catalogue families, verify variant selection and pricing end to end, and test desktop and mobile before opening a PR.
+
 ## 2026-11-12: Claude: Bulk product photos and category pictures
 - PR: (this PR, branch `claude/bulk-product-photos`)
 - Changed:
