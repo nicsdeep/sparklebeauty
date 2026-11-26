@@ -49,7 +49,8 @@ export function ProductCard({ product, stock, wishlisted = false, priority = fal
         <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug">
           <Link href={href} className="after:absolute after:inset-0 after:content-[''] hover:text-brand-700">{product.name}</Link>
         </h3>
-        <p className="mt-0.5 truncate text-sm text-ink-muted">{product.brand ?? product.category.name}</p>
+        <p className="mt-0.5 truncate text-sm text-ink-muted">{[product.brand, product.category.name].filter(Boolean).join(" · ")}</p>
+        {product.variants.length > 1 && <p className="mt-1 text-xs text-ink-muted">Multiple variants</p>}
         <div className="mt-auto flex items-end justify-between gap-2 pt-2.5">
           <div className="min-w-0">
             {!s.inStock && <p className="text-xs font-semibold text-rose-fg">Out of stock</p>}

@@ -39,7 +39,7 @@ export function WishlistHeart({ productId, slug, initial }: { productId: string;
 
 const cartItem = (product: Product, v: Variant) => ({
   variantId: v.id, slug: product.slug, name: product.name, variantName: product.variants.length > 1 ? variantLabel(v) : null,
-  category: product.category.slug, brand: product.brand, image: product.image, price: v.price,
+  category: product.category.slug, brand: product.brand, image: v.image_url ?? product.image, price: v.price,
 });
 
 /**
@@ -99,7 +99,7 @@ function VariantPicker({ product, stock, open, onClose, onAdded }: {
         </Button>
       }>
       <div className="flex items-center gap-3">
-        <div className="w-20 shrink-0"><ProductImage category={product.category.slug} name={product.name} image={product.image} size="sm" priority /></div>
+        <div className="w-20 shrink-0"><ProductImage category={product.category.slug} name={product.name} image={variant?.image_url ?? product.image} size="sm" priority /></div>
         <div className="min-w-0">
           <p className="font-semibold leading-snug">{product.name}</p>
           {product.brand && <p className="text-sm text-ink-muted">{product.brand}</p>}
@@ -123,7 +123,7 @@ function VariantPicker({ product, stock, open, onClose, onAdded }: {
           })}
         </div>
       </fieldset>
-      {variant && <div className="mt-4"><StockBadge stock={stock[variant.id]} showCount={!!stock[variant.id]?.low} /></div>}
+      {variant && <div className="mt-4"><p className="mb-2 text-sm text-ink-muted">SKU: {variant.sku}</p><StockBadge stock={stock[variant.id]} showCount={!!stock[variant.id]?.low} /></div>}
       <Link href={`/product/${product.slug}`} onClick={onClose} className="mt-5 inline-block text-sm font-semibold text-brand-700">View full details</Link>
     </Sheet>
   );

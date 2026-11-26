@@ -8,6 +8,7 @@ export type Variant = {
   sku: string;
   /** Printed barcode (for imported products: the old POS code on the shelf labels). */
   barcode: string | null;
+  image_url: string | null;
   name: string | null;
   color: string | null;
   shade: string | null;
@@ -52,7 +53,7 @@ const PRODUCT_SELECT = `id, name, slug, description, rating, review_count, is_fe
   benefits, how_to_use, ingredients,
   category:categories!inner(id, slug, name, parent:parent_id(slug)),
   brand:brands(name),
-  product_variants(id, sku, barcode, name, color, shade, size, hair_length, hair_texture, hair_type, hair_style, is_active,
+  product_variants(id, sku, barcode, image_url, name, color, shade, size, hair_length, hair_texture, hair_type, hair_style, is_active,
     product_prices(amount, compare_at_amount, tier:pricing_tiers(code)))`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,7 +85,7 @@ function toProduct(row: any): Product {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const wholesale = v.product_prices.find((p: any) => p.tier?.code === "wholesale");
         return {
-          id: v.id, sku: v.sku, barcode: v.barcode ?? null, name: v.name, color: v.color, shade: v.shade, size: v.size,
+          id: v.id, sku: v.sku, barcode: v.barcode ?? null, image_url: v.image_url ?? null, name: v.name, color: v.color, shade: v.shade, size: v.size,
           hair_length: v.hair_length, hair_texture: v.hair_texture, hair_type: v.hair_type, hair_style: v.hair_style,
           price: Number(retail?.amount ?? 0),
           compare_at: retail?.compare_at_amount ? Number(retail.compare_at_amount) : null,
@@ -140,7 +141,12 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
 
   if (filters.q) {
     const words = filters.q.toLowerCase().split(/\s+/).filter(Boolean);
-    products = products.filter((p) => { const text = `${p.name} ${p.brand ?? ""} ${p.category.name} ${p.variants.map((v) => v.sku).join(" ")}`.toLowerCase(); return words.every((w) => text.includes(w)); });
+    products = products.filter((p) => {
+      const text = [p.name, p.brand, p.category.name, ...p.variants.flatMap((v) =>
+        [v.sku, v.barcode, v.name, v.color, v.shade, v.size, v.hair_length, v.hair_texture, v.hair_type, v.hair_style])]
+        .filter(Boolean).join(" ").toLowerCase();
+      return words.every((w) => text.includes(w));
+    });
   }
   if (filters.brand) products = products.filter((p) => p.brand === filters.brand);
   if (filters.offers) products = products.filter((p) => p.variants.some((v) => v.compare_at));

@@ -34,10 +34,11 @@ function matches(p: Product, f: ShopQuery, stock: Record<string, Stock>, skip?: 
   if (skip !== "offers" && f.offers === "1" && !p.variants.some((v) => v.compare_at)) return false;
   const vs = matchingVariants(p, f, skip === "color" || skip === "length" || skip === "size" ? skip : undefined);
   if (!vs.length) return false;
-  if (skip !== "stock" && f.stock === "in" && !vs.some((v) => stock[v.id]?.inStock)) return false;
-  if (skip !== "min" && f.min && !vs.some((v) => v.price >= Number(f.min))) return false;
-  if (skip !== "max" && f.max && !vs.some((v) => v.price <= Number(f.max))) return false;
-  return true;
+  return vs.some((v) =>
+    (skip === "stock" || f.stock !== "in" || stock[v.id]?.inStock) &&
+    (skip === "min" || !f.min || v.price >= Number(f.min)) &&
+    (skip === "max" || !f.max || v.price <= Number(f.max)) &&
+    (skip === "offers" || f.offers !== "1" || !!v.compare_at));
 }
 
 /** Products matching every filter. (Search and category are applied by listProducts.) */

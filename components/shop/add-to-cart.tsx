@@ -38,7 +38,7 @@ export function AddToCart({ product, stock, breaks = {}, wishlisted }: { product
 
   function addToCart(buyNow: boolean) {
     add({ variantId: variant.id, slug: product.slug, name: product.name, variantName: product.variants.length > 1 ? variantLabel(variant) : null,
-      category: product.category.slug, brand: product.brand, image: product.image, price: variant.price }, qty);
+      category: product.category.slug, brand: product.brand, image: variant.image_url ?? product.image, price: variant.price }, qty);
     if (buyNow) {
       router.push("/checkout");
       return;
